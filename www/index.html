@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -316,7 +316,7 @@ function render(){
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
 }
-var selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -447,7 +447,15 @@ function viewCs(body){
     var gs=grList().filter(function(g){ return g[1].all||(g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
     var st=mk('div',null,ok?(u.rl==='su'?'Approved · SuperUser':'Approved'):'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
     el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph)),st);
-    if(ok) el.append(mk('div','pmeta','Groups: '+(gs.length?gs.join(', '):'None assigned')));
+    if(ok){
+      var mine=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]; if(gid==='none'||!g||(g.to||[]).indexOf(id)<0) return; var c=g.ct||{}; Object.keys(c).forEach(function(cid){ if(c[cid]&&c[cid].n) mine.push([cid,c[cid]]); }); });
+      mine.sort(byName);
+      var cl=mk('div'); cl.style.cssText='display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden'; cl.hidden=!usOpen[id];
+      mine.forEach(function(it,i){ var r=mk('div'); r.style.cssText='display:flex;justify-content:space-between;gap:8px;padding:6px 10px;'+(i?'border-top:1px solid var(--line)':''); r.append(mk('span',null,it[1].n),mk('span','pmeta',it[1].p||'')); cl.append(r); });
+      var tg=mk('button','btn small',(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'); tg.type='button'; tg.disabled=!mine.length; tg.style.alignSelf='flex-start';
+      tg.addEventListener('click',function(){ usOpen[id]=!usOpen[id]; cl.hidden=!usOpen[id]; tg.textContent=(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'; });
+      el.append(mk('div','pmeta',mine.length?mine.length+' contact'+(mine.length===1?'':'s')+' assigned':'No contacts assigned'),tg,cl);
+    }
     if(!ok){ ac.append(btn('Approve',async function(){ if(await putDoc('cr/users/'+id,{st:'ok'})) toast(u.n+' approved'); },'primary')); }
     else{ ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
