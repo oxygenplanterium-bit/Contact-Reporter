@@ -102,21 +102,69 @@ const db = {
   }
 };
 
-/* ---------- sign-in ---------- */
+/* ---------- sign-in and sign-up ---------- */
+/* A phone number is turned into a private e-mail style login name, so people only ever type their phone number and a password.
+   The address is never mailed: accounts must be created with e-mail confirmation switched off (see docs/SETUP.md). */
+const OWNER_BASE = OWNER_EMAIL.split('@');
+function phoneDigits(p) {
+  let d = String(p || '').replace(/\D/g, '');
+  if (d.length === 11 && d[0] === '0') d = d.slice(1);
+  if (d.length === 10) d = '91' + d;
+  return d;
+}
+function loginName(v) {
+  v = String(v || '').trim();
+  return v.indexOf('@') >= 0 ? v.toLowerCase() : OWNER_BASE[0] + '+' + phoneDigits(v) + '@' + OWNER_BASE[1];
+}
 let current = null;
 const ready = new Promise(resolve => {
   const style = document.createElement('style');
-  style.textContent = '#loginBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif}#loginBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small{color:#5a6b5a}';
+  style.textContent = '#loginBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#loginBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginBox button.alt{background:#fff;color:#1f6b34}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small{color:#5a6b5a}';
   document.head.appendChild(style);
   const box = document.createElement('div'); box.id = 'loginBox';
-  box.innerHTML = '<form id="loginForm"><h1>Contact Reporter</h1><input id="loginEmail" type="email" autocomplete="username" placeholder="Email" required><input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" required><p id="loginMsg" role="alert"></p><button type="submit">Sign in</button><small>Forgot your password? Ask the owner to reset it.</small></form>';
+  box.innerHTML = '<form id="loginForm" novalidate><h1 id="loginTitle">Contact Reporter</h1>' +
+    '<input id="loginName" type="text" autocomplete="name" placeholder="Your name" hidden>' +
+    '<input id="loginEmail" type="text" inputmode="text" autocomplete="username" placeholder="Phone number" autocapitalize="none">' +
+    '<input id="loginPass" type="password" autocomplete="current-password" placeholder="Password">' +
+    '<input id="loginPass2" type="password" autocomplete="new-password" placeholder="Type the password again" hidden>' +
+    '<p id="loginMsg" role="alert"></p><button type="submit" id="loginGo">Sign in</button>' +
+    '<button type="button" class="alt" id="loginSwap">Create new account</button>' +
+    '<small id="loginNote">New here? Create an account with your phone number. The owner approves it before you can use the app.</small></form>';
   const attach = () => document.body.appendChild(box);
   if (document.body) attach(); else document.addEventListener('DOMContentLoaded', attach);
-  const msg = t => { box.querySelector('#loginMsg').textContent = t; };
-  box.querySelector('#loginForm').addEventListener('submit', async e => {
+  const q = id => box.querySelector(id);
+  const msg = t => { q('#loginMsg').textContent = t; };
+  let mode = 'in';
+  const setMode = m => {
+    mode = m; msg('');
+    q('#loginName').hidden = q('#loginPass2').hidden = m !== 'up';
+    q('#loginGo').textContent = m === 'up' ? 'Create account' : 'Sign in';
+    q('#loginSwap').textContent = m === 'up' ? 'I already have an account' : 'Create new account';
+    q('#loginEmail').placeholder = m === 'up' ? 'Phone number' : 'Phone number (owner: email)';
+    q('#loginPass').autocomplete = m === 'up' ? 'new-password' : 'current-password';
+    q('#loginNote').hidden = m === 'up';
+  };
+  q('#loginSwap').addEventListener('click', () => setMode(mode === 'up' ? 'in' : 'up'));
+  const bad = e => /fetch|network/i.test(e.message) ? 'No internet connection.' : null;
+  q('#loginForm').addEventListener('submit', async e => {
     e.preventDefault(); msg('');
-    const r = await sb.auth.signInWithPassword({ email: box.querySelector('#loginEmail').value.trim(), password: box.querySelector('#loginPass').value });
-    if (r.error) msg(/fetch|network/i.test(r.error.message) ? 'No internet connection.' : 'Wrong email or password.');
+    const who = q('#loginEmail').value.trim(), pass = q('#loginPass').value;
+    if (!who) { msg('Enter your phone number.'); return; }
+    if (who.indexOf('@') < 0 && phoneDigits(who).length < 10) { msg('Enter a valid 10 digit phone number.'); return; }
+    if (!pass) { msg('Enter your password.'); return; }
+    if (mode === 'up') {
+      const nm = q('#loginName').value.trim().replace(/\s+/g, ' ');
+      if (who.indexOf('@') >= 0) { msg('Use your phone number to create an account.'); return; }
+      if (!nm) { msg('Enter your name.'); return; }
+      if (pass.length < 6) { msg('The password needs at least 6 characters.'); return; }
+      if (pass !== q('#loginPass2').value) { msg('The two passwords do not match.'); return; }
+      const r = await sb.auth.signUp({ email: loginName(who), password: pass, options: { data: { name: nm, phone: phoneDigits(who) } } });
+      if (r.error) { msg(bad(r.error) || (/registered|exists/i.test(r.error.message) ? 'This phone number already has an account. Tap "I already have an account".' : 'Could not create the account. ' + r.error.message)); return; }
+      if (!r.data.session) { msg('Account created, but sign in is not switched on yet. Please tell the owner.'); }
+      return;
+    }
+    const r = await sb.auth.signInWithPassword({ email: loginName(who), password: pass });
+    if (r.error) msg(bad(r.error) || 'Wrong phone number or password.');
   });
   let first = true;
   const onSession = sess => {
@@ -138,7 +186,7 @@ const user = {
   canEdit: async () => !!current && (current.email || '').toLowerCase() === OWNER_EMAIL,
   can: async () => !!current,
   id: async () => current ? current.id : null,
-  me: async () => current ? { name: (current.user_metadata && current.user_metadata.name) || (current.email || '').split('@')[0] } : null
+  me: async () => current ? { name: (current.user_metadata && current.user_metadata.name) || (current.email || '').split('@')[0], phone: (current.user_metadata && current.user_metadata.phone) || '' } : null
 };
 
 /* ---------- saving files ---------- */
@@ -175,6 +223,7 @@ const downloads = {
 };
 
 window.claude = {
+  signOut: async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); },
   use: async n => {
     if (n === 'db') { await ready; return db; }
     if (n === 'user') { await ready; return user; }

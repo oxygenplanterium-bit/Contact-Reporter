@@ -7,8 +7,12 @@ A separate app from Nursery Manager. The owner keeps a contact book, puts contac
 
 ## One-time setup
 1. Repository Settings, Pages, Source: **GitHub Actions**.
-2. Nothing to run in Supabase. The app uses the same Supabase project and sign-in accounts as Nursery Manager but writes only to its own records (paths starting with `cr/`). It never reads or changes Nursery Manager data.
+2. Follow `docs/SETUP.md` to create the app's own Supabase project (run `supabase.sql`, switch off e-mail confirmation, create the owner login) and put its URL and key in `src/config.js`.
+
+## Sign in
+People create their own account with a phone number and password. The owner approves them in the Callers tab and assigns groups to them. Callers see only the groups assigned to them.
 
 ## Data
-- `cr/book`: contacts, groups and callers.
-- `cr/log/YYYY-MM-DD`: calls and reports for each day.
+- `cr/users/<id>`: each person's account record (name, phone, pending or approved).
+- `cr/g/<id>`: a group, its contacts and who it is assigned to.
+- `cr/log/<date>/<id>`: one person's calls and reports for a day.

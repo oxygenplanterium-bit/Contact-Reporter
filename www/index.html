@@ -46,14 +46,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div></div>
-  <div class="card" id="idCard" hidden>
-    <label class="f"><span>Who is calling</span><select id="callerSel" aria-label="Choose your name"></select></label>
-    <p class="pmeta" id="idHint" style="color:var(--warn)" hidden></p>
-  </div>
-  <div class="aseg" id="seg"></div>
+    <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 7:00 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 7:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -74,27 +70,26 @@ function dayKey(ms){ var d=new Date(ms||Date.now()); return d.getFullYear()+'-'+
 function todayKey(){ return dayKey(); }
 function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
 function fmtTime(ms){ if(!ms) return ''; var d=new Date(ms), h=d.getHours(), m=two(d.getMinutes()); return (h%12||12)+':'+m+' '+(h<12?'AM':'PM'); }
+function fmtPhone(d){ d=String(d||''); return d.length===12&&d.slice(0,2)==='91' ? '+91 '+d.slice(2,7)+' '+d.slice(7) : (d?'+'+d:''); }
 /* ---------- state ---------- */
-var db=null, user=null, isOwner=false, myName='', ready=false;
-var book={ct:{},cg:{},cs:{}}, bookLoaded=false, logData={}, logKey=todayKey(), logUnsub=null;
-var callerId='', sub='ct', callQ='', callG='', callLs='', callLg='', sig='';
-try{ callerId=localStorage.getItem('crCaller')||''; }catch(e){}
-var ct=function(){ return book.ct||{}; }, cg=function(){ return book.cg||{}; }, cs=function(){ return book.cs||{}; };
+var db=null, user=null, isOwner=false, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
+var groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
+var sub='ct', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
 function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
 function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
 function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
-function callers(){ return Object.keys(cs()).filter(function(k){ return cs()[k]&&cs()[k].n; }).map(function(k){ return [k,cs()[k]]; }).sort(byName); }
-function grList(){ return Object.keys(cg()).filter(function(k){ return cg()[k]&&cg()[k].n; }).map(function(k){ return [k,cg()[k]]; }).sort(byName); }
-function ctAll(){ return Object.keys(ct()).filter(function(k){ return ct()[k]&&ct()[k].n; }).map(function(k){ return [k,ct()[k]]; }).sort(byName); }
-function grSee(g){ if(isOwner) return true; var to=(g&&g.to)||[]; return !to.length || to.indexOf(callerId)>=0; }
-function ctSee(){ return ctAll().filter(function(it){ return isOwner || (it[1].g && cg()[it[1].g] && grSee(cg()[it[1].g])); }); }
-function grWho(g){ var to=(g.to||[]).filter(function(id){ return cs()[id]&&cs()[id].n; }); return to.length ? to.map(function(id){ return cs()[id].n; }).join(', ') : 'All callers'; }
-function callerName(){ if(isOwner) return 'Owner'; return callerId&&cs()[callerId]?cs()[callerId].n:''; }
-function needCaller(){ return !isOwner && !callerId; }
-function clGroup(e){ if(e.gn) return e.gn; var c=ct()[e.c]; return c&&c.g&&cg()[c.g]?cg()[c.g].n:''; }
+function approved(){ return isOwner || (me&&me.st==='ok'); }
+function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
+function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{}; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
+function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
+function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
+function grWho(g){ if(g.all) return 'All approved callers'; var to=(g.to||[]).filter(function(id){ return users[id]&&users[id].n; }); return to.length ? to.map(function(id){ return users[id].n; }).join(', ') : 'Nobody yet'; }
+function callerName(){ return isOwner?'Owner':((me&&me.n)||myName||'Caller'); }
+function clGroup(e){ if(e.gn) return e.gn; var c=ctGet(e.c); return c&&c.g&&groups[c.g]?groups[c.g].n:''; }
 function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
 function fld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
 function tint(el,i){ el.style.background=i%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; }
@@ -103,42 +98,53 @@ function dlg(id){ var d=$('#'+id); if(!d){ d=document.createElement('dialog'); d
 function openDlg(d){ if(!d.open) d.showModal(); setTimeout(function(){ var a=document.activeElement; if(a&&d.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur(); },0); }
 function writeErr(e){ toast(e&&e.code==='revoked'?'You are not allowed to do that.':'Could not save. Check your connection and try again.'); return false; }
 /* ---------- storage ---------- */
-function stripNull(o){ if(!o||typeof o!=='object') return o; var r={}; Object.keys(o).forEach(function(k){ if(o[k]===null) return; r[k]=(typeof o[k]==='object'&&!Array.isArray(o[k]))?stripNull(o[k]):o[k]; }); return r; }
-async function putDoc(path,patch){
+function stripNull(o){ if(!o||typeof o!=='object'||Array.isArray(o)) return o; var r={}; Object.keys(o).forEach(function(k){ if(o[k]===null) return; r[k]=stripNull(o[k]); }); return r; }
+async function putDoc(path,patch,base){
   try{
     var d=db.doc(path), s=await d.get();
-    if(s.exists) await d.update(patch); else await d.set(stripNull(patch));
+    if(s.exists) await d.update(patch); else await d.set(stripNull(Object.assign({},base||{},patch)));
     return true;
   }catch(e){ return writeErr(e); }
 }
-function bookSave(p){ return putDoc('cr/book',p); }
-function logSave(p){ return putDoc('cr/log/'+todayKey(),{cl:p}); }
+function grPut(gid,patch){ return putDoc('cr/g/'+gid,patch,gid==='none'?{n:'No group',all:false,to:[],ct:{}}:{all:false,to:[],ct:{}}); }
+async function delDoc(path){ try{ await db.doc(path).delete(); return true; }catch(e){ return writeErr(e); } }
+function watchPrefix(prefix,cb){
+  if(db.watch) return db.watch(prefix,cb);
+  var dead=false, run=async function(){ try{ var l=await db.list(prefix); if(!dead) cb(l); }catch(e){} }; run(); var t=setInterval(run,6000);
+  return function(){ dead=true; clearInterval(t); };
+}
+function listToMap(list,prefix){ var m={}; (list||[]).forEach(function(x){ m[x.path.slice(prefix.length)]=x.data||{}; }); return m; }
 function logSub(){
-  if(logUnsub){ try{ logUnsub(); }catch(e){} logUnsub=null; }
-  var k=logKey;
-  logUnsub=db.doc('cr/log/'+k).onSnapshot(function(s){ if(k!==logKey) return; logData=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
+  logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={};
+  if(!approved()){ return; }
+  if(isOwner){
+    logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
+  }else{
+    var st=db.doc('cr/log/'+k+'/'+uid).onSnapshot(function(s){ if(k!==logKey) return; logRows=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
+    logStops.push(st||function(){});
+  }
 }
 /* ---------- dialer ---------- */
 var CALL_KEY='crCallPend';
 function pendGet(){ try{ return JSON.parse(localStorage.getItem(CALL_KEY)||'null'); }catch(e){ return null; } }
 function pendSet(o){ try{ if(o) localStorage.setItem(CALL_KEY,JSON.stringify(o)); else localStorage.removeItem(CALL_KEY); }catch(e){} }
 function callStart(cid){
-  var c=ct()[cid]; if(!c) return;
-  if(needCaller()){ toast('Choose your name at the top first.'); return; }
+  var c=ctGet(cid); if(!c) return;
+  if(!approved()){ toast('Your account is waiting for approval.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
-  pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&cg()[c.g]?cg()[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:callerId||''});
+  pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:uid});
   var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
 }
 function callHidden(){ var p=pendGet(); if(p&&!p.hid){ p.hid=Date.now(); pendSet(p); } }
 async function callBack(tries){
   var p=pendGet(); if(!p) return;
   if(!p.hid){ if(Date.now()-p.at>600000) pendSet(null); return; }
-  if(!db||!ready){ if((tries||0)<30) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
+  if(!db||!started||!uid){ if((tries||0)<30) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
+  if(p.sid&&p.sid!==uid){ pendSet(null); return; }
   pendSet(null);
-  var e={c:p.c,n:p.n,p:p.p,g:p.g||'',gn:p.gn||'',by:p.by||'',sid:p.sid||'',at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
-  var o={}; o[p.id]=e;
-  var k=dayKey(p.at); 
-  if(await putDoc('cr/log/'+k,{cl:o})){ if(k===logKey){ logData[p.id]=e; render(); } repOpen(p.id,e,k); }
+  var e={c:p.c,n:p.n,p:p.p,g:p.g||'',gn:p.gn||'',by:p.by||'',sid:uid,at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
+  var o={}, k=dayKey(p.at); o[p.id]=e;
+  if(await putDoc('cr/log/'+k+'/'+uid,{cl:o})){ if(k===logKey){ logRows[p.id]=e; render(); } repOpen(p.id,e,k); }
 }
 document.addEventListener('visibilitychange',function(){ if(document.hidden) callHidden(); else callBack(0); });
 window.addEventListener('pagehide',callHidden);
@@ -160,19 +166,19 @@ function repOpen(id,e,k){
     if(!o){ er.textContent='Choose what happened.'; return; }
     if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
     var p={}; p[id]={o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now()};
-    if(await putDoc('cr/log/'+(k||todayKey()),{cl:p})){ d.close(); toast('Report submitted'); }
+    if(await putDoc('cr/log/'+(k||todayKey())+'/'+(e.sid||uid),{cl:p})){ d.close(); toast('Report submitted'); }
   });
   openDlg(d);
 }
-/* ---------- owner dialogs ---------- */
+/* ---------- dialogs ---------- */
 function groupSel(cur,withAll){
   var s=document.createElement('select'); if(withAll){ var a=mk('option',null,'All groups'); a.value=''; s.append(a); }
   var n=mk('option',null,'No group'); n.value=withAll?'-':''; s.append(n);
-  grList().forEach(function(it){ if(!grSee(it[1])) return; var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
+  grList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
   s.value=cur||''; return s;
 }
 function ctEdit(id){
-  var c=id?ct()[id]:{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
+  var c=id?ctGet(id):{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
   var r=dlg('dlgCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
   var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), er=mk('p','pmeta');
@@ -185,8 +191,10 @@ function ctEdit(id){
     if(!n){ er.textContent='Enter a name.'; return; }
     if(digitsOf(p).length<5){ er.textContent='Enter a valid phone number.'; return; }
     if(ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); })){ er.textContent='This phone number is already saved.'; return; }
-    var k=id||callId(), pt={ct:{}}; pt.ct[k]={n:n,p:p,g:gs.value||'',nt:cleanName(nt.value)};
-    if(await bookSave(pt)){ d.close(); toast('Contact saved'); }
+    var k=id||callId(), ng=gs.value||'none', og=id?(c.g||'none'):ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value)};
+    var ok=await grPut(ng,pt);
+    if(ok&&og!==ng){ var rm={ct:{}}; rm.ct[k]=null; ok=await grPut(og,rm); }
+    if(ok){ d.close(); toast('Contact saved'); }
   });
   openDlg(d);
 }
@@ -205,76 +213,61 @@ function ctBulk(){
       ln=ln.trim(); if(!ln) return;
       var m=ln.match(/^(.*?)[\s,;\t:|-]+(\+?\d[\d\s-]{4,})$/); if(!m||!cleanName(m[1])){ bad++; return; }
       var dg=digitsOf(m[2]); if(dg.length<5||seen[dg]){ skip++; return; } seen[dg]=1;
-      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:m[2].trim(),g:gs.value||'',nt:''}; n++;
+      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:m[2].trim(),nt:''}; n++;
     });
     if(!n){ er.textContent='Nothing to add.'+(bad?' '+bad+' line(s) had no name and phone number.':'')+(skip?' '+skip+' already saved.':''); return; }
-    if(await bookSave(pt)){ d.close(); toast(n+' contact'+(n>1?'s':'')+' added'+(skip||bad?'; '+(skip+bad)+' skipped':'')); }
+    if(await grPut(gs.value||'none',pt)){ d.close(); toast(n+' contact'+(n>1?'s':'')+' added'+(skip||bad?'; '+(skip+bad)+' skipped':'')); }
   });
   openDlg(d);
 }
 function grEdit(id){
-  var g=id?cg()[id]:{n:'',to:[]}; if(id&&!g) return;
+  var g=id?groups[id]:{n:'',to:[],all:false}; if(id&&!g) return;
   var r=dlg('dlgGr'), d=r[0], b=r[1];
   b.append(mk('h2',null,id?'Edit Group':'New Group'));
   var nm=mkIn('text','Group name',g.n), er=mk('p','pmeta'); nm.maxLength=40; er.style.color='var(--warn)';
   b.append(fld('Group name',nm));
-  b.append(mk('p','pmeta','Assigned to. Tick none to give this group to all callers.'));
-  var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:6px';
-  callers().forEach(function(it){
-    var l=mk('label'), c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0';
-    l.append(c,mk('span',null,it[1].n)); wrap.append(l); sel[it[0]]=c;
-  });
-  if(!callers().length) wrap.append(mk('p','pmeta','No callers added yet. Add them in the Callers tab.'));
+  b.append(mk('p','pmeta','Assigned to'));
+  var all=document.createElement('input'); all.type='checkbox'; all.checked=!!g.all;
+  var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px';
+  function row1(c,text){ var l=mk('label'); c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,text)); wrap.append(l); }
+  row1(all,'All approved callers');
+  okUsers().forEach(function(it){ var c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; sel[it[0]]=c; row1(c,it[1].n+' · '+fmtPhone(it[1].ph)); });
+  if(!okUsers().length) wrap.append(mk('p','pmeta','No approved callers yet. Approve people in the Callers tab.'));
   b.append(wrap,er);
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn); b.append(row);
   cn.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
     var n=cleanName(nm.value); if(!n){ er.textContent='Enter a group name.'; return; }
     if(grList().some(function(it){ return it[0]!==id && it[1].n.toLowerCase()===n.toLowerCase(); })){ er.textContent='A group with this name already exists.'; return; }
-    var to=Object.keys(sel).filter(function(k){ return sel[k].checked; }), pt={cg:{}}; pt.cg[id||callId()]={n:n,to:to};
-    if(await bookSave(pt)){ d.close(); toast('Group saved'); }
-  });
-  openDlg(d);
-}
-function csEdit(id){
-  var c=id?cs()[id]:{n:''}; if(id&&!c) return;
-  var r=dlg('dlgCs'), d=r[0], b=r[1];
-  b.append(mk('h2',null,id?'Edit Caller':'Add Caller'));
-  var nm=mkIn('text','Name',c.n), er=mk('p','pmeta'); nm.maxLength=40; er.style.color='var(--warn)';
-  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
-  b.append(fld('Caller name',nm),er,row);
-  cn.addEventListener('click',function(){ d.close(); });
-  sv.addEventListener('click',async function(){
-    var n=cleanName(nm.value); if(!n){ er.textContent='Enter a name.'; return; }
-    if(callers().some(function(it){ return it[0]!==id && it[1].n.toLowerCase()===n.toLowerCase(); })){ er.textContent='This name already exists.'; return; }
-    var pt={cs:{}}; pt.cs[id||callId()]={n:n};
-    if(await bookSave(pt)){ d.close(); toast('Caller saved'); }
+    var to=Object.keys(sel).filter(function(k){ return sel[k].checked; });
+    if(await grPut(id||callId(),{n:n,all:all.checked,to:to})){ d.close(); toast('Group saved'); }
   });
   openDlg(d);
 }
 /* ---------- render ---------- */
 function render(){
-  if(!ready) return;
+  if(!started) return;
   var ae=document.activeElement, body=$('#body');
   if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  var cl=callers();
-  var s=JSON.stringify([sub,callQ,callG,callLs,callLg,isOwner,callerId,book,logData,logKey]);
+  var s=JSON.stringify([sub,callQ,callG,callLs,callLg,isOwner,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
-  $('#who').textContent=isOwner?'Owner':(callerName()||myName||'');
-  var idc=$('#idCard'); idc.hidden=isOwner;
-  if(!isOwner){
-    var sel=$('#callerSel'); sel.textContent=''; var o0=mk('option',null,'Choose your name'); o0.value=''; sel.append(o0);
-    cl.forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; sel.append(o); });
-    if(bookLoaded&&callerId&&!cs()[callerId]){ callerId=''; try{ localStorage.removeItem('crCaller'); }catch(e){} }
-    sel.value=callerId; var h=$('#idHint'); h.hidden=!!callerId||!bookLoaded; h.textContent=cl.length?'Choose your name before calling.':'The owner has not added any callers yet.';
+  var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
+  $('#who').textContent=isOwner?'Owner':callerName();
+  var seg=$('#seg'), body=$('#body'); seg.textContent=''; body.textContent='';
+  if(!approved()){
+    seg.hidden=true; $('#dateCard').hidden=true;
+    var w=mk('div','card'); w.style.cssText='display:flex;flex-direction:column;gap:8px';
+    w.append(mk('b',null,meLoaded?'Waiting for approval':'Loading...'));
+    if(meLoaded) w.append(mk('p','pmeta','Your account has been created. The owner needs to approve it before you can see your contacts. Open this app again after you have been approved.'));
+    body.append(w); return;
   }
-  if(!isOwner&&sub==='cs') sub='ct'; if(!isOwner&&sub==='gr') sub='ct';
-  var seg=$('#seg'); seg.textContent=''; var tabs=[['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Callers']].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
+  seg.hidden=false;
+  var tabs=[['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Callers'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
+  if(!isOwner&&(sub==='cs'||sub==='gr')) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
-  body.textContent='';
-  if(!bookLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
+  if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
 }
 function rows(box,list,own){
@@ -283,25 +276,24 @@ function rows(box,list,own){
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; top.style.cssText='flex:1 1 auto;min-width:0';
     top.append(mk('b',null,c.n)); top.append(mk('div','pmeta',c.p));
-    var gn=c.g&&cg()[c.g]?cg()[c.g].n:''; var meta=[gn,c.nt].filter(Boolean).join(' · '); if(meta) top.append(mk('div','pmeta',meta));
+    var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[gn,c.nt].filter(Boolean).join(' · '); if(meta) top.append(mk('div','pmeta',meta));
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; hd.append(top,cb); el.append(hd);
-    if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await bookSave(pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
+    if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
     box.append(el);
   });
 }
 function viewCt(body){
-  if(needCaller()){ var w=mk('p','pmeta','Choose your name above before calling.'); w.style.color='var(--warn)'; body.append(w); }
   if(isOwner){ var ad=mk('div','sline'); ad.append(btn('Add Contact',function(){ ctEdit(''); },'primary'),btn('Add Many',ctBulk),btn('New Group',function(){ grEdit(''); })); body.append(ad); }
   var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=callQ; q.autocomplete='off';
-  var gs=groupSel(callG,true); bar.append(q,gs); body.append(bar);
+  var gs=groupSel(callG,true); bar.append(q); if(isOwner||grList().length>1) bar.append(gs); body.append(bar);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(lst);
   function fill(){
-    lst.textContent=''; var qq=callQ.trim().toLowerCase(), all=ctSee().filter(function(it){
+    lst.textContent=''; var qq=callQ.trim().toLowerCase(), all=ctAll().filter(function(it){
       if(callG==='-'){ if(it[1].g) return false; } else if(callG&&it[1].g!==callG) return false;
       return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0;
     });
-    if(!all.length){ lst.append(mk('p','pmeta',ctSee().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to callers.'))); return; }
+    if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to callers.'))); return; }
     lst.append(mk('p','pmeta',all.length+' contact'+(all.length>1?'s':''))); rows(lst,all,isOwner);
   }
   q.addEventListener('input',function(){ callQ=q.value; fill(); });
@@ -317,31 +309,33 @@ function viewGr(body){
     el.append(mk('b',null,g.n),mk('div','pmeta',n+' contact'+(n===1?'':'s')+' · Assigned to: '+grWho(g)));
     ac.append(btn('Edit / Assign',function(){ grEdit(id); }));
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'grd'+id,'Delete',async function(){
-      var pt={cg:{},ct:{}}; pt.cg[id]=null; ctAll().forEach(function(x){ if(x[1].g===id) pt.ct[x[0]]={g:''}; }); if(!Object.keys(pt.ct).length) delete pt.ct;
-      if(await bookSave(pt)) toast('Group deleted'); }); }); ac.append(dl);
+      var mv=g.ct||{}, ok=true; if(Object.keys(mv).length) ok=await grPut('none',{ct:mv});
+      if(ok&&await delDoc('cr/g/'+id)) toast('Group deleted'); }); }); ac.append(dl);
     el.append(ac); body.append(el);
   });
 }
 function viewCs(body){
-  var ad=mk('div','sline'); ad.append(btn('Add Caller',function(){ csEdit(''); },'primary')); body.append(ad);
-  body.append(mk('p','pmeta','Callers are the people who make the calls. Each caller picks their name on their phone, then sees only the groups assigned to them.'));
-  var l=callers(); if(!l.length){ body.append(mk('p','pmeta','No callers yet.')); return; }
+  body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here, then assign groups to them in the Groups tab.'));
+  var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
+  if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
   l.forEach(function(it,ix){
-    var id=it[0], el=mk('div','card'), ac=mk('div','sline');
+    var id=it[0], u=it[1], el=mk('div','card'), ac=mk('div','sline'), ok=u.st==='ok';
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
-    var gs=grList().filter(function(g){ return (g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
-    el.append(mk('b',null,it[1].n),mk('div','pmeta','Groups: '+(gs.length?gs.join(', '):'None assigned directly')));
-    ac.append(btn('Rename',function(){ csEdit(id); }));
-    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'csd'+id,'Delete',async function(){
-      var pt={cs:{},cg:{}}; pt.cs[id]=null; grList().forEach(function(g){ if((g[1].to||[]).indexOf(id)>=0) pt.cg[g[0]]={to:g[1].to.filter(function(x){ return x!==id; })}; }); if(!Object.keys(pt.cg).length) delete pt.cg;
-      if(await bookSave(pt)) toast('Caller deleted'); }); }); ac.append(dl);
+    var gs=grList().filter(function(g){ return g[1].all||(g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
+    var st=mk('div',null,ok?'Approved':'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
+    el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph)),st);
+    if(ok) el.append(mk('div','pmeta','Groups: '+(gs.length?gs.join(', '):'None assigned')));
+    if(!ok){ ac.append(btn('Approve',async function(){ if(await putDoc('cr/users/'+id,{st:'ok'})) toast(u.n+' approved'); },'primary')); }
+    else{ ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
+      var ok2=true; for(var gi=0;gi<grList().length;gi++){ var g=grList()[gi]; if((g[1].to||[]).indexOf(id)>=0) ok2=ok2&&await grPut(g[0],{to:g[1].to.filter(function(x){ return x!==id; })}); }
+      if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
     el.append(ac); body.append(el);
   });
 }
 function viewLg(body){
-  var all=Object.keys(logData).map(function(k){ return [k,logData[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
+  var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var mine=!isOwner;
-  if(mine) all=all.filter(function(it){ return callerId ? it[1].sid===callerId : false; });
   if(isOwner){
     var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
     var fs=document.createElement('select'), a=mk('option',null,'All callers'); a.value=''; fs.append(a);
@@ -364,30 +358,47 @@ function viewLg(body){
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px'; h.append(mk('b',null,e.n),mk('span','pmeta',fmtTime(e.at))); el.append(h);
     el.append(mk('div','pmeta',[e.p,clGroup(e)?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ var oc=mk('div',null,callOutName(e.o)); oc.style.fontWeight='600'; el.append(oc); if(e.r) el.append(mk('div',null,e.r)); if(e.nx) el.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
-    else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(mine||(isOwner&&e.by==='Owner')) el.append(btn('Write Report',function(){ repOpen(id,e,logKey); })); }
+    else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(e.sid===uid) el.append(btn('Write Report',function(){ repOpen(id,e,logKey); })); }
     body.append(el);
   });
 }
-/* ---------- app refresh and updates ---------- */
+/* ---------- app refresh ---------- */
 async function appRefresh(){
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.filter(function(k){ return k.indexOf('contactreporter-shell-')===0; }).map(function(k){ return caches.delete(k); })); } }catch(e){}
-  try{ if('serviceWorker' in navigator){ var rg=await navigator.serviceWorker.getRegistrations(); await Promise.all(rg.filter(function(r){ return (r.scope||'').indexOf(location.pathname.replace(/[^\/]*$/,''))===0; }).map(function(r){ return r.unregister(); })); } }catch(e){}
+  try{ if('serviceWorker' in navigator){ var rg=await navigator.serviceWorker.getRegistrations(); var base=location.pathname.replace(/[^\/]*$/,''); await Promise.all(rg.filter(function(r){ return (r.scope||'').indexOf(location.origin+base)===0; }).map(function(r){ return r.unregister(); })); } }catch(e){}
   location.replace(location.pathname+'?r='+Date.now());
 }
 $('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app...',2000); appRefresh(); });
-$('#callerSel').addEventListener('change',function(){ callerId=this.value; try{ if(callerId) localStorage.setItem('crCaller',callerId); else localStorage.removeItem('crCaller'); }catch(e){} sig=''; render(); });
+$('#signOut').addEventListener('click',function(){ if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
 $('#logDate').value=logKey;
-$('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; logData={}; sig=''; logSub(); render(); });
+$('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; sig=''; logSub(); render(); });
 /* ---------- start ---------- */
+function startData(){
+  if(startData.done) return; startData.done=true;
+  watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
+  if(isOwner) watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); });
+  logSub();
+}
 (async function boot(){
   try{
     var c=window.claude;
     if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
     db=await c.use('db'); user=await c.use('user');
-    var r=await Promise.all([user.canEdit(),user.me()]); isOwner=!!r[0]; myName=(r[1]&&r[1].name)||'';
-    ready=true;
-    db.doc('cr/book').onSnapshot(function(s){ var d=(s.exists&&s.data())||{}; book={ct:d.ct||{},cg:d.cg||{},cs:d.cs||{}}; bookLoaded=true; render(); },function(){ bookLoaded=true; render(); });
-    logSub(); render(); callBack(0);
+    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); isOwner=!!r[0]; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
+    started=true;
+    if(isOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
+    var made=false;
+    db.doc('cr/users/'+uid).onSnapshot(async function(s){
+      if(!s.exists){
+        meLoaded=true; me=null; render();
+        if(!made){ made=true; try{ await db.doc('cr/users/'+uid).set({n:myName||'New caller',ph:myPhone||'',st:'pending',at:Date.now()}); }catch(e){ made=false; } }
+        return;
+      }
+      me=s.data(); meLoaded=true;
+      if(me.st==='ok'){ var first=!startData.done; startData(); if(first) callBack(0); }
+      render();
+    },function(){ meLoaded=true; render(); });
+    render();
   }catch(e){ $('#body').textContent=''; $('#body').append(mk('p','pmeta','Could not connect. Check your internet and reload.')); }
 })();
 })();

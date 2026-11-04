@@ -1,0 +1,20 @@
+# Contact Reporter: one-time Supabase setup
+
+Contact Reporter has its own Supabase project, separate from Nursery Manager. Create it once:
+
+1. Go to supabase.com, sign in, and tap **New project**. Name it `contact-reporter`, choose any region near you, set a database password (save it somewhere) and create it. Wait until it finishes setting up.
+2. Open **SQL Editor**, tap **New query**, paste the whole of `supabase.sql` from this repository, and tap **Run**. It should say "Success".
+3. Open **Authentication**, then **Sign In / Providers** (or **Providers**), and open **Email**:
+   - **Confirm email: OFF** (this is required, because people sign up with a phone number, not a real e-mail).
+   - Make sure **Allow new users to sign up** is ON.
+4. Open **Authentication**, then **Users**, then **Add user** and **Create new user**. Use the owner e-mail `oxygenplanterium@gmail.com` with a password of your choice, and tick **Auto Confirm User**. This is the owner login.
+5. Open **Project Settings**, then **API**. Copy the **Project URL** and the **anon public** key. Put them in `src/config.js` (`SUPABASE_URL` and `SUPABASE_KEY`). The anon key is public by design: the database rules in `supabase.sql` protect the data.
+
+## How people sign in
+- **Owner:** the e-mail and password from step 4.
+- **Everyone else:** taps **Create new account** on the sign-in screen and enters name, phone number and password. The account stays *Waiting for approval* until the owner approves it in the **Callers** tab. The owner then assigns groups to it in the **Groups** tab.
+
+## What each person can see
+- **Owner:** everything.
+- **Approved caller:** only the groups assigned to them and their own calls and reports.
+- **Not yet approved:** nothing except their own account record.
