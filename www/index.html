@@ -75,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:50 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -550,7 +550,8 @@ function viewHome(body){
         var uv=btn('Show Unassigned',function(){ selUn=!selUn; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); uv.setAttribute('aria-pressed',selUn); if(selUn) uv.className+=' primary';
         var urow=mk('div','sline'); urow.append(uv,ua);
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
-        ab.append(sr2,inf,ar,urow); body.append(ab); }
+        var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
+        ab.append(sr2,inf,g4); body.append(ab); }
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
