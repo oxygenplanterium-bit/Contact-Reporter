@@ -948,10 +948,10 @@ function reportRow(){ var r=mk('div','sline'); r.append(btn('Download Report PDF
 /* ---------- owner and user mode ---------- */
 function modeSync(){
   var mo=$('#modeOwner'), mu=$('#modeSu'), ms=$('#modeSup'), m2=$('#modes2');
-  var em=accountOwner?((mode==='owner')?'owner':(mode==='su')?'su':'user'):(isSuAcct()?(mode==='user'?'user':'su'):'user');
+  var em=(accountOwner&&mode==='owner')?'owner':'user';
   isOwner=em==='owner';
   $('#modes').hidden=!canSu();
-  mo.hidden=!accountOwner; mu.hidden=!canSu(); ms.hidden=!canSu(); m2.className='';
+  mo.hidden=!accountOwner; mu.hidden=true; ms.hidden=!canSu(); m2.className='one';
   mo.setAttribute('aria-pressed',em==='owner'); mu.setAttribute('aria-pressed',em==='su'); ms.setAttribute('aria-pressed',em==='user');
 }
 function setMode(m){
@@ -1016,7 +1016,7 @@ function startData(){
     var c=window.claude;
     if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
     db=await c.use('db'); user=await c.use('user');
-    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} mode=accountOwner?(sm==='su'||sm==='user'||sm==='supervisor'?(sm==='supervisor'?'user':sm):'owner'):(sm==='user'?'user':'su'); isOwner=accountOwner&&mode==='owner'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
+    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} mode=accountOwner?(sm==='su'||sm==='user'||sm==='supervisor'?'user':'owner'):'user'; isOwner=accountOwner&&mode==='owner'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
     started=true;
     modeSync();
     db.doc('cr/settings').onSnapshot(function(sn){ settings=(sn.exists&&sn.data())||{}; settingsLoaded=true; render(); },function(){ settingsLoaded=true; render(); });
