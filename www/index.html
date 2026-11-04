@@ -45,6 +45,7 @@ textarea{resize:vertical}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
+.lpress{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
 select:not([multiple]){pointer-events:none}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
 dialog.pickdlg .dbody{max-height:none; overflow:visible}
@@ -73,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 1:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 2:15 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -156,6 +157,41 @@ var QR=(function(){
     for(var y=0;y<n;y++) for(var x=0;x<n;x++) if(q.m[y][x]) c.fillRect((x+quiet)*s,(y+quiet)*s,s,s); return true;
   }
   return {draw:draw,build:build};
+})();
+
+/* Small PDF writer: A4 pages, Helvetica text, simple lines. No outside library. */
+var PDF=(function(){
+  var W=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+  function clean(t){ t=String(t==null?'':t).replace(/₹/g,'Rs ').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-').replace(/·/g,'-').replace(/[\r\n\t]+/g,' ');
+    var o=''; for(var i=0;i<t.length;i++){ var c=t.charCodeAt(i); o+=(c>=32&&c<=126)||(c>=161&&c<=255)?t.charAt(i):(c===32?' ':'?'); } return o; }
+  function width(t,size,bold){ var w=0; for(var i=0;i<t.length;i++){ var c=t.charCodeAt(i); w+=(c>=32&&c<=126?W[c-32]:556); } return w*size/1000*(bold?1.06:1); }
+  function wrap(t,size,bold,max){ var words=clean(t).split(' '), lines=[], cur=''; words.forEach(function(w){ if(!w) return; var test=cur?cur+' '+w:w;
+      if(width(test,size,bold)<=max) cur=test; else { if(cur) lines.push(cur); while(width(w,size,bold)>max){ var k=w.length; while(k>1&&width(w.slice(0,k),size,bold)>max) k--; lines.push(w.slice(0,k)); w=w.slice(k); } cur=w; } });
+    if(cur) lines.push(cur); return lines.length?lines:['']; }
+  function esc(s){ return s.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)'); }
+  function Doc(){ this.pages=[[]]; this.y=802; this.L=40; this.R=555; this.B=50; }
+  Doc.prototype.room=function(h){ if(this.y-h<this.B){ this.pages.push([]); this.y=802; } };
+  Doc.prototype.text=function(t,o){ o=o||{}; var size=o.size||10, bold=!!o.bold, ind=o.indent||0, lead=size*1.35, lines=wrap(t,size,bold,this.R-this.L-ind), self=this;
+    lines.forEach(function(ln,i){ self.room(lead+(i===0?(o.before||0):0)); if(i===0) self.y-=(o.before||0); self.y-=lead; var pg=self.pages[self.pages.length-1];
+      pg.push('BT /'+(bold?'F2':'F1')+' '+size+' Tf '+(self.L+ind).toFixed(1)+' '+self.y.toFixed(1)+' Td ('+esc(ln)+') Tj ET'); if(o.color) pg.push(''); });
+    if(o.after) this.y-=o.after; };
+  Doc.prototype.rule=function(){ this.room(8); this.y-=4; this.pages[this.pages.length-1].push('0.6 w 0.75 G '+this.L+' '+this.y.toFixed(1)+' m '+this.R+' '+this.y.toFixed(1)+' l S 0 G'); this.y-=4; };
+  Doc.prototype.gap=function(h){ this.y-=h; };
+  Doc.prototype.build=function(title){
+    var objs=[], n=this.pages.length, total=n, i;
+    objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+    var kids=[]; for(i=0;i<n;i++) kids.push((5+i*2)+' 0 R');
+    objs[2]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+n+' >>';
+    objs[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    for(i=0;i<n;i++){ var foot='BT /F1 8 Tf '+this.L+' 28 Td ('+esc(clean(title))+') Tj ET BT /F1 8 Tf 500 28 Td (Page '+(i+1)+' of '+total+') Tj ET';
+      var content=this.pages[i].join('\n')+'\n'+foot; objs[5+i*2]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+(6+i*2)+' 0 R >>';
+      objs[6+i*2]='<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream'; }
+    var out='%PDF-1.4\n', offs=[], k; for(k=1;k<objs.length;k++){ offs[k]=out.length; out+=k+' 0 obj\n'+objs[k]+'\nendobj\n'; }
+    var x=out.length; out+='xref\n0 '+objs.length+'\n0000000000 65535 f \n'; for(k=1;k<objs.length;k++) out+=('0000000000'+offs[k]).slice(-10)+' 00000 n \n';
+    out+='trailer\n<< /Size '+objs.length+' /Root 1 0 R >>\nstartxref\n'+x+'\n%%EOF';
+    var u=new Uint8Array(out.length); for(k=0;k<out.length;k++) u[k]=out.charCodeAt(k)&255; return u; };
+  return {Doc:Doc,clean:clean};
 })();
 
 /* ---------- state ---------- */
@@ -420,6 +456,7 @@ function rows(box,list,own,off){
     var nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var mt=mk('div','pmeta'); mt.style.cssText='font-size:.82rem;display:flex;flex-direction:column;gap:1px;margin-top:2px';
     [['Phone',c.p],['Group',gn||'No group'],['Note',c.nt]].forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
+    longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
       top.addEventListener('click',function(){ sc.checked=!sc.checked; sc.dispatchEvent(new Event('change')); }); hd.append(sc,top); }
@@ -515,7 +552,7 @@ function viewGr(body){
   l.forEach(function(it,ix){
     var id=it[0], g=it[1], el=mk('div','card'), n=ctAll().filter(function(x){ return x[1].g===id; }).length, ac=mk('div','sline');
     el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px'; tint(el,ix);
-    var gh=mk('div'); gh.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; gh.setAttribute('role','button'); gh.setAttribute('aria-expanded',!!grOpen[id]); gh.append(mk('b',null,g.n),mk('span','pmeta',n+' contact'+(n===1?'':'s'))); el.append(gh);
+    var gh=mk('div'); gh.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; gh.setAttribute('role','button'); gh.setAttribute('aria-expanded',!!grOpen[id]); gh.append(mk('b',null,g.n),mk('span','pmeta',n+' contact'+(n===1?'':'s'))); longPress(gh,function(){ infoGroup(id,g); }); el.append(gh);
     var gd=mk('div'); gd.style.cssText='display:flex;flex-direction:column;gap:4px'; gd.hidden=!grOpen[id]; el.append(gd);
     gh.addEventListener('click',function(){ grOpen[id]=!grOpen[id]; gd.hidden=!grOpen[id]; gh.setAttribute('aria-expanded',!!grOpen[id]); });
     gd.append(mk('div','pmeta','Assigned to: '+grWho(g)));
@@ -576,6 +613,7 @@ function viewPay(body){
   if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
 }
 function viewCs(body,only,ro){
+  body.append(reportRow());
   if(!only) body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
@@ -589,7 +627,7 @@ function viewCs(body,only,ro){
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
     var gs=grList().filter(function(g){ return g[1].all||(g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
     var st=mk('div',null,ok?'SuperUser':'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
-    el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); if(!ok||u.rl==='su') el.append(st);
+    var ub0=mk('b',null,u.n); longPress(ub0,function(){ infoUser(id,u); }); el.append(ub0,mk('div','pmeta',fmtPhone(u.ph))); if(!ok||u.rl==='su') el.append(st);
     if(ok){
       var mine=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]; if(gid==='none'||!g||(g.to||[]).indexOf(id)<0) return; var c=g.ct||{}; Object.keys(c).forEach(function(cid){ if(c[cid]&&c[cid].n) mine.push([cid,c[cid]]); }); });
       mine.sort(byName);
@@ -695,6 +733,7 @@ function shareDlg(title,list,withBy){
   row.append(wa,sh); var row2=mk('div','two'); row2.append(cp,cl); b.append(row,row2); openDlg(d);
 }
 function viewLg(body){
+  body.append(reportRow());
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var incl=isOwner||(isSuMode()&&lgInc);
   if(!incl) all=all.filter(function(it){ return it[1].sid===uid; });
@@ -725,7 +764,7 @@ function viewLg(body){
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; h.setAttribute('role','button'); h.setAttribute('aria-expanded',!!lgOpen[id]); var can=isOwner||e.sid===uid, hl=mk('div'); hl.style.cssText='display:flex;align-items:center;gap:2px;min-width:0';
     if(can){ hl.append(iconBtn('Edit',IC_EDIT,function(){ logEdit(id,e); }));
       hl.append(iconBtn('Delete',IC_DEL,function(x){ if(!armed['lgd'+id]){ armed['lgd'+id]=true; x.style.background='var(--loss)'; x.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['lgd'+id]=false; x.style.background='transparent'; x.style.color='var(--loss)'; },4000); return; } armed['lgd'+id]=false; logDel(id,e); },'var(--loss)')); }
-    hl.append(mk('b',null,e.n)); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtTime(e.at))); h.append(hl,hr); el.append(h);
+    hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,logKey); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtTime(e.at))); h.append(hl,hr); el.append(h);
     var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:600'+(e.o?'':';color:var(--warn)'); el.append(sm);
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
     dt.append(mk('div','pmeta','Called on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at)));
@@ -737,6 +776,150 @@ function viewLg(body){
     body.append(el);
   });
 }
+/* ---------- long press details, reports and PDF ---------- */
+function longPress(el,fn){
+  var t=null, sx=0, sy=0, fired=false; el.classList.add('lpress');
+  function cancel(){ if(t){ clearTimeout(t); t=null; } }
+  el.addEventListener('pointerdown',function(e){ fired=false; sx=e.clientX; sy=e.clientY; cancel(); t=setTimeout(function(){ t=null; fired=true; try{ if(navigator.vibrate) navigator.vibrate(15); }catch(x){} fn(); },550); });
+  el.addEventListener('pointermove',function(e){ if(t&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10)) cancel(); });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(n){ el.addEventListener(n,cancel); });
+  el.addEventListener('click',function(e){ if(fired){ e.stopImmediatePropagation(); e.preventDefault(); fired=false; } },true);
+  el.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+}
+async function fetchLogs(){
+  var l=await db.list('cr/log/'), out=[];
+  l.forEach(function(x){ var p=x.path.split('/'), cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ var e=cl[id]; if(e&&e.n) out.push({id:id,day:p[2],sid:p[3],e:e}); }); });
+  return out;
+}
+function personName(id){ if(accountOwner&&id===uid) return 'Owner'; if(id===uid) return callerName(); var u=users[id]; return u&&u.n?u.n:''; }
+function whoNames(g){ if(!g) return []; var out=[]; if(g.all) out.push('All approved users'); (g.to||[]).forEach(function(id){ var n=personName(id); if(n) out.push(n+(users[id]&&users[id].rl==='su'?' (SuperUser)':'')); }); return out; }
+function contactsOf(pid){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]; if(gid==='none'||!g||!((g.to||[]).indexOf(pid)>=0)) return; var c=g.ct||{}; Object.keys(c).forEach(function(cid){ if(c[cid]&&c[cid].n) out.push({n:c[cid].n,p:c[cid].p||'',g:g.n||''}); }); }); out.sort(function(a,b){ return a.n.localeCompare(b.n); }); return out; }
+function sumOf(list){ var r={n:list.length,dur:0,pend:0}; CALL_OUT.forEach(function(x){ r[x[0]]=0; }); list.forEach(function(it){ var e=it.e; if(e.o) r[e.o]=(r[e.o]||0)+1; else r.pend++; r.dur+=Number(e.d)||0; }); return r; }
+function sumLine(r){ var p=[r.n+' call'+(r.n===1?'':'s')]; CALL_OUT.forEach(function(x){ if(r[x[0]]) p.push(r[x[0]]+' '+x[1].toLowerCase()); }); if(r.pend) p.push(r.pend+' report'+(r.pend===1?'':'s')+' pending'); if(r.dur) p.push('talk time '+callDur(r.dur)); return p.join(' - '); }
+function infoBlock(b,title,rows){ var c=mk('div'); c.style.cssText='display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px'; if(title) c.append(mk('b',null,title)); rows.forEach(function(r){ if(r==null||r==='') return; var d=mk('div','pmeta',r); d.style.textTransform='none'; c.append(d); }); b.append(c); return c; }
+function callRows(list,withWho){ return list.slice().sort(function(a,b){ return (b.e.at||0)-(a.e.at||0); }).map(function(it){ var e=it.e; return fmtIso(it.day)+' '+fmtTime(e.at)+(e.d?' - '+callDur(e.d):'')+' - '+(e.o?callOutName(e.o):'Report pending')+(withWho&&e.by?' - by '+e.by:'')+(e.r?' - Notes: '+e.r:'')+(e.nx?' - Next: '+fmtIso(e.nx):''); }); }
+function infoOpen(title,build){
+  var r=dlg('dlgInfo'), d=r[0], b=r[1]; b.append(mk('h2',null,title)); var body=mk('div'); body.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(body);
+  var ld=mk('p','pmeta','Loading...'); body.append(ld); var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x); openDlg(d);
+  fetchLogs().then(function(logs){ body.textContent=''; build(body,logs); }).catch(function(){ body.textContent=''; build(body,[]); body.append(mk('p','pmeta','Call history could not be loaded.')); });
+}
+function infoContact(id,c){
+  var g=c.g&&groups[c.g]; var who=whoNames(g);
+  infoOpen(c.n,function(body,logs){
+    var mine=logs.filter(function(it){ return it.e.c===id; });
+    infoBlock(body,'Contact',['Phone: '+(c.p||'-'),'Group: '+(g?g.n:'No group'),c.nt?'Note: '+c.nt:'']);
+    if(isOwner||accountOwner) infoBlock(body,'Assigned to ('+who.length+')',who.length?who:['Nobody yet']);
+    infoBlock(body,'Call history',[mine.length?sumLine(sumOf(mine)):'No calls yet'].concat(callRows(mine,true).slice(0,40)));
+  });
+}
+function infoCall(id,e,day){
+  infoOpen(e.n,function(body,logs){
+    var c=ctGet(e.c), g=c&&c.g&&groups[c.g]; var who=whoNames(g);
+    infoBlock(body,'This call',['Date: '+fmtIso(day)+' at '+fmtTime(e.at),e.d?'Duration: '+callDur(e.d):'Duration: not recorded','Result: '+(e.o?callOutName(e.o):'Report pending'),e.r?'Notes: '+e.r:'',e.nx?'Next call: '+fmtIso(e.nx):'','Called by: '+(e.by||'Unknown')]);
+    infoBlock(body,'Contact',['Phone: '+(e.p||'-'),(isOwner&&clGroup(e))?'Group: '+clGroup(e):'']);
+    if(isOwner||accountOwner) infoBlock(body,'Contact assigned to ('+who.length+')',who.length?who:['Nobody yet']);
+    var others=logs.filter(function(it){ return it.e.c===e.c&&it.id!==id; });
+    infoBlock(body,'Other calls to this contact',[others.length?sumLine(sumOf(others)):'None'].concat(callRows(others,true).slice(0,30)));
+  });
+}
+function infoUser(id,u){
+  var cts=contactsOf(id), under=u.rl==='su'?userList().filter(function(x){ return x[1].st==='ok'&&x[1].sp===id; }):[], sp=u.sp&&users[u.sp];
+  infoOpen(u.n,function(body,logs){
+    var mine=logs.filter(function(it){ return it.sid===id; });
+    infoBlock(body,'Person',['Phone: '+fmtPhone(u.ph),u.st==='ok'?(u.rl==='su'?'SuperUser':'User'):'Waiting for approval',sp?'SuperUser: '+sp.n:'',(isOwner&&subsOn()&&u.st==='ok')?(u.ex?(Number(u.ex)>Date.now()?'Subscription valid till ':'Subscription ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'):'']);
+    if(u.rl==='su') infoBlock(body,'Users under this SuperUser ('+under.length+')',under.length?under.map(function(x){ return x[1].n+' - '+fmtPhone(x[1].ph); }):['None']);
+    infoBlock(body,'Contacts assigned ('+cts.length+')',cts.length?cts.map(function(x){ return x.n+(x.p?' - '+x.p:'')+(x.g?' ('+x.g+')':''); }):['None']);
+    infoBlock(body,'Calls',[mine.length?sumLine(sumOf(mine)):'No calls yet'].concat(callRows(mine,false).slice(0,25)));
+  });
+}
+function infoGroup(id,g){
+  var cts=ctAll().filter(function(x){ return x[1].g===id; }), who=whoNames(g);
+  infoOpen(g.n,function(body,logs){
+    var ids={}; cts.forEach(function(x){ ids[x[0]]=1; }); var mine=logs.filter(function(it){ return ids[it.e.c]; });
+    infoBlock(body,'Contacts ('+cts.length+')',cts.length?cts.map(function(x){ return x[1].n+(x[1].p?' - '+x[1].p:''); }):['None']);
+    infoBlock(body,'Assigned to ('+who.length+')',who.length?who:['Nobody yet']);
+    infoBlock(body,'Calls to these contacts',[mine.length?sumLine(sumOf(mine)):'No calls yet'].concat(callRows(mine,true).slice(0,30)));
+  });
+}
+/* report scope: who can be chosen in the report */
+function repPeople(){
+  var me0={id:uid,name:accountOwner?'Owner (me)':'Me'}, list=[];
+  if(isOwner){ list.push(me0); okUsers().forEach(function(it){ list.push({id:it[0],name:it[1].n+(it[1].rl==='su'?' (SuperUser)':'')}); }); return {kind:'owner',list:list,allLabel:'Everyone'}; }
+  if(isSuMode()){ list.push(me0); (accountOwner?okUsers().filter(function(it){ return it[1].rl!=='su'; }):userList().filter(function(it){ return it[1].st==='ok'&&it[1].sp===uid; })).forEach(function(it){ list.push({id:it[0],name:it[1].n}); }); return {kind:'su',list:list,allLabel:'Me and my users'}; }
+  if(!accountOwner&&isSuAcct()){ userList().filter(function(it){ return it[1].st==='ok'&&it[1].sp===uid; }).forEach(function(it){ list.push({id:it[0],name:it[1].n}); }); return {kind:'suusers',list:list,allLabel:'All my users'}; }
+  return {kind:'user',list:[me0],allLabel:''};
+}
+function iso(d){ return dayKey(d.getTime()); }
+async function makeReport(o){
+  var logs=await fetchLogs(), ids={}; o.people.forEach(function(p){ ids[p.id]=p; });
+  var list=logs.filter(function(it){ if(o.from&&it.day<o.from) return false; if(o.to&&it.day>o.to) return false; if(!o.everyone&&!ids[it.sid]) return false; if(o.everyone&&o.restrictIds&&!ids[it.sid]) return false; if(o.group){ var g=clGroup(it.e); if(o.group==='-'?!!g:g!==o.group) return false; } if(o.outcome&&(o.outcome==='-'?!!it.e.o:it.e.o!==o.outcome)) return false; return true; });
+  list.sort(function(a,b){ return (a.e.at||0)-(b.e.at||0); });
+  var doc=new PDF.Doc(), multi=o.people.length>1||o.everyone, by=function(it){ return it.e.by||(ids[it.sid]&&ids[it.sid].name)||'Unknown'; };
+  doc.text('Contact Reporter - Call Report',{size:16,bold:true,after:4});
+  doc.text('Prepared by '+(accountOwner?'Owner':callerName())+' on '+fmtIso(todayKey())+' at '+fmtTime(Date.now()),{size:9});
+  doc.text('Period: '+(o.from||o.to?(o.from?fmtIso(o.from):'start')+' to '+(o.to?fmtIso(o.to):'today'):'All dates'),{size:9});
+  doc.text('People: '+o.label,{size:9});
+  if(o.groupLabel) doc.text('Group: '+o.groupLabel,{size:9}); if(o.outcomeLabel) doc.text('Result: '+o.outcomeLabel,{size:9});
+  doc.rule();
+  if(o.summary){
+    doc.text('Summary',{size:12,bold:true,before:4,after:2}); doc.text(sumLine(sumOf(list)),{size:10});
+    if(multi){ var names={}; list.forEach(function(it){ var n=by(it); (names[n]=names[n]||[]).push(it); }); Object.keys(names).sort().forEach(function(n){ doc.text(n+': '+sumLine(sumOf(names[n])),{size:9,indent:10,before:2}); }); }
+    doc.rule();
+  }
+  if(o.contacts){
+    doc.text('Contacts assigned',{size:12,bold:true,before:4,after:2});
+    o.people.forEach(function(p){ var cs=contactsOf(p.id); doc.text(p.name+' ('+cs.length+')',{size:10,bold:true,before:3}); doc.text(cs.length?cs.map(function(x){ return x.n+(x.p?' '+x.p:''); }).join(', '):'No contacts assigned',{size:9,indent:10}); });
+    doc.rule();
+  }
+  doc.text('Calls ('+list.length+')',{size:12,bold:true,before:4,after:2});
+  function block(it,i){ var e=it.e; doc.text((i+1)+'. '+e.n+(e.p?' ('+e.p+')':''),{size:10,bold:true,before:5});
+    doc.text('Date: '+fmtIso(it.day)+', '+fmtTime(e.at)+'   Duration: '+(e.d?callDur(e.d):'not recorded')+'   Result: '+(e.o?callOutName(e.o):'Report pending'),{size:9,indent:12});
+    if(multi||o.byShown) doc.text('Called by: '+by(it)+(o.showGroup&&clGroup(e)?'   Group: '+clGroup(e):''),{size:9,indent:12}); else if(o.showGroup&&clGroup(e)) doc.text('Group: '+clGroup(e),{size:9,indent:12});
+    if(e.r) doc.text('Notes: '+e.r,{size:9,indent:12}); if(e.nx) doc.text('Next call: '+fmtIso(e.nx),{size:9,indent:12}); }
+  if(!list.length) doc.text('No calls match these choices.',{size:10});
+  else if(o.arrange==='date'){ var cur=''; list.slice().sort(function(a,b){ return a.day<b.day?-1:a.day>b.day?1:(a.e.at||0)-(b.e.at||0); }).forEach(function(it,i){ if(it.day!==cur){ cur=it.day; doc.text(fmtIso(cur),{size:11,bold:true,before:8}); } block(it,i); }); }
+  else if(o.arrange==='person'&&multi){ var gr={}; list.forEach(function(it){ var n=by(it); (gr[n]=gr[n]||[]).push(it); }); Object.keys(gr).sort().forEach(function(n){ doc.text(n+' ('+gr[n].length+')',{size:11,bold:true,before:8}); gr[n].forEach(block); }); }
+  else list.forEach(block);
+  return {bytes:doc.build('Contact Reporter - Call Report'),count:list.length};
+}
+async function savePdf(bytes,name,share){
+  var native=false; try{ native=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
+  if(share||native){ try{ var dn=await window.claude.use('downloads'); await dn.save({filename:name,data:bytes.buffer}); return true; }catch(e){ if(e&&e.code==='declined') return false; } }
+  var blob=new Blob([bytes],{type:'application/pdf'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
+}
+function reportDlg(){
+  var sc=repPeople(), r=dlg('dlgPdf'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'Download Report PDF'));
+  var t0=todayKey(), fr=document.createElement('input'), to=document.createElement('input'); fr.type=to.type='date'; var m=new Date(); fr.value=m.getFullYear()+'-'+two(m.getMonth()+1)+'-01'; to.value=t0;
+  var pre=mk('div','sline'); [['Today',function(){ fr.value=to.value=t0; }],['Last 7 Days',function(){ fr.value=iso(new Date(Date.now()-6*86400000)); to.value=t0; }],['This Month',function(){ fr.value=m.getFullYear()+'-'+two(m.getMonth()+1)+'-01'; to.value=t0; }],['All Dates',function(){ fr.value=''; to.value=''; }]].forEach(function(p){ pre.append(btn(p[0],p[1],'')); });
+  var dr=mk('div'); dr.style.cssText='display:flex;gap:8px'; var f1=fld('From',fr), f2=fld('To',to); f1.style.cssText+=';flex:1 1 0;min-width:0'; f2.style.cssText+=';flex:1 1 0;min-width:0'; dr.append(f1,f2);
+  b.append(pre,dr);
+  var ps=null; if(sc.list.length>1){ ps=document.createElement('select'); var a=mk('option',null,sc.allLabel); a.value='*'; ps.append(a); sc.list.forEach(function(p){ var o=mk('option',null,p.name); o.value=p.id; ps.append(o); }); b.append(fld('People',ps)); }
+  var gs=null; if(sc.kind==='owner'){ gs=groupSel('',true); b.append(fld('Group',gs)); }
+  var os=document.createElement('select'), oa=mk('option',null,'All results'); oa.value=''; os.append(oa); CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); var op=mk('option',null,'Report pending'); op.value='-'; os.append(op); b.append(fld('Result',os));
+  var ar=null; if(sc.list.length>1){ ar=document.createElement('select'); [['person','By person'],['date','By date']].forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; ar.append(o); }); b.append(fld('Arrange',ar)); }
+  function chk(label,on){ var c=document.createElement('input'); c.type='checkbox'; c.checked=on; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,label)); b.append(l); return c; }
+  var cs=chk('Include summary',true), cc=sc.list.length>1||sc.kind!=='user'?chk('Include contacts assigned',sc.kind!=='user'):null;
+  var er=mk('p','pmeta'); er.style.color='var(--warn)'; var row=mk('div','two'), dl=mk('button','btn primary','Download PDF'), sh=mk('button','btn primary','Share On WhatsApp'); dl.type=sh.type='button'; row.append(dl,sh);
+  var cn=mk('button','btn','Cancel'); cn.type='button'; cn.addEventListener('click',function(){ d.close(); });
+  b.append(er,row,cn);
+  async function go(share){
+    var pick=ps?ps.value:'*', people, everyone=false, label;
+    if(pick==='*'){ people=sc.list; label=sc.allLabel; everyone=sc.kind==='owner'; } else { people=sc.list.filter(function(p){ return p.id===pick; }); label=people[0]?people[0].name:''; }
+    if(!people.length){ er.textContent='There is nobody to report on yet.'; return; }
+    er.textContent='Preparing...';
+    try{
+      var o={from:fr.value,to:to.value,people:people,everyone:everyone,restrictIds:false,label:label,group:gs?gs.value:'',groupLabel:gs&&gs.value?(gs.value==='-'?'No group':(groups[gs.value]&&groups[gs.value].n)||''):'',outcome:os.value,outcomeLabel:os.value?(os.value==='-'?'Report pending':callOutName(os.value)):'',arrange:ar?ar.value:'person',summary:cs.checked,contacts:cc?cc.checked:false,showGroup:sc.kind==='owner'};
+      var rp=await makeReport(o);
+      var nm='Call-Report-'+(pick==='*'?'All':cleanName(label).replace(/[^A-Za-z0-9]+/g,'-'))+'-'+(fr.value||'start')+'-to-'+(to.value||'today')+'.pdf';
+      if(await savePdf(rp.bytes,nm,share)){ er.textContent=''; toast(rp.count+' call'+(rp.count===1?'':'s')+' in the report',3000); }
+      else er.textContent='';
+    }catch(e){ er.textContent='The report could not be made. Check your connection and try again.'; }
+  }
+  dl.addEventListener('click',function(){ go(false); }); sh.addEventListener('click',function(){ go(true); });
+  openDlg(d);
+}
+function reportRow(){ var r=mk('div','sline'); r.append(btn('Download Report PDF',reportDlg,'primary')); return r; }
 /* ---------- owner and user mode ---------- */
 function modeSync(){
   var mo=$('#modeOwner'), mu=$('#modeSu'), ms=$('#modeSup'), m2=$('#modes2');
