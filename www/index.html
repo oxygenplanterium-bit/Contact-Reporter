@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 6:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 6:55 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -613,7 +613,6 @@ function viewPay(body){
   if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
 }
 function viewCs(body,only,ro){
-  body.append(reportRow());
   if(!only) body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
@@ -733,7 +732,6 @@ function shareDlg(title,list,withBy){
   row.append(wa,sh); var row2=mk('div','two'); row2.append(cp,cl); b.append(row,row2); openDlg(d);
 }
 function viewLg(body){
-  body.append(reportRow());
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var incl=isOwner||(isSuMode()&&lgInc);
   if(!incl) all=all.filter(function(it){ return it[1].sid===uid; });
