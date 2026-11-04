@@ -55,9 +55,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></nav>
   <div class="aseg" id="seg"></div>
-  <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
+  <div class="card" id="dateCard" hidden style="display:flex;gap:8px;align-items:flex-end"><label class="f" style="flex:1 1 auto;min-width:0"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary" id="addLog" type="button" style="flex:0 0 auto">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 2:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 2:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -334,18 +334,22 @@ function viewCt(body){
   gs.addEventListener('change',function(){ callG=gs.value; fill(); });
   fill();
 }
+var grOpen={};
 function viewGr(body){
   var ad=mk('div','sline'); ad.append(btn('New Group',function(){ grEdit(''); },'primary')); body.append(ad);
   var l=grList(); if(!l.length){ body.append(mk('p','pmeta','No groups yet. A group collects contacts that go to the same users.')); return; }
   l.forEach(function(it,ix){
     var id=it[0], g=it[1], el=mk('div','card'), n=ctAll().filter(function(x){ return x[1].g===id; }).length, ac=mk('div','sline');
     el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px'; tint(el,ix);
-    el.append(mk('b',null,g.n),mk('div','pmeta',n+' contact'+(n===1?'':'s')+' · Assigned to: '+grWho(g)));
+    var gh=mk('div'); gh.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; gh.setAttribute('role','button'); gh.setAttribute('aria-expanded',!!grOpen[id]); gh.append(mk('b',null,g.n),mk('span','pmeta',n+' contact'+(n===1?'':'s'))); el.append(gh);
+    var gd=mk('div'); gd.style.cssText='display:flex;flex-direction:column;gap:4px'; gd.hidden=!grOpen[id]; el.append(gd);
+    gh.addEventListener('click',function(){ grOpen[id]=!grOpen[id]; gd.hidden=!grOpen[id]; gh.setAttribute('aria-expanded',!!grOpen[id]); });
+    gd.append(mk('div','pmeta','Assigned to: '+grWho(g)));
     ac.append(btn('Edit / Assign',function(){ grEdit(id); }));
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'grd'+id,'Delete',async function(){
       var mv=g.ct||{}, ok=true; if(Object.keys(mv).length) ok=await grPut('none',{ct:mv});
       if(ok&&await delDoc('cr/g/'+id)) toast('Group deleted'); }); }); ac.append(dl);
-    el.append(ac); body.append(el);
+    gd.append(ac); body.append(el);
   });
 }
 function viewCs(body){
@@ -418,7 +422,6 @@ function logDel(id,e){
 }
 var lgOpen={};
 function viewLg(body){
-  var adl=mk('div','sline'); adl.append(btn('Add Log Entry',function(){ logEdit('',null); },'primary')); body.append(adl);
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
   var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; body.append(frow);
@@ -481,6 +484,7 @@ async function appRefresh(){
 }
 $('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app...',2000); appRefresh(); });
 $('#signOut').addEventListener('click',function(){ if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
+$('#addLog').addEventListener('click',function(){ logEdit('',null); });
 $('#logDate').value=logKey;
 $('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; sig=''; logSub(); render(); });
 /* ---------- start ---------- */
