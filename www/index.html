@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 6:55 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -612,6 +612,28 @@ function viewPay(body){
   body.append(p);
   if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
 }
+function wipeDlg(){
+  var r=dlg('dlgWipe'), d=r[0], b=r[1]; b.append(mk('h2',null,'Delete Everything'));
+  b.append(mk('p','pmeta','Choose what to delete for all users and all phones. This cannot be undone.'));
+  var cks=[]; [['Call Logs','lg'],['Contacts','ct'],['SuperUsers (they become ordinary users)','su']].forEach(function(x){ var c=document.createElement('input'); c.type='checkbox'; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,x[0])); b.append(l); cks.push([x[1],c]); });
+  var er=mk('p','pmeta'); er.style.color='var(--warn)'; var row=mk('div','two'), go=mk('button','btn danger','Delete Selected'), cn=mk('button','btn','Cancel'); go.type=cn.type='button'; row.append(go,cn); b.append(er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  var armedW=false;
+  go.addEventListener('click',async function(){
+    var on={}; cks.forEach(function(x){ if(x[1].checked) on[x[0]]=1; });
+    if(!Object.keys(on).length){ er.textContent='Tick what you want to delete.'; return; }
+    if(!armedW){ armedW=true; go.textContent='Tap Again To Delete Forever'; setTimeout(function(){ armedW=false; go.textContent='Delete Selected'; },5000); return; }
+    armedW=false; go.disabled=true; er.textContent='Deleting...'; var ok=true;
+    try{
+      if(on.lg){ var l=await db.list('cr/log/'); for(var i=0;i<l.length;i++) ok=(await delDoc(l[i].path))&&ok; logRows={}; }
+      if(on.ct){ var ks=Object.keys(groups); for(var j=0;j<ks.length;j++){ var g=groups[ks[j]]; if(g&&g.ct&&Object.keys(g.ct).length) ok=(await putDoc('cr/g/'+ks[j],{ct:null}))&&ok; } }
+      if(on.su){ var us=userList(); for(var k=0;k<us.length;k++){ var u=us[k][1]; if(u.rl||u.sp) ok=(await putDoc('cr/users/'+us[k][0],{rl:null,sp:null}))&&ok; } }
+    }catch(e){ ok=false; }
+    go.disabled=false; sig=''; render();
+    if(ok){ d.close(); toast('Deleted'); } else er.textContent='Some items could not be deleted. Check your connection and try again.';
+  });
+  openDlg(d);
+}
 function viewCs(body,only,ro){
   if(!only) body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
@@ -652,6 +674,7 @@ function viewCs(body,only,ro){
       if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
     if(!ro) el.append(ac); body.append(el);
   });
+  if(isOwner&&!only&&!ro){ var wr=mk('div','sline'); wr.style.marginTop='16px'; wr.append(btn('Delete Everything',wipeDlg,'danger')); body.append(wr); }
 }
 function logEdit(id,e){
   var isNew=!e, r=dlg('dlgLog'), d=r[0], b=r[1], k0=isNew?logKey:logKey;
