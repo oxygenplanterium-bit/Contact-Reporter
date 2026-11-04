@@ -57,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 12:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 1:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -288,8 +288,14 @@ function rows(box,list,own,off){
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
     top.append(mk('b',null,c.n));
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[c.p,gn,c.nt].filter(Boolean).join(' · '); var mt=mk('div','pmeta',meta); mt.style.fontSize='.82rem'; top.append(mt);
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(own&&sub==='ct') hd.append(top); else hd.append(top,cb); el.append(hd);
-    if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(own&&sub==='ct') hd.append(top); else if(own){ var ics=mk('div'); ics.style.cssText='display:flex;gap:2px;flex:0 0 auto';
+      var SV='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+      function ib(lbl,svg,fn){ var x=document.createElement('button'); x.type='button'; x.setAttribute('aria-label',lbl); x.title=lbl; x.innerHTML=SV+svg+'</svg>'; x.style.cssText='width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer'; x.addEventListener('click',fn); return x; }
+      var eb=ib('Edit','<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',function(){ ctEdit(id); });
+      var db2=ib('Delete','<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',function(){}); db2.style.color='var(--loss)';
+      db2.addEventListener('click',function(){ if(!armed['ctd'+id]){ armed['ctd'+id]=true; db2.style.background='var(--loss)'; db2.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['ctd'+id]=false; db2.style.background='transparent'; db2.style.color='var(--loss)'; },4000); return; } armed['ctd'+id]=false; (async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); })(); });
+      ics.append(eb,db2); hd.append(ics,top,cb); } else hd.append(top,cb); el.append(hd);
+    if(own&&sub==='ct'){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
     box.append(el);
   });
 }
