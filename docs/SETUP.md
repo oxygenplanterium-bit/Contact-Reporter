@@ -12,9 +12,9 @@ Contact Reporter has its own Supabase project, separate from Nursery Manager. Cr
 
 ## How people sign in
 - **Owner:** the e-mail and password from step 4.
-- **Everyone else:** taps **Create new account** on the sign-in screen and enters name, phone number and password. The account stays *Waiting for approval* until the owner approves it in the **Callers** tab. The owner then assigns groups to it in the **Groups** tab.
+- **Everyone else:** taps **Create new account** on the sign-in screen and enters name, phone number and password. The account stays *Waiting for approval* until the owner approves it in the **Users** tab. The owner then assigns groups to it in the **Groups** tab.
 
 ## What each person can see
 - **Owner:** everything.
-- **Approved caller:** only the groups assigned to them and their own calls and reports.
+- **Approved user:** only the groups assigned to them and their own calls and reports.
 - **Not yet approved:** nothing except their own account record.

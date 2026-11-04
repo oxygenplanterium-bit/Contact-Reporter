@@ -57,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:50 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -95,8 +95,8 @@ function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=g
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
-function grWho(g){ if(g.all) return 'All approved callers'; var to=(g.to||[]).filter(function(id){ return users[id]&&users[id].n; }); return to.length ? to.map(function(id){ return users[id].n; }).join(', ') : 'Nobody yet'; }
-function callerName(){ return accountOwner?'Owner':((me&&me.n)||myName||'Caller'); }
+function grWho(g){ if(g.all) return 'All approved users'; var to=(g.to||[]).filter(function(id){ return users[id]&&users[id].n; }); return to.length ? to.map(function(id){ return users[id].n; }).join(', ') : 'Nobody yet'; }
+function callerName(){ return accountOwner?'Owner':((me&&me.n)||myName||'User'); }
 function clGroup(e){ if(e.gn) return e.gn; var c=ctGet(e.c); return c&&c.g&&groups[c.g]?groups[c.g].n:''; }
 function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
 function fld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
@@ -238,9 +238,9 @@ function grEdit(id){
   var all=document.createElement('input'); all.type='checkbox'; all.checked=!!g.all;
   var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px';
   function row1(c,text){ var l=mk('label'); c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,text)); wrap.append(l); }
-  row1(all,'All approved callers');
+  row1(all,'All approved users');
   okUsers().forEach(function(it){ var c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; sel[it[0]]=c; row1(c,it[1].n+' · '+fmtPhone(it[1].ph)); });
-  if(!okUsers().length) wrap.append(mk('p','pmeta','No approved callers yet. Approve people in the Callers tab.'));
+  if(!okUsers().length) wrap.append(mk('p','pmeta','No approved users yet. Approve people in the Users tab.'));
   b.append(wrap,er);
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn); b.append(row);
   cn.addEventListener('click',function(){ d.close(); });
@@ -273,7 +273,7 @@ function render(){
     body.append(w); return;
   }
   seg.hidden=false;
-  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Callers'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
+  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
   if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
@@ -318,7 +318,7 @@ function viewCt(body){
       if(callG==='-'){ if(it[1].g) return false; } else if(callG&&it[1].g!==callG) return false;
       return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0;
     });
-    if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to callers.'))); return; }
+    if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to users.'))); return; }
     var cnt=mk('p','pmeta',all.length+' contact'+(all.length>1?'s':'')); cnt.style.marginBottom='4px'; lst.before&&0; lst.append(cnt); var bx=mk('div'); bx.style.cssText='border:1px solid var(--line);border-radius:12px;overflow:hidden'; lst.append(bx); rows(bx,all,isOwner);
   }
   q.addEventListener('input',function(){ callQ=q.value; fill(); });
@@ -327,7 +327,7 @@ function viewCt(body){
 }
 function viewGr(body){
   var ad=mk('div','sline'); ad.append(btn('New Group',function(){ grEdit(''); },'primary')); body.append(ad);
-  var l=grList(); if(!l.length){ body.append(mk('p','pmeta','No groups yet. A group collects contacts that go to the same callers.')); return; }
+  var l=grList(); if(!l.length){ body.append(mk('p','pmeta','No groups yet. A group collects contacts that go to the same users.')); return; }
   l.forEach(function(it,ix){
     var id=it[0], g=it[1], el=mk('div','card'), n=ctAll().filter(function(x){ return x[1].g===id; }).length, ac=mk('div','sline');
     el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px'; tint(el,ix);
@@ -363,7 +363,7 @@ function viewLg(body){
   if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
   if(isOwner){
     var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
-    var fs=document.createElement('select'), a=mk('option',null,'All callers'); a.value=''; fs.append(a);
+    var fs=document.createElement('select'), a=mk('option',null,'All users'); a.value=''; fs.append(a);
     Object.keys(by).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; fs.append(o); }); fs.value=callLs;
     fs.addEventListener('change',function(){ callLs=fs.value; sig=''; render(); }); body.append(fld('Show calls by',fs));
     if(callLs) all=all.filter(function(it){ return it[1].by===callLs; });
@@ -437,7 +437,7 @@ function startData(){
     db.doc('cr/users/'+uid).onSnapshot(async function(s){
       if(!s.exists){
         meLoaded=true; me=null; render();
-        if(!made){ made=true; try{ await db.doc('cr/users/'+uid).set({n:myName||'New caller',ph:myPhone||'',st:'pending',at:Date.now()}); }catch(e){ made=false; } }
+        if(!made){ made=true; try{ await db.doc('cr/users/'+uid).set({n:myName||'New user',ph:myPhone||'',st:'pending',at:Date.now()}); }catch(e){ made=false; } }
         return;
       }
       me=s.data(); meLoaded=true;

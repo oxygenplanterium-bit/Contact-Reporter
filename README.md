@@ -1,6 +1,6 @@
 # Contact Reporter
 
-A separate app from Nursery Manager. The owner keeps a contact book, puts contacts into groups and assigns the groups to callers. A caller taps Call on an assigned contact, the phone dialer opens, and when the caller comes back to the app a short report form opens. The owner sees every call and report in the Call Log, filtered by caller, group and date.
+A separate app from Nursery Manager. The owner keeps a contact book, puts contacts into groups and assigns the groups to users. A user taps Call on an assigned contact, the phone dialer opens, and when the user comes back to the app a short report form opens. The owner sees every call and report in the Call Log, filtered by user, group and date.
 
 - Web app (iPhone and Android): deployed by `.github/workflows/pages.yml` to GitHub Pages.
 - Android APK: built by `.github/workflows/build-apk.yml` (package `com.oxygenplanterium.contactreporter`, so it installs next to Nursery Manager).
@@ -10,7 +10,7 @@ A separate app from Nursery Manager. The owner keeps a contact book, puts contac
 2. Follow `docs/SETUP.md` to create the app's own Supabase project (run `supabase.sql`, switch off e-mail confirmation, create the owner login) and put its URL and key in `src/config.js`.
 
 ## Sign in
-People create their own account with a phone number and password. The owner approves them in the Callers tab and assigns groups to them. Callers see only the groups assigned to them.
+People create their own account with a phone number and password. The owner approves them in the Users tab and assigns groups to them. Users see only the groups assigned to them.
 
 ## Data
 - `cr/users/<id>`: each person's account record (name, phone, pending or approved).
