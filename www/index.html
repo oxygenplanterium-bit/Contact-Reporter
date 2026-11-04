@@ -75,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:50 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -507,6 +507,17 @@ async function assignContacts(target,ids){
   return true;
 }
 function viewHome(body){
+  if(isOwner){
+    var pl=userList().filter(function(it){ return it[1].st!=='ok'; });
+    if(pl.length){ var pc=mk('div','card'); pc.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin-bottom:8px;border-color:var(--warn)';
+      pc.append(mk('b',null,'Waiting For Approval ('+pl.length+')'));
+      pl.forEach(function(it){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid var(--line)';
+        r.append(mk('div',null,u.n),mk('div','pmeta',fmtPhone(u.ph)));
+        var ac=mk('div','sline'); ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary'));
+        var rj=btn('Reject',function(){},'danger'); rj.addEventListener('click',function(){ arm(rj,'rej'+id,'Reject',async function(){ if(await delDoc('cr/users/'+id)) toast('Request removed'); }); }); ac.append(rj);
+        r.append(ac); pc.append(r); });
+      body.append(pc); }
+  }
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
       gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); 
