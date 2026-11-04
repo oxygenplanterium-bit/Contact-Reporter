@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 12:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 1:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -200,9 +200,9 @@ function isSuAcct(){ return !!(me&&me.st==='ok'&&me.rl==='su'); }
 function canSu(){ return accountOwner||isSuAcct(); }
 function isSuMode(){ return accountOwner?mode==='su':(isSuAcct()&&mode!=='user'); }
 function viewAll(){ return isOwner||isSuMode(); }
-function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
+function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
-    if(accountOwner&&!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(viewAs||uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
@@ -388,10 +388,11 @@ function render(){
     body.append(w); return;
   }
   if(!accountOwner&&isSuAcct()&&!isSuMode()){
-    seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true;
-    var w2=mk('div','card'); w2.append(mk('b',null,'Nothing here in User Mode'),mk('p','pmeta','You are a SuperUser. Your contacts and your reports are in SuperUser Mode.')); w2.style.cssText='display:flex;flex-direction:column;gap:6px'; body.append(w2); return;
+    seg.hidden=false; $('#dateCard').hidden=true; fb.hidden=true;
+    var ub=mk('button','btn','Users'); ub.type='button'; ub.setAttribute('aria-pressed','true'); seg.style.gridTemplateColumns='minmax(0,1fr)'; seg.append(ub);
+    if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
+    viewCs(body,'us',true); return;
   }
-  if(!accountOwner&&settingsLoaded&&!subOk()){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; body.append(payCard(true)); return; }
   seg.hidden=false;
   var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'||(accountOwner&&t[0]==='cs')); })
   if(!isOwner&&accountOwner) tabs.forEach(function(t){ if(t[0]==='cs') t[1]=isSuMode()?'SuperUsers':'Users'; });;
@@ -563,7 +564,7 @@ function viewPay(body){
   body.append(p);
   if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
 }
-function viewCs(body,only){
+function viewCs(body,only,ro){
   if(!only) body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
@@ -587,13 +588,13 @@ function viewCs(body,only){
       tg.addEventListener('click',function(){ usOpen[id]=!usOpen[id]; cl.hidden=!usOpen[id]; tg.textContent=(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'; });
       el.append(mk('div','pmeta',mine.length?mine.length+' contact'+(mine.length===1?'':'s')+' assigned':'No contacts assigned'),tg,cl);
     }
-    if(ok&&subsOn()){ var vt=mk('div','pmeta',u.ex?(Number(u.ex)>Date.now()?'Valid till ':'Ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'); if(!(Number(u.ex)>Date.now())) vt.style.cssText='color:var(--warn);font-weight:600'; el.append(vt); }
-    if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary')); }
+    if(ok&&subsOn()&&!ro){ var vt=mk('div','pmeta',u.ex?(Number(u.ex)>Date.now()?'Valid till ':'Ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'); if(!(Number(u.ex)>Date.now())) vt.style.cssText='color:var(--warn);font-weight:600'; el.append(vt); }
+    if(ro){} else if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary')); }
     else{ if(subsOn()) ac.append(btn('Add '+subDays()+' Days',async function(){ if(await extendUser(id,subDays())) toast(u.n+' has '+subDays()+' more days'); },'')); ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
       var ok2=true; for(var gi=0;gi<grList().length;gi++){ var g=grList()[gi]; if((g[1].to||[]).indexOf(id)>=0) ok2=ok2&&await grPut(g[0],{to:g[1].to.filter(function(x){ return x!==id; })}); }
       if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
-    el.append(ac); body.append(el);
+    if(!ro) el.append(ac); body.append(el);
   });
 }
 function logEdit(id,e){
@@ -775,10 +776,11 @@ document.addEventListener('click',function(e){
   e.preventDefault(); e.stopPropagation(); openPick(sel,t||'Choose');
 },true);
 /* ---------- start ---------- */
+function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); }); }
 function startData(){
   if(startData.done) return; startData.done=true;
   watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
-  if(accountOwner) watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); });
+  watchUsers();
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); render(); });
   logSub();
 }
@@ -802,7 +804,7 @@ function startData(){
         return;
       }
       var oldRl=me&&me.rl; me=s.data(); meLoaded=true; var rlChanged=started&&startData.done&&(oldRl||'')!==(me.rl||'');
-      if(rlChanged){ modeSync(); logSub(); }
+      if(rlChanged){ modeSync(); logSub(); watchUsers(); }
       if(me.st==='ok'){ var first=!startData.done; startData(); if(first) callBack(0); }
       render();
     },function(){ meLoaded=true; render(); });

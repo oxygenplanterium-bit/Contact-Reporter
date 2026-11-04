@@ -35,6 +35,16 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'rl' = 'su')
 $$;
 
+-- Helpers that let a SuperUser see the approved ordinary users and the groups assigned to them.
+create or replace function public.is_plain_uid(u text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'st' = 'ok' and coalesce(data ->> 'rl', '') <> 'su')
+$$;
+create or replace function public.group_has_plain(j jsonb) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_typeof(j), '') = 'array' and exists (select 1 from jsonb_array_elements_text(j) e where public.is_plain_uid(e))
+$$;
+
 alter table public.docs enable row level security;
 drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
@@ -50,6 +60,8 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/users/' || auth.uid()::text
   or path = 'cr/settings'
   or path = 'cr/pay/' || auth.uid()::text
+  or (public.is_su() and path like 'cr/users/%' and data ->> 'st' = 'ok' and coalesce(data ->> 'rl', '') <> 'su')
+  or (public.is_su() and path like 'cr/g/%' and public.group_has_plain(data -> 'to'))
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
      or (path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text
