@@ -75,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:10 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -465,7 +465,7 @@ function rows(box,list,own,off){
     el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(el,ix);
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
     var selOn=own&&selMode&&sub==='home';
-    var nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
+    var nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); if(isOwner){ var asg=whoNames(c.g&&groups[c.g]).join(', '); var ab2=mk('div','pmeta','Assigned to: '+(asg||'Nobody yet')); ab2.style.cssText='font-size:.82rem;margin-top:1px;text-transform:none'; top.append(ab2); } top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var mt=mk('div','pmeta'); mt.style.cssText='font-size:.82rem;display:flex;flex-direction:column;gap:1px;margin-top:2px';
     [['Phone',c.p],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
@@ -526,8 +526,8 @@ function viewHome(body){
                 var usrL=okUsers().map(function(it){ return [it[1].n+' · '+fmtPhone(it[1].ph),it[0]]; });
         var uu=mkSel('Choose',usrL);
         [uu].forEach(function(x,i){ x.addEventListener('change',function(){ selUser=x.value; sig=''; try{ x.blur(); }catch(e2){} render(); }); });
-        var inf=mk('p','pmeta','Tick the contacts, then choose the user.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
-        selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Tick the contacts, then choose the user.'; }; selCnt();
+        var inf=mk('p','pmeta','Choose the user, then tick the contacts below and press Apply.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
+        selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Choose the user, then tick the contacts below.'; }; selCnt();
         cl.addEventListener('click',function(){ selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
         go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!selUser){ toast('Choose a user.'); return; }
           if(await assignContacts(selUser,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(selUser==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
@@ -539,7 +539,7 @@ function viewHome(body){
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
-    lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } else if(selMode&&selUser&&selUser!=='-'){ var gg=it[1].g&&groups[it[1].g]; if(!gg||(gg.to||[]).indexOf(selUser)<0) return false; } return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
+    lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?'Every contact is assigned to someone.':(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap the + button to add one.':'No contacts are assigned to you yet. The owner assigns contacts to users.'))); return; }
     var cur='', chunk=[], off=0;
     function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 4px;margin:4px 0 4px'; lst.append(h); rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
