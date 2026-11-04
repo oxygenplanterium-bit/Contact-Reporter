@@ -45,6 +45,13 @@ textarea{resize:vertical}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
+.sw{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 2px 6px; font-size:.9rem; font-weight:600; cursor:pointer}
+.sw input{position:absolute; opacity:0; width:0; height:0}
+.sw i{position:relative; flex:none; width:46px; height:26px; border-radius:13px; background:var(--line); transition:background .15s}
+.sw i::after{content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s}
+.sw input:checked + i{background:var(--accent)}
+.sw input:checked + i::after{transform:translateX(20px)}
+.sw input:focus-visible + i{outline:2px solid var(--accent); outline-offset:2px}
 .lpress{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
 select:not([multiple]){pointer-events:none}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
@@ -75,7 +82,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -472,7 +479,7 @@ function render(){
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
-var usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var ctDetAll=false, usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -553,6 +560,8 @@ function viewHome(body){
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
+  var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=ctDetAll; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show contact details'); swl.append(mk('span',null,'Show Contact Details'),swi,document.createElement('i')); body.append(swl);
+  swi.addEventListener('change',function(){ ctDetAll=swi.checked; ctOpen={}; if(ctDetAll) ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); sig=''; try{ swi.blur(); }catch(e){} render(); });
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
