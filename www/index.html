@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 2:15 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 5:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -714,7 +714,7 @@ function repText(title,list,withBy){
     if(e.d) L.push('   Call duration: '+callDur(e.d));
     if(withBy&&e.by) L.push('   By: '+e.by);
     L.push('   Result: '+(e.o?callOutName(e.o):'Report pending'));
-    if(e.r) L.push('   Notes: '+e.r);
+    L.push('   Notes: '+(e.r||'None'));
     if(e.nx) L.push('   Next call: '+fmtIso(e.nx));
     L.push('');
   });
@@ -765,11 +765,11 @@ function viewLg(body){
     if(can){ hl.append(iconBtn('Edit',IC_EDIT,function(){ logEdit(id,e); }));
       hl.append(iconBtn('Delete',IC_DEL,function(x){ if(!armed['lgd'+id]){ armed['lgd'+id]=true; x.style.background='var(--loss)'; x.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['lgd'+id]=false; x.style.background='transparent'; x.style.color='var(--loss)'; },4000); return; } armed['lgd'+id]=false; logDel(id,e); },'var(--loss)')); }
     hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,logKey); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtTime(e.at))); h.append(hl,hr); el.append(h);
-    var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:600'+(e.o?'':';color:var(--warn)'); el.append(sm);
+    var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:600'+(e.o?'':';color:var(--warn)'); el.append(sm); if(e.r){ var nt=mk('div',null,'Notes: '+e.r); nt.style.cssText='font-size:.9rem;white-space:pre-wrap'; el.append(nt); }
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
     dt.append(mk('div','pmeta','Called on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at)));
     dt.append(mk('div','pmeta',[e.p,(isOwner&&clGroup(e))?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
-    if(e.o){ if(e.r) dt.append(mk('div',null,e.r)); if(e.nx) dt.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
+    if(e.o){ if(e.nx) dt.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
     else if(e.sid===uid) dt.append(btn('Write Report',function(){ repOpen(id,e,logKey); }));
     el.append(dt);
     h.addEventListener('click',function(){ lgOpen[id]=!lgOpen[id]; dt.hidden=!lgOpen[id]; h.setAttribute('aria-expanded',!!lgOpen[id]); });
@@ -875,7 +875,7 @@ async function makeReport(o){
   function block(it,i){ var e=it.e; doc.text((i+1)+'. '+e.n+(e.p?' ('+e.p+')':''),{size:10,bold:true,before:5});
     doc.text('Date: '+fmtIso(it.day)+', '+fmtTime(e.at)+'   Duration: '+(e.d?callDur(e.d):'not recorded')+'   Result: '+(e.o?callOutName(e.o):'Report pending'),{size:9,indent:12});
     if(multi||o.byShown) doc.text('Called by: '+by(it)+(o.showGroup&&clGroup(e)?'   Group: '+clGroup(e):''),{size:9,indent:12}); else if(o.showGroup&&clGroup(e)) doc.text('Group: '+clGroup(e),{size:9,indent:12});
-    if(e.r) doc.text('Notes: '+e.r,{size:9,indent:12}); if(e.nx) doc.text('Next call: '+fmtIso(e.nx),{size:9,indent:12}); }
+    doc.text('Notes: '+(e.r||'None'),{size:9,indent:12}); if(e.nx) doc.text('Next call: '+fmtIso(e.nx),{size:9,indent:12}); }
   if(!list.length) doc.text('No calls match these choices.',{size:10});
   else if(o.arrange==='date'){ var cur=''; list.slice().sort(function(a,b){ return a.day<b.day?-1:a.day>b.day?1:(a.e.at||0)-(b.e.at||0); }).forEach(function(it,i){ if(it.day!==cur){ cur=it.day; doc.text(fmtIso(cur),{size:11,bold:true,before:8}); } block(it,i); }); }
   else if(o.arrange==='person'&&multi){ var gr={}; list.forEach(function(it){ var n=by(it); (gr[n]=gr[n]||[]).push(it); }); Object.keys(gr).sort().forEach(function(n){ doc.text(n+' ('+gr[n].length+')',{size:11,bold:true,before:8}); gr[n].forEach(block); }); }
