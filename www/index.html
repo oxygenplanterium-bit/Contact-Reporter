@@ -57,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:55 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -273,8 +273,8 @@ function render(){
     body.append(w); return;
   }
   seg.hidden=false;
-  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
-  if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
+  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner?t[0]!=='ct':(t[0]==='ct'||t[0]==='lg'); });
+  if(isOwner&&sub==='ct') sub='home'; if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
@@ -288,19 +288,19 @@ function rows(box,list,own,off){
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
     top.append(mk('b',null,c.n));
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[c.p,gn,c.nt].filter(Boolean).join(' · '); var mt=mk('div','pmeta',meta); mt.style.fontSize='.82rem'; top.append(mt);
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(own) hd.append(top); else hd.append(top,cb); el.append(hd);
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(own&&sub==='ct') hd.append(top); else hd.append(top,cb); el.append(hd);
     if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
     box.append(el);
   });
 }
 function viewHome(body){
-  var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
+  if(isOwner){ var am=mk('div','sline'); am.append(btn('Add Many',ctBulk)); body.append(am); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':'No contacts yet. Open the Contacts tab to add them.')); return; }
     lst.style.cssText+=';border:1px solid var(--line);border-radius:12px;overflow:hidden'; var cur='', chunk=[], off=0;
-    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 10px;background:var(--field);border-bottom:1px solid var(--line)'; lst.append(h); rows(lst,chunk,false,off); off+=chunk.length; chunk=[]; }
+    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 10px;background:var(--field);border-bottom:1px solid var(--line)'; lst.append(h); rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
     flush();
   }
