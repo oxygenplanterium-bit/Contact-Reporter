@@ -75,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:50 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -275,7 +275,7 @@ function listToMap(list,prefix){ var m={}; (list||[]).forEach(function(x){ m[x.p
 function logSub(){
   logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={};
   if(!approved()){ return; }
-  if(canSu()){
+  if(accountOwner){
     logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
   }else{
     var st=db.doc('cr/log/'+k+'/'+uid).onSnapshot(function(s){ if(k!==logKey) return; logRows=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
@@ -450,11 +450,11 @@ function render(){
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
-  if(accountOwner&&!isOwner&&sub==='ct'){
+  if(accountOwner&&!isOwner){
     var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
-    var wantSu=isSuMode(); okUsers().filter(function(it){ return (it[1].rl==='su')===wantSu; }).forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
+    okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
     vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
-    body.append(fld('Viewing contacts of',vs));
+    body.append(fld('Viewing as',vs));
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
@@ -470,7 +470,7 @@ function rows(box,list,own,off){
     [['Phone',c.p],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; if(accountOwner&&!isOwner&&viewAs) cb.style.display='none'; cb.style.padding='3px 14px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
       top.addEventListener('click',function(){ sc.checked=!sc.checked; sc.dispatchEvent(new Event('change')); }); hd.append(sc,top); }
     else if(own&&sub==='ct') hd.append(top); else if(own){ var ics=mk('div'); ics.style.cssText='display:flex;gap:2px;flex:0 0 auto';
       var SV='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
@@ -779,7 +779,7 @@ function shareDlg(title,list,withBy){
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var incl=isOwner||(isSuMode()&&lgInc);
-  if(!incl) all=all.filter(function(it){ return it[1].sid===uid; });
+  if(!incl) all=all.filter(function(it){ return it[1].sid===(accountOwner&&!isOwner?(viewAs||uid):uid); });
   if(isSuMode()){ var ic=document.createElement('input'); ic.type='checkbox'; ic.checked=lgInc; ic.style.cssText='width:20px;height:20px;margin:0;flex:none'; var il=mk('label'); il.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; il.append(ic,mk('span',null,"Include users' reports")); ic.addEventListener('change',function(){ lgInc=ic.checked; sig=''; try{ ic.blur(); }catch(x){} render(); }); body.append(il); }
   var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(incl) body.append(frow);
   if(incl){
@@ -982,7 +982,7 @@ function setMode(m){
 }
 $('#modeOwner').addEventListener('click',function(){ if(mode!=='owner') setMode('owner'); });
 $('#modeSu').addEventListener('click',function(){ if(mode!=='su') setMode('su'); });
-$('#modeSup').addEventListener('click',function(){ try{ localStorage.setItem('crMode','owner'); }catch(e){} if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
+$('#modeSup').addEventListener('click',function(){ if(mode!=='user') setMode('user'); });
 /* ---------- dark and light mode ---------- */
 function themeNow(){ return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; }
 function themeSync(){ $('#themeBtn').textContent=themeNow()==='dark'?'Light Mode':'Dark Mode'; var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',themeNow()==='dark'?'#0F1713':'#EDF2EC'); }
