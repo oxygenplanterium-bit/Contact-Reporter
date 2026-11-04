@@ -423,6 +423,7 @@ function render(){
     if(meLoaded) w.append(mk('p','pmeta','Your account has been created. The owner needs to approve it before you can see your contacts. Open this app again after you have been approved.'));
     body.append(w); return;
   }
+  if(!isOwner){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; return; }
   if(!accountOwner&&isSuAcct()&&!isSuMode()){
     seg.hidden=false; $('#dateCard').hidden=true; fb.hidden=true;
     var ub=mk('button','btn','Users'); ub.type='button'; ub.setAttribute('aria-pressed','true'); seg.style.gridTemplateColumns='minmax(0,1fr)'; seg.append(ub);
