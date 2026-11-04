@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -405,7 +405,7 @@ function grEdit(id){
 /* ---------- render ---------- */
 function render(){
   if(!started) return;
-  modeSync();
+  modeSync(); $('#wipeAll').hidden=!isOwner;
   var ae=document.activeElement, body=$('#body');
   if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   if(!isOwner&&sub==='home') sub='ct';
@@ -517,7 +517,7 @@ function viewHome(body){
         var sr2=mk('div'); sr2.style.cssText='display:flex;gap:8px'; var f1=fld('Assign To SuperUsers',us), f2=fld('Assign To Users',uu); f1.style.cssText+=';flex:1 1 0;min-width:0'; f2.style.cssText+=';flex:1 1 0;min-width:0'; sr2.append(f1,f2);
         ab.append(sr2,inf,ar,urow); body.append(ab); }
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
-  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); if(isOwner&&!selMode){ var wr0=mk('div','sline'); wr0.style.marginTop='12px'; wr0.append(btn('Delete Everything',wipeDlg,'danger')); body.append(wr0); } var sp=mk('div'); sp.style.height='64px'; body.append(sp);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } else if(selMode&&selUser&&selUser!=='-'){ var gg=it[1].g&&groups[it[1].g]; if(!gg||(gg.to||[]).indexOf(selUser)<0) return false; } return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?'Every contact is assigned to someone.':(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':'No contacts yet. Open the Contacts tab to add them.')); return; }
@@ -677,8 +677,7 @@ function viewCs(body,only,ro){
       if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
     if(!ro) el.append(ac); body.append(el);
   });
-  if(isOwner&&!only&&!ro){ var wr=mk('div','sline'); wr.style.marginTop='16px'; wr.append(btn('Delete Everything',wipeDlg,'danger')); body.append(wr); }
-}
+  }
 function logEdit(id,e){
   var isNew=!e, r=dlg('dlgLog'), d=r[0], b=r[1], k0=isNew?logKey:logKey;
   b.append(mk('h2',null,isNew?'Add Log Entry':'Edit Log Entry'));
@@ -976,6 +975,7 @@ async function appRefresh(){
   location.replace(location.pathname+'?r='+Date.now());
 }
 $('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app...',2000); appRefresh(); });
+$('#wipeAll').addEventListener('click',function(){ wipeDlg(); });
 $('#signOut').addEventListener('click',function(){ if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
 $('#addLog').addEventListener('click',function(){ logEdit('',null); });
 $('#logDate').value=logKey;
