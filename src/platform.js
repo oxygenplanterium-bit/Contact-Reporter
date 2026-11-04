@@ -124,7 +124,7 @@ const ready = new Promise(resolve => {
   const box = document.createElement('div'); box.id = 'loginBox';
   box.innerHTML = '<form id="loginForm" novalidate><h1 id="loginTitle">Contact Reporter</h1>' +
     '<input id="loginName" type="text" autocomplete="name" placeholder="Your name" hidden>' +
-    '<input id="loginEmail" type="text" inputmode="text" autocomplete="username" placeholder="Phone number" autocapitalize="none">' +
+    '<input id="loginEmail" type="text" inputmode="text" autocomplete="username" placeholder="Phone number or owner email" autocapitalize="none">' +
     '<input id="loginPass" type="password" autocomplete="current-password" placeholder="Password">' +
     '<input id="loginPass2" type="password" autocomplete="new-password" placeholder="Type the password again" hidden>' +
     '<p id="loginMsg" role="alert"></p><button type="submit" id="loginGo">Sign in</button>' +
@@ -140,7 +140,7 @@ const ready = new Promise(resolve => {
     q('#loginName').hidden = q('#loginPass2').hidden = m !== 'up';
     q('#loginGo').textContent = m === 'up' ? 'Create account' : 'Sign in';
     q('#loginSwap').textContent = m === 'up' ? 'I already have an account' : 'Create new account';
-    q('#loginEmail').placeholder = m === 'up' ? 'Phone number' : 'Phone number (owner: email)';
+    q('#loginEmail').placeholder = m === 'up' ? 'Phone number' : 'Phone number or owner email';
     q('#loginPass').autocomplete = m === 'up' ? 'new-password' : 'current-password';
     q('#loginNote').hidden = m === 'up';
   };

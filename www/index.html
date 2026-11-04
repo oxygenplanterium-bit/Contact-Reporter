@@ -10,6 +10,7 @@
   :root:not([data-theme="dark"]){ --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D; --accent:#2A7F3E; --accent-ink:#FFFFFF; --loss:#B0301F; --warn:#8F5B00; color-scheme:light; }
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 body{background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4; margin:0;
   padding-block:max(28px, calc(env(safe-area-inset-top, 0px) + 14px)) 40px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); text-transform:capitalize}
 input,textarea{text-transform:none} 
@@ -42,14 +43,19 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
 #toast[hidden]{display:none}
+.modes{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+.modes .btn{min-height:54px; font-size:.95rem; border-radius:12px; white-space:nowrap; padding-left:6px; padding-right:6px}
+.modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
+.modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
 .bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div></div>
-    <div class="aseg" id="seg"></div>
+    <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">Supervisor Mode</button></nav>
+  <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 8:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 8:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -72,7 +78,7 @@ function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'
 function fmtTime(ms){ if(!ms) return ''; var d=new Date(ms), h=d.getHours(), m=two(d.getMinutes()); return (h%12||12)+':'+m+' '+(h<12?'AM':'PM'); }
 function fmtPhone(d){ d=String(d||''); return d.length===12&&d.slice(0,2)==='91' ? '+91 '+d.slice(2,7)+' '+d.slice(7) : (d?'+'+d:''); }
 /* ---------- state ---------- */
-var db=null, user=null, isOwner=false, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
+var db=null, user=null, isOwner=false, accountOwner=false, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
 var groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
 var sub='ct', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
@@ -81,14 +87,14 @@ function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
 function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
 function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
-function approved(){ return isOwner || (me&&me.st==='ok'); }
+function approved(){ return accountOwner || (me&&me.st==='ok'); }
 function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{}; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
 function grWho(g){ if(g.all) return 'All approved callers'; var to=(g.to||[]).filter(function(id){ return users[id]&&users[id].n; }); return to.length ? to.map(function(id){ return users[id].n; }).join(', ') : 'Nobody yet'; }
-function callerName(){ return isOwner?'Owner':((me&&me.n)||myName||'Caller'); }
+function callerName(){ return accountOwner?'Owner':((me&&me.n)||myName||'Caller'); }
 function clGroup(e){ if(e.gn) return e.gn; var c=ctGet(e.c); return c&&c.g&&groups[c.g]?groups[c.g].n:''; }
 function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
 function fld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
@@ -117,7 +123,7 @@ function listToMap(list,prefix){ var m={}; (list||[]).forEach(function(x){ m[x.p
 function logSub(){
   logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={};
   if(!approved()){ return; }
-  if(isOwner){
+  if(accountOwner){
     logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
   }else{
     var st=db.doc('cr/log/'+k+'/'+uid).onSnapshot(function(s){ if(k!==logKey) return; logRows=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
@@ -335,7 +341,7 @@ function viewCs(body){
 }
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
-  var mine=!isOwner;
+  if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
   if(isOwner){
     var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
     var fs=document.createElement('select'), a=mk('option',null,'All callers'); a.value=''; fs.append(a);
@@ -362,6 +368,21 @@ function viewLg(body){
     body.append(el);
   });
 }
+/* ---------- owner and supervisor mode ---------- */
+function modeSync(){
+  var mo=$('#modeOwner'), ms=$('#modeSup'); mo.setAttribute('aria-pressed',isOwner); ms.setAttribute('aria-pressed',!isOwner);
+}
+function setMode(m){
+  isOwner=accountOwner&&m==='owner';
+  try{ localStorage.setItem('crMode',m); }catch(e){}
+  if(!isOwner&&(sub==='gr'||sub==='cs')) sub='ct';
+  modeSync(); sig=''; toast(isOwner?'Owner mode':'Supervisor mode'); render();
+}
+$('#modeOwner').addEventListener('click',function(){
+  if(!accountOwner){ toast('Owner Mode is only for the owner. Sign out and sign in with the owner email.',4000); return; }
+  if(!isOwner) setMode('owner');
+});
+$('#modeSup').addEventListener('click',function(){ if(accountOwner){ if(isOwner) setMode('supervisor'); } });
 /* ---------- app refresh ---------- */
 async function appRefresh(){
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.filter(function(k){ return k.indexOf('contactreporter-shell-')===0; }).map(function(k){ return caches.delete(k); })); } }catch(e){}
@@ -376,7 +397,7 @@ $('#logDate').addEventListener('change',function(){ if(!this.value) return; logK
 function startData(){
   if(startData.done) return; startData.done=true;
   watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
-  if(isOwner) watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); });
+  if(accountOwner) watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); });
   logSub();
 }
 (async function boot(){
@@ -384,9 +405,10 @@ function startData(){
     var c=window.claude;
     if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
     db=await c.use('db'); user=await c.use('user');
-    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); isOwner=!!r[0]; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
+    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} isOwner=accountOwner&&sm!=='supervisor'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
     started=true;
-    if(isOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
+    modeSync();
+    if(accountOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
     var made=false;
     db.doc('cr/users/'+uid).onSnapshot(async function(s){
       if(!s.exists){
