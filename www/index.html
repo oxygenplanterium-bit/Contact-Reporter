@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:15 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -344,11 +344,19 @@ function ctEdit(id){
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
   b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Note',nt));
   var cfBox=mk('div'); cfBox.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(cfBox); var cfRows=[], cfGone={};
-  function addCf(key,l,v){ var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var li=mkIn('text','Field name',l||''), vi=mkIn('text','Value',v||''); li.maxLength=40; vi.maxLength=120; li.style.flex='1 1 0'; vi.style.flex='1 1 0'; li.style.minWidth=vi.style.minWidth='0';
-    var rm=mk('button','btn small','Remove'); rm.type='button'; var o={key:key,li:li,vi:vi,rw:rw}; rm.addEventListener('click',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); });
-    rw.append(li,vi,rm); cfBox.append(rw); cfRows.push(o); return li; }
+  function addCf(key,l,v){ var vi=mkIn('text','Enter '+(l||'value'),v||''); vi.maxLength=120; var fl=fld(l||'Field',vi); fl.style.flex='1 1 0'; fl.style.minWidth='0';
+    var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var rm=mk('button','btn small','Remove'); rm.type='button'; var o={key:key,l:l||'Field',vi:vi,rw:rw};
+    rm.addEventListener('click',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); });
+    rw.append(fl,rm); cfBox.append(rw); cfRows.push(o); return vi; }
   Object.keys(c.cf||{}).forEach(function(k){ addCf(k,c.cf[k].l,c.cf[k].v); });
-  var plus=mk('button','btn','+'); plus.type='button'; plus.setAttribute('aria-label','Add custom field'); plus.title='Add custom field'; plus.style.cssText='align-self:center;width:44px;height:44px;border-radius:50%;font-size:1.4rem;line-height:1;padding:0'; plus.addEventListener('click',function(){ addCf('','',''). focus(); });
+  function titleDlg(){
+    var r2=dlg('dlgCfTitle'), d2=r2[0], b2=r2[1]; b2.append(mk('h2',null,'Add Field'));
+    var ti=mkIn('text','For example Birthday',''); ti.maxLength=40; var e2=mk('p','pmeta'); e2.style.color='var(--warn)'; var rw2=mk('div','two'), ad=mk('button','btn primary','Add'), c2=mk('button','btn','Cancel'); ad.type=c2.type='button'; rw2.append(ad,c2);
+    b2.append(fld('Title',ti),e2,rw2); c2.addEventListener('click',function(){ d2.close(); });
+    ad.addEventListener('click',function(){ var t=cleanName(ti.value); if(!t){ e2.textContent='Enter a title.'; return; } d2.close(); var vi=addCf('',t,''); setTimeout(function(){ vi.focus(); },50); });
+    openDlg(d2); setTimeout(function(){ ti.focus(); },60);
+  }
+  var plus=mk('button','btn','+'); plus.type='button'; plus.setAttribute('aria-label','Add custom field'); plus.title='Add custom field'; plus.style.cssText='align-self:center;width:44px;height:44px;border-radius:50%;font-size:1.4rem;line-height:1;padding:0'; plus.addEventListener('click',titleDlg);
   b.append(plus,er,row);
   cn.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
@@ -358,7 +366,7 @@ function ctEdit(id){
     if(ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); })){ er.textContent='This phone number is already saved.'; return; }
     var k=id||callId(), ng=id?(c.g||'none'):'none', og=ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value),bc:cleanName(bc.value),bk:cleanName(bk.value),cf:{}};
     Object.keys(cfGone).forEach(function(x){ pt.ct[k].cf[x]=null; });
-    cfRows.forEach(function(o){ var l=cleanName(o.li.value), v=cleanName(o.vi.value); if(!l&&!v) return; var key=o.key||('f'+Math.random().toString(36).slice(2,8)); pt.ct[k].cf[key]={l:l||'Field',v:v}; });
+    cfRows.forEach(function(o){ var l=o.l, v=cleanName(o.vi.value); if(!v&&!o.key) return; var key=o.key||('f'+Math.random().toString(36).slice(2,8)); pt.ct[k].cf[key]={l:l,v:v}; });
     var ok=await grPut(ng,pt);
     if(ok&&og!==ng){ var rm={ct:{}}; rm.ct[k]=null; ok=await grPut(og,rm); }
     if(ok){ d.close(); toast('Contact saved'); }
