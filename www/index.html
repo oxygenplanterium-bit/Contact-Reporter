@@ -64,7 +64,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 8:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 8:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -330,6 +330,11 @@ function rows(box,list,own,off){
     box.append(el);
   });
 }
+async function unassignAll(){
+  var ids=ctAll().filter(function(it){ var g=it[1].g&&groups[it[1].g]; return g&&(g.all||(g.to||[]).length); }).map(function(it){ return it[0]; });
+  if(!ids.length) return 0;
+  return (await assignContacts('-',ids))?ids.length:-1;
+}
 async function assignContacts(target,ids){
   if(target==='-'){
     var rem0={}, add0={ct:{}}; ids.forEach(function(id){ var c=ctGet(id); if(!c||!c.g) return; add0.ct[id]={n:c.n,p:c.p,nt:c.nt||''}; (rem0[c.g]=rem0[c.g]||{ct:{}}).ct[id]=null; });
@@ -361,7 +366,8 @@ function viewHome(body){
         go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!us.value){ toast('Choose a user.'); return; }
           if(await assignContacts(us.value,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(us.value==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
         us.value=selUser; us.addEventListener('change',function(){ selUser=us.value; sig=''; try{ us.blur(); }catch(x){} render(); });
-        ab.append(fld('Assign to',us),inf,ar); body.append(ab); }
+        var ua=btn('Unassign Everyone',function(){ arm(ua,'unall','Unassign Everyone',async function(){ var n=await unassignAll(); if(n<0) return; toast(n?(n+' contact'+(n===1?'':'s')+' unassigned'):'No contacts were assigned'); selMode=false; selSet={}; selUser=''; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); }); },'danger');
+        ab.append(fld('Assign to',us),inf,ar,ua); body.append(ab); }
       viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
