@@ -64,7 +64,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 7:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 7:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -300,7 +300,7 @@ function render(){
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(accountOwner&&!isOwner&&sub==='ct'){
     var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
-    okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); vs.value=viewAs;
+    var wantSu=isSuMode(); okUsers().filter(function(it){ return (it[1].rl==='su')===wantSu; }).forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
     vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
     body.append(fld('Viewing contacts of',vs));
   }
