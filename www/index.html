@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -445,8 +445,8 @@ function viewCs(body){
     var id=it[0], u=it[1], el=mk('div','card'), ac=mk('div','sline'), ok=u.st==='ok';
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
     var gs=grList().filter(function(g){ return g[1].all||(g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
-    var st=mk('div',null,ok?(u.rl==='su'?'Approved · SuperUser':'Approved'):'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
-    el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph)),st);
+    var st=mk('div',null,ok?'SuperUser':'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
+    el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); if(!ok||u.rl==='su') el.append(st);
     if(ok){
       var mine=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]; if(gid==='none'||!g||(g.to||[]).indexOf(id)<0) return; var c=g.ct||{}; Object.keys(c).forEach(function(cid){ if(c[cid]&&c[cid].n) mine.push([cid,c[cid]]); }); });
       mine.sort(byName);
