@@ -34,8 +34,9 @@ textarea{resize:vertical}
 .pmeta{margin:0; color:var(--muted); font-size:.9rem}
 .sline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .two{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-.aseg{display:grid; gap:8px}
-.aseg .btn{padding:5px 4px; min-height:34px; font-size:.85rem !important}
+.aseg{display:grid; gap:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--field)}
+.aseg .btn{border:0; border-right:1px solid var(--line); border-radius:0; padding:4px 2px; min-height:36px; font-size:.78rem !important; white-space:nowrap; background:transparent}
+.aseg .btn:last-child{border-right:0}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
@@ -56,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:05 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -274,7 +275,7 @@ function render(){
   seg.hidden=false;
   var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Callers'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
   if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
-  seg.style.gridTemplateColumns='repeat('+(tabs.length>4?3:tabs.length)+',minmax(0,1fr))';
+  seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
@@ -282,8 +283,8 @@ function render(){
 }
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
-    var id=it[0], c=it[1], el=mk('div','card'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
-    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border-radius:12px'; tint(el,ix);
+    var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line)'; tint(el,ix);
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
     top.append(mk('b',null,c.n));
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[c.p,gn,c.nt].filter(Boolean).join(' · '); var mt=mk('div','pmeta',meta); mt.style.fontSize='.82rem'; top.append(mt);
@@ -294,14 +295,14 @@ function rows(box,list,own,off){
 }
 function viewHome(body){
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
-  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:5px'; body.append(lst);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
-    lst.textContent=''; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
+    lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':'No contacts yet. Open the Contacts tab to add them.')); return; }
-    var cur='', chunk=[], off=0;
-    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;margin-top:4px'; lst.append(h); rows(lst,chunk,false,off); off+=chunk.length; chunk=[]; }
+    lst.style.cssText+=';border:1px solid var(--line);border-radius:12px;overflow:hidden'; var cur='', chunk=[], off=0;
+    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 10px;background:var(--field);border-bottom:1px solid var(--line)'; lst.append(h); rows(lst,chunk,false,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
-    flush(); var sp=mk('div'); sp.style.height='64px'; lst.append(sp);
+    flush();
   }
   q.addEventListener('input',function(){ homeQ=q.value; fill(); });
   fill();
@@ -311,14 +312,14 @@ function viewCt(body){
   var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=callQ; q.autocomplete='off';
   var gs=groupSel(callG,true); bar.append(q); if(isOwner||grList().length>1) bar.append(gs); body.append(bar);
-  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:5px'; body.append(lst);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst);
   function fill(){
-    lst.textContent=''; var qq=callQ.trim().toLowerCase(), all=ctAll().filter(function(it){
+    lst.textContent=''; lst.style.border='0'; var qq=callQ.trim().toLowerCase(), all=ctAll().filter(function(it){
       if(callG==='-'){ if(it[1].g) return false; } else if(callG&&it[1].g!==callG) return false;
       return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0;
     });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to callers.'))); return; }
-    lst.append(mk('p','pmeta',all.length+' contact'+(all.length>1?'s':''))); rows(lst,all,isOwner);
+    var cnt=mk('p','pmeta',all.length+' contact'+(all.length>1?'s':'')); cnt.style.marginBottom='4px'; lst.before&&0; lst.append(cnt); var bx=mk('div'); bx.style.cssText='border:1px solid var(--line);border-radius:12px;overflow:hidden'; lst.append(bx); rows(bx,all,isOwner);
   }
   q.addEventListener('input',function(){ callQ=q.value; fill(); });
   gs.addEventListener('change',function(){ callG=gs.value; fill(); });
@@ -386,7 +387,7 @@ function viewLg(body){
     body.append(el);
   });
 }
-/* ---------- owner and supervisor mode ---------- */
+/* ---------- owner and user mode ---------- */
 function modeSync(){
   var mo=$('#modeOwner'), ms=$('#modeSup'); mo.setAttribute('aria-pressed',isOwner); ms.setAttribute('aria-pressed',!isOwner);
 }
@@ -400,7 +401,7 @@ $('#modeOwner').addEventListener('click',function(){
   if(!accountOwner){ toast('Owner Mode is only for the owner. Sign out and sign in with the owner email.',4000); return; }
   if(!isOwner) setMode('owner');
 });
-$('#modeSup').addEventListener('click',function(){ if(accountOwner){ if(isOwner) setMode('supervisor'); } });
+$('#modeSup').addEventListener('click',function(){ if(accountOwner){ if(isOwner) setMode('user'); } });
 /* ---------- dark and light mode ---------- */
 function themeNow(){ return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; }
 function themeSync(){ $('#themeBtn').textContent=themeNow()==='dark'?'Light Mode':'Dark Mode'; var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',themeNow()==='dark'?'#0F1713':'#EDF2EC'); }
@@ -428,7 +429,7 @@ function startData(){
     var c=window.claude;
     if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
     db=await c.use('db'); user=await c.use('user');
-    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} isOwner=accountOwner&&sm!=='supervisor'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
+    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} isOwner=accountOwner&&sm!=='supervisor'&&sm!=='user'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
     started=true;
     modeSync();
     if(accountOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
