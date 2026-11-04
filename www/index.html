@@ -57,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 1:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 1:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -284,7 +284,7 @@ function render(){
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
-    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line)'; tint(el,ix);
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(el,ix);
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
     top.append(mk('b',null,c.n));
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[c.p,gn,c.nt].filter(Boolean).join(' · '); var mt=mk('div','pmeta',meta); mt.style.fontSize='.82rem'; top.append(mt);
@@ -305,8 +305,8 @@ function viewHome(body){
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':'No contacts yet. Open the Contacts tab to add them.')); return; }
-    lst.style.cssText+=';border:1px solid var(--line);border-radius:12px;overflow:hidden'; var cur='', chunk=[], off=0;
-    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 10px;background:var(--field);border-bottom:1px solid var(--line)'; lst.append(h); rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
+    var cur='', chunk=[], off=0;
+    function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 4px;margin:4px 0 4px'; lst.append(h); rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
     flush();
   }
@@ -325,7 +325,7 @@ function viewCt(body){
       return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0;
     });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to users.'))); return; }
-    var cnt=mk('p','pmeta',all.length+' contact'+(all.length>1?'s':'')); cnt.style.marginBottom='4px'; lst.before&&0; lst.append(cnt); var bx=mk('div'); bx.style.cssText='border:1px solid var(--line);border-radius:12px;overflow:hidden'; lst.append(bx); rows(bx,all,isOwner);
+    var cnt=mk('p','pmeta',all.length+' contact'+(all.length>1?'s':'')); cnt.style.marginBottom='4px'; lst.before&&0; lst.append(cnt); var bx=mk('div'); bx.style.cssText=''; lst.append(bx); rows(bx,all,isOwner);
   }
   q.addEventListener('input',function(){ callQ=q.value; fill(); });
   gs.addEventListener('change',function(){ callG=gs.value; fill(); });
