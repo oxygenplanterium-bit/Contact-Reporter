@@ -82,7 +82,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 3:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -344,6 +344,16 @@ function groupSel(cur,withAll){
   grList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
   s.value=cur||''; return s;
 }
+function userNameDlg(id,u){
+  var r=dlg('dlgUN'), d=r[0], b=r[1]; b.append(mk('h2',null,'Edit User Name'));
+  var nm=mkIn('text','Name',u.n); nm.maxLength=60; var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('Name',nm),mk('p','pmeta',fmtPhone(u.ph)),er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){ var n=cleanName(nm.value); if(!n){ er.textContent='Enter a name.'; return; }
+    if(await putDoc('cr/users/'+id,{n:n})){ if(groups['u'+id]) await grPut('u'+id,{n:n}); d.close(); toast('Name changed'); } });
+  openDlg(d); setTimeout(function(){ nm.focus(); nm.select(); },60);
+}
 function ctAssignDlg(id,c){
   var r=dlg('dlgAsg'), d=r[0], b=r[1]; b.append(mk('h2',null,c.n));
   var sel=document.createElement('select'), o0=mk('option',null,'Choose a user'); o0.value=''; sel.append(o0);
@@ -479,7 +489,7 @@ function render(){
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
-var ctDetAll=false, usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var usrShow=false, ctDetAll=false, usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -543,6 +553,11 @@ function viewHome(body){
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
       gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.display='block'; am.append(sb); body.append(am);
+      var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.setAttribute('aria-pressed',usrShow); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:6px'; am.append(ub);
+      if(usrShow){ var uc=mk('div','card'); uc.style.cssText='display:flex;flex-direction:column;gap:0;padding:4px 10px;margin-top:6px';
+        if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
+        ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px;'+(i?'border-top:1px solid var(--line)':''); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); r.append(t,iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); })); uc.append(r); });
+        body.append(uc); }
       if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
           list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
                 var usrL=okUsers().map(function(it){ return [it[1].n+' · '+fmtPhone(it[1].ph),it[0]]; });
