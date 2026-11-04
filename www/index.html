@@ -45,6 +45,15 @@ textarea{resize:vertical}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
+select:not([multiple]){pointer-events:none}
+dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
+dialog.pickdlg .dbody{max-height:none; overflow:visible}
+#pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0; overflow-y:auto; max-height:56vh}
+.pickopt{flex:0 0 auto; min-height:48px; line-height:1.3; display:block; width:100%; text-align:left; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:inherit; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer}
+.pickopt[hidden]{display:none !important}
+.pickopt:nth-child(odd){background:color-mix(in srgb,var(--loss) 16%,var(--card))}
+.pickopt:nth-child(even){background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+.pickopt[aria-pressed="true"],.pickopt[aria-pressed="true"]:nth-child(n){background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
 #toast[hidden]{display:none}
@@ -64,8 +73,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
+<dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
 <script>var APP_BUILD='__BUILD__';</script>
@@ -601,6 +611,29 @@ $('#signOut').addEventListener('click',function(){ if(window.claude&&window.clau
 $('#addLog').addEventListener('click',function(){ logEdit('',null); });
 $('#logDate').value=logKey;
 $('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; sig=''; logSub(); render(); });
+/* ---------- full-size picker for every drop-down menu ---------- */
+function openPick(sel,title){
+  var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title||'Choose';
+  Array.prototype.forEach.call(sel.options,function(o){
+    var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
+    b.addEventListener('click',function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
+  });
+  var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6;
+  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.dataset.full.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); var nm=box.querySelector('.pnone'); if(!n&&!nm) box.append(mk('p','pmeta pnone','No match.')); else if(n&&nm) nm.remove(); };
+  var d=$('#dlgPick'); if(!d.open) d.showModal();
+}
+$('#pickCancel').addEventListener('click',function(){ $('#dlgPick').close(); });
+$('#dlgPick').addEventListener('click',function(e){ if(e.target===this) this.close(); });
+document.addEventListener('click',function(e){
+  if(e.target&&e.target.closest&&e.target.closest('#dlgPick')) return;
+  var all=document.querySelectorAll('select'), sel=null, i, r;
+  if(e.target&&e.target.tagName==='SELECT') sel=e.target;
+  for(i=0;i<all.length&&!sel;i++){ r=all[i].getBoundingClientRect(); if(r.width>0&&r.height>0&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom&&all[i].parentElement&&all[i].parentElement.contains(e.target)) sel=all[i]; }
+  if(!sel||sel.disabled||sel.multiple||!sel.options.length) return;
+  var lb=sel.closest('label'), t=sel.getAttribute('aria-label')||'';
+  if(!t&&lb){ var sp=lb.querySelector('span'); t=sp?sp.textContent:''; }
+  e.preventDefault(); e.stopPropagation(); openPick(sel,t||'Choose');
+},true);
 /* ---------- start ---------- */
 function startData(){
   if(startData.done) return; startData.done=true;
