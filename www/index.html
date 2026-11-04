@@ -64,7 +64,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 6:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 6:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -99,7 +99,7 @@ function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
 function isSuAcct(){ return !!(me&&me.st==='ok'&&me.rl==='su'); }
 function canSu(){ return accountOwner||isSuAcct(); }
-function isSuMode(){ return mode==='su'&&canSu(); }
+function isSuMode(){ return accountOwner?mode==='su':isSuAcct(); }
 function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
@@ -549,10 +549,10 @@ function viewLg(body){
 /* ---------- owner and user mode ---------- */
 function modeSync(){
   var mo=$('#modeOwner'), mu=$('#modeSu'), ms=$('#modeSup'), m2=$('#modes2');
-  var em=(mode==='owner'&&accountOwner)?'owner':(mode==='su'&&canSu())?'su':'user';
+  var em=accountOwner?((mode==='owner')?'owner':(mode==='su')?'su':'user'):(isSuAcct()?'su':'user');
   isOwner=em==='owner';
   $('#modes').hidden=!canSu();
-  mo.hidden=!accountOwner; mu.hidden=!canSu(); m2.className=canSu()?'':'one';
+  mo.hidden=!accountOwner; mu.hidden=!canSu(); ms.hidden=!accountOwner; m2.className=accountOwner?'':'one';
   mo.setAttribute('aria-pressed',em==='owner'); mu.setAttribute('aria-pressed',em==='su'); ms.setAttribute('aria-pressed',em==='user');
 }
 function setMode(m){
