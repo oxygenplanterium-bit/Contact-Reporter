@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:35 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -238,7 +238,8 @@ function isSuMode(){ return accountOwner?mode==='su':(isSuAcct()&&mode!=='user')
 function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
-    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+function ctCopy(c){ var o={n:c.n,p:c.p,nt:c.nt||'',bc:c.bc||'',bk:c.bk||''}; if(c.cf&&Object.keys(c.cf).length) o.cf=c.cf; return o; }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
@@ -338,17 +339,26 @@ function ctEdit(id){
   var c=id?ctGet(id):{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
   var r=dlg('dlgCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
-  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), er=mk('p','pmeta');
-  nm.maxLength=60; ph.maxLength=20; ph.inputMode='tel'; nt.maxLength=120; er.style.color='var(--warn)';
+  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), bc=mkIn('text','BNI chapter (optional)',c.bc||''), bk=mkIn('text','Category in BNI (optional)',c.bk||''), er=mk('p','pmeta');
+  bc.maxLength=60; bk.maxLength=60; nm.maxLength=60; ph.maxLength=20; ph.inputMode='tel'; nt.maxLength=120; er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
-  b.append(fld('Name',nm),fld('Phone number',ph),fld('Note',nt),er,row);
+  b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Note',nt));
+  var cfBox=mk('div'); cfBox.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(cfBox); var cfRows=[], cfGone={};
+  function addCf(key,l,v){ var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var li=mkIn('text','Field name',l||''), vi=mkIn('text','Value',v||''); li.maxLength=40; vi.maxLength=120; li.style.flex='1 1 0'; vi.style.flex='1 1 0'; li.style.minWidth=vi.style.minWidth='0';
+    var rm=mk('button','btn small','Remove'); rm.type='button'; var o={key:key,li:li,vi:vi,rw:rw}; rm.addEventListener('click',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); });
+    rw.append(li,vi,rm); cfBox.append(rw); cfRows.push(o); return li; }
+  Object.keys(c.cf||{}).forEach(function(k){ addCf(k,c.cf[k].l,c.cf[k].v); });
+  var plus=mk('button','btn','+'); plus.type='button'; plus.setAttribute('aria-label','Add custom field'); plus.title='Add custom field'; plus.style.cssText='align-self:center;width:44px;height:44px;border-radius:50%;font-size:1.4rem;line-height:1;padding:0'; plus.addEventListener('click',function(){ addCf('','',''). focus(); });
+  b.append(plus,er,row);
   cn.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
     var n=cleanName(nm.value), p=ph.value.trim();
     if(!n){ er.textContent='Enter a name.'; return; }
     if(digitsOf(p).length<5){ er.textContent='Enter a valid phone number.'; return; }
     if(ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); })){ er.textContent='This phone number is already saved.'; return; }
-    var k=id||callId(), ng=gs.value||'none', og=id?(c.g||'none'):ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value)};
+    var k=id||callId(), ng=id?(c.g||'none'):'none', og=ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value),bc:cleanName(bc.value),bk:cleanName(bk.value),cf:{}};
+    Object.keys(cfGone).forEach(function(x){ pt.ct[k].cf[x]=null; });
+    cfRows.forEach(function(o){ var l=cleanName(o.li.value), v=cleanName(o.vi.value); if(!l&&!v) return; var key=o.key||('f'+Math.random().toString(36).slice(2,8)); pt.ct[k].cf[key]={l:l||'Field',v:v}; });
     var ok=await grPut(ng,pt);
     if(ok&&og!==ng){ var rm={ct:{}}; rm.ct[k]=null; ok=await grPut(og,rm); }
     if(ok){ d.close(); toast('Contact saved'); }
@@ -457,7 +467,7 @@ function rows(box,list,own,off){
     var selOn=own&&selMode&&sub==='home';
     var nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var mt=mk('div','pmeta'); mt.style.cssText='font-size:.82rem;display:flex;flex-direction:column;gap:1px;margin-top:2px';
-    [['Phone',c.p],['Group',gn||'No group'],['Note',c.nt]].forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
+    [['Phone',c.p],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
@@ -480,7 +490,7 @@ async function unassignAll(){
 }
 async function assignContacts(target,ids){
   if(target==='-'){
-    var rem0={}, add0={ct:{}}; ids.forEach(function(id){ var c=ctGet(id); if(!c||!c.g) return; add0.ct[id]={n:c.n,p:c.p,nt:c.nt||''}; (rem0[c.g]=rem0[c.g]||{ct:{}}).ct[id]=null; });
+    var rem0={}, add0={ct:{}}; ids.forEach(function(id){ var c=ctGet(id); if(!c||!c.g) return; add0.ct[id]=ctCopy(c); (rem0[c.g]=rem0[c.g]||{ct:{}}).ct[id]=null; });
     if(!Object.keys(add0.ct).length) return true;
     if(!(await grPut('none',add0))) return false;
     var k0=Object.keys(rem0); for(var j=0;j<k0.length;j++){ if(!(await grPut(k0[j],rem0[k0[j]]))) return false; } return true;
@@ -490,7 +500,7 @@ async function assignContacts(target,ids){
   if(!groups[gid]) ok=await grPut(gid,{n:tn,all:false,to:[target]});
   if(!ok) return false;
   var add={ct:{}}, rem={};
-  ids.forEach(function(id){ var c=ctGet(id); if(!c) return; var og=c.g||'none'; if(og===gid) return; add.ct[id]={n:c.n,p:c.p,nt:c.nt||''}; (rem[og]=rem[og]||{ct:{}}).ct[id]=null; });
+  ids.forEach(function(id){ var c=ctGet(id); if(!c) return; var og=c.g||'none'; if(og===gid) return; add.ct[id]=ctCopy(c); (rem[og]=rem[og]||{ct:{}}).ct[id]=null; });
   if(!Object.keys(add.ct).length) return true;
   ok=await grPut(gid,add); if(!ok) return false;
   var gs=Object.keys(rem); for(var i=0;i<gs.length;i++){ if(!(await grPut(gs[i],rem[gs[i]]))) return false; }
@@ -832,7 +842,7 @@ function infoContact(id,c){
   var g=c.g&&groups[c.g]; var who=whoNames(g);
   infoOpen(c.n,function(body,logs){
     var mine=logs.filter(function(it){ return it.e.c===id; });
-    infoBlock(body,'Contact',['Phone: '+(c.p||'-'),'Group: '+(g?g.n:'No group'),c.nt?'Note: '+c.nt:'']);
+    infoBlock(body,'Contact',['Phone: '+(c.p||'-'),c.bc?'BNI Chapter: '+c.bc:'',c.bk?'Category In BNI: '+c.bk:''].concat(Object.keys(c.cf||{}).map(function(k){ return c.cf[k].l+': '+c.cf[k].v; })).concat([c.nt?'Note: '+c.nt:'']));
     if(isOwner||accountOwner) infoBlock(body,'Assigned to ('+who.length+')',who.length?who:['Nobody yet']);
     infoBlock(body,'Call history',[mine.length?sumLine(sumOf(mine)):'No calls yet'].concat(callRows(mine,true).slice(0,40)));
   });
