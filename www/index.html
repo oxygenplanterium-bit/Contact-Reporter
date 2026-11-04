@@ -26,7 +26,10 @@ input,select,textarea{width:100%; background:var(--field); border:1px solid var(
 textarea{resize:vertical}
 #dateCard{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; padding:10px 12px}
 #dateCard label{min-width:0; overflow:hidden}
-#dateCard input{display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:40px; padding-top:0; padding-bottom:0; -webkit-appearance:none; appearance:none; text-align:left}
+#dateWrap{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
+#dateShow{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; justify-content:flex-start; font-size:1rem; font-weight:600; letter-spacing:.02em; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+#dateWrap input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
+#dateCard input.old{display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:40px; padding-top:0; padding-bottom:0; -webkit-appearance:none; appearance:none; text-align:left}
 #dateCard input::-webkit-date-and-time-value{text-align:left; min-height:1.2em}
 #addLog{white-space:nowrap; height:40px; padding:0 12px}
 .f{display:flex; flex-direction:column; gap:4px; margin:0}
@@ -80,9 +83,9 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
   <div class="aseg" id="seg"></div>
-  <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
+  <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 4:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 4:20 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -454,6 +457,7 @@ function grEdit(id){
   openDlg(d);
 }
 /* ---------- render ---------- */
+function dateSync(){ var s=$('#dateShow'); if(s) s.textContent=fmtIso($('#logDate').value||logKey); }
 function render(){
   if(!started) return;
   modeSync(); $('#wipeAll').hidden=!isOwner;
@@ -777,7 +781,7 @@ function logEdit(id,e){
     if(!(await putDoc('cr/log/'+day+'/'+sid,{cl:p}))) return;
     if(!isNew&&day!==k0){ var z={}; z[id]=null; if(!(await putDoc('cr/log/'+k0+'/'+sid,{cl:z}))) return; }
     d.close(); toast('Log saved');
-    if(day!==logKey){ logKey=day; $('#logDate').value=day; logSub(); }
+    if(day!==logKey){ logKey=day; $('#logDate').value=day; dateSync(); logSub(); }
     else if(!isNew||true){ logRows[nid]=ent; }
     sig=''; render();
   });
@@ -1038,8 +1042,8 @@ $('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app.
 $('#wipeAll').addEventListener('click',function(){ wipeDlg(); });
 $('#signOut').addEventListener('click',function(){ if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
 $('#addLog').addEventListener('click',function(){ logEdit('',null); });
-$('#logDate').value=logKey;
-$('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; sig=''; logSub(); render(); });
+$('#logDate').value=logKey; dateSync();
+$('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; dateSync(); sig=''; logSub(); render(); });
 /* ---------- full-size picker for every drop-down menu ---------- */
 function openPick(sel,title){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title||'Choose';
