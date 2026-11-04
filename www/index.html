@@ -48,7 +48,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
 #toast[hidden]{display:none}
-.modes{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:4px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+.modes{display:flex; flex-direction:column; gap:6px; padding:4px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+#modes2{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+#modes2.one{grid-template-columns:1fr}
 .modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
@@ -58,11 +60,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
-    <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></nav>
+    <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 5:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 6:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -85,7 +87,7 @@ function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'
 function fmtTime(ms){ if(!ms) return ''; var d=new Date(ms), h=d.getHours(), m=two(d.getMinutes()); return (h%12||12)+':'+m+' '+(h<12?'AM':'PM'); }
 function fmtPhone(d){ d=String(d||''); return d.length===12&&d.slice(0,2)==='91' ? '+91 '+d.slice(2,7)+' '+d.slice(7) : (d?'+'+d:''); }
 /* ---------- state ---------- */
-var db=null, user=null, isOwner=false, accountOwner=false, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
+var db=null, user=null, isOwner=false, accountOwner=false, mode='user', lgInc=true, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
 var groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
 var sub='home', homeQ='', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
@@ -95,6 +97,10 @@ function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
 function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
+function isSuAcct(){ return !!(me&&me.st==='ok'&&me.rl==='su'); }
+function canSu(){ return accountOwner||isSuAcct(); }
+function isSuMode(){ return mode==='su'&&canSu(); }
+function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
     if(accountOwner&&!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(viewAs||uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
@@ -131,7 +137,7 @@ function listToMap(list,prefix){ var m={}; (list||[]).forEach(function(x){ m[x.p
 function logSub(){
   logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={};
   if(!approved()){ return; }
-  if(accountOwner){
+  if(canSu()){
     logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
   }else{
     var st=db.doc('cr/log/'+k+'/'+uid).onSnapshot(function(s){ if(k!==logKey) return; logRows=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
@@ -247,7 +253,7 @@ function grEdit(id){
   function row1(c,text){ var l=mk('label'); c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,text)); wrap.append(l); }
   row1(all,'All approved users');
   if(accountOwner&&uid){ var oc=document.createElement('input'); oc.type='checkbox'; oc.checked=(g.to||[]).indexOf(uid)>=0; sel[uid]=oc; row1(oc,'Owner (me, for User Mode)'); }
-  okUsers().forEach(function(it){ var c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; sel[it[0]]=c; row1(c,it[1].n+' · '+fmtPhone(it[1].ph)); });
+  okUsers().forEach(function(it){ var c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; sel[it[0]]=c; row1(c,it[1].n+(it[1].rl==='su'?' (SuperUser)':'')+' · '+fmtPhone(it[1].ph)); });
   if(!okUsers().length) wrap.append(mk('p','pmeta','No approved users yet. Approve people in the Users tab.'));
   b.append(wrap,er);
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn); b.append(row);
@@ -263,10 +269,11 @@ function grEdit(id){
 /* ---------- render ---------- */
 function render(){
   if(!started) return;
+  modeSync();
   var ae=document.activeElement, body=$('#body');
   if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   if(!isOwner&&sub==='home') sub='ct';
-  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,me,groups,users,logRows,logKey,groupsLoaded]);
+  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -400,18 +407,18 @@ function viewGr(body){
   });
 }
 function viewCs(body){
-  body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here, then assign groups to them in the Groups tab.'));
+  body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
   l.forEach(function(it,ix){
     var id=it[0], u=it[1], el=mk('div','card'), ac=mk('div','sline'), ok=u.st==='ok';
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
     var gs=grList().filter(function(g){ return g[1].all||(g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
-    var st=mk('div',null,ok?'Approved':'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
+    var st=mk('div',null,ok?(u.rl==='su'?'Approved · SuperUser':'Approved'):'Waiting for approval'); st.style.cssText='font-weight:600;'+(ok?'':'color:var(--warn)');
     el.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph)),st);
     if(ok) el.append(mk('div','pmeta','Groups: '+(gs.length?gs.join(', '):'None assigned')));
     if(!ok){ ac.append(btn('Approve',async function(){ if(await putDoc('cr/users/'+id,{st:'ok'})) toast(u.n+' approved'); },'primary')); }
-    else{ ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
+    else{ ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
       var ok2=true; for(var gi=0;gi<grList().length;gi++){ var g=grList()[gi]; if((g[1].to||[]).indexOf(id)>=0) ok2=ok2&&await grPut(g[0],{to:g[1].to.filter(function(x){ return x!==id; })}); }
       if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
@@ -468,13 +475,41 @@ function logDel(id,e){
   putDoc('cr/log/'+logKey+'/'+(e.sid||uid),{cl:z}).then(function(ok){ if(ok){ delete logRows[id]; toast('Log deleted'); sig=''; render(); } });
 }
 function iconBtn(lbl,svg,fn,color){ var x=document.createElement('button'); x.type='button'; x.setAttribute('aria-label',lbl); x.title=lbl; x.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+svg+'</svg>'; x.style.cssText='width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none'+(color?';color:'+color:''); x.addEventListener('click',function(ev){ ev.stopPropagation(); fn(x); }); return x; }
-var IC_EDIT='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', IC_DEL='<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>';
+var IC_SHARE='<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>', IC_EDIT='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', IC_DEL='<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>';
 var lgOpen={};
+function repText(title,list,withBy){
+  var L=[title,''];
+  list.forEach(function(it,i){ var e=it[1];
+    L.push((i+1)+'. '+e.n+(e.p?' ('+e.p+')':''));
+    L.push('   Date: '+fmtIso(dayKey(e.at))+(e.at?', '+fmtTime(e.at):''));
+    if(e.d) L.push('   Call duration: '+callDur(e.d));
+    if(withBy&&e.by) L.push('   By: '+e.by);
+    L.push('   Result: '+(e.o?callOutName(e.o):'Report pending'));
+    if(e.r) L.push('   Notes: '+e.r);
+    if(e.nx) L.push('   Next call: '+fmtIso(e.nx));
+    L.push('');
+  });
+  return L.join('\n').trim();
+}
+function shareDlg(title,list,withBy){
+  var r=dlg('dlgShare'), d=r[0], b=r[1], txt=repText(title,list.slice().sort(function(a,c){ return (a[1].at||0)-(c[1].at||0); }),withBy);
+  b.append(mk('h2',null,'Share Report'));
+  var ta=document.createElement('textarea'); ta.rows=12; ta.value=txt; ta.style.textTransform='none'; b.append(ta);
+  var row=mk('div','two'), wa=mk('button','btn primary','WhatsApp'), sh=mk('button','btn','Other Apps'), cp=mk('button','btn','Copy'), cl=mk('button','btn','Close');
+  [wa,sh,cp,cl].forEach(function(x){ x.type='button'; });
+  wa.addEventListener('click',function(){ var a=document.createElement('a'); a.href='https://wa.me/?text='+encodeURIComponent(ta.value); a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); });
+  sh.addEventListener('click',function(){ if(navigator.share){ navigator.share({title:title,text:ta.value}).catch(function(){}); } else toast('Sharing is not available here. Use WhatsApp or Copy.'); });
+  cp.addEventListener('click',function(){ try{ navigator.clipboard.writeText(ta.value).then(function(){ toast('Report copied'); },function(){ ta.select(); toast('Select and copy the text'); }); }catch(e){ ta.select(); toast('Select and copy the text'); } });
+  cl.addEventListener('click',function(){ d.close(); });
+  row.append(wa,sh); var row2=mk('div','two'); row2.append(cp,cl); b.append(row,row2); openDlg(d);
+}
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
-  if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
-  var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(isOwner) body.append(frow);
-  if(isOwner){
+  var incl=isOwner||(isSuMode()&&lgInc);
+  if(!incl) all=all.filter(function(it){ return it[1].sid===uid; });
+  if(isSuMode()){ var ic=document.createElement('input'); ic.type='checkbox'; ic.checked=lgInc; ic.style.cssText='width:20px;height:20px;margin:0;flex:none'; var il=mk('label'); il.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; il.append(ic,mk('span',null,"Include users' reports")); ic.addEventListener('change',function(){ lgInc=ic.checked; sig=''; try{ ic.blur(); }catch(x){} render(); }); body.append(il); }
+  var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(incl) body.append(frow);
+  if(incl){
     var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
     var fs=document.createElement('select'), a=mk('option',null,'All users'); a.value=''; fs.append(a);
     Object.keys(by).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; fs.append(o); }); fs.value=callLs;
@@ -489,16 +524,20 @@ function viewLg(body){
   if(callLg&&isOwner) all=all.filter(function(it){ var g=clGroup(it[1]); return callLg==='-'?!g:g===callLg; });
   all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
   var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
-  body.append(mk('p','pmeta',fmtIso(logKey)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' report'+(pd===1?'':'s')+' pending'));
+  var sr=mk('div'); sr.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
+  sr.append(mk('p','pmeta',fmtIso(logKey)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' pending'));
+  if(all.length) sr.append(btn('Share Report',function(){ shareDlg('Call report '+fmtIso(logKey),all,incl); },'primary'));
+  body.append(sr);
   if(!all.length){ body.append(mk('p','pmeta','No calls on this day.')); return; }
   all.forEach(function(it,ix){
     var id=it[0], e=it[1], el=mk('div','card'); el.style.cssText='display:flex;flex-direction:column;gap:3px;padding:10px 12px'; tint(el,ix);
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; h.setAttribute('role','button'); h.setAttribute('aria-expanded',!!lgOpen[id]); var can=isOwner||e.sid===uid, hl=mk('div'); hl.style.cssText='display:flex;align-items:center;gap:2px;min-width:0';
     if(can){ hl.append(iconBtn('Edit',IC_EDIT,function(){ logEdit(id,e); }));
       hl.append(iconBtn('Delete',IC_DEL,function(x){ if(!armed['lgd'+id]){ armed['lgd'+id]=true; x.style.background='var(--loss)'; x.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['lgd'+id]=false; x.style.background='transparent'; x.style.color='var(--loss)'; },4000); return; } armed['lgd'+id]=false; logDel(id,e); },'var(--loss)')); }
-    hl.append(mk('b',null,e.n)); h.append(hl,mk('span','pmeta',fmtTime(e.at))); el.append(h);
+    hl.append(mk('b',null,e.n)); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtTime(e.at))); h.append(hl,hr); el.append(h);
     var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:600'+(e.o?'':';color:var(--warn)'); el.append(sm);
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
+    dt.append(mk('div','pmeta','Called on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at)));
     dt.append(mk('div','pmeta',[e.p,(isOwner&&clGroup(e))?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ if(e.r) dt.append(mk('div',null,e.r)); if(e.nx) dt.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
     else if(e.sid===uid) dt.append(btn('Write Report',function(){ repOpen(id,e,logKey); }));
@@ -509,19 +548,22 @@ function viewLg(body){
 }
 /* ---------- owner and user mode ---------- */
 function modeSync(){
-  var mo=$('#modeOwner'), ms=$('#modeSup'); mo.setAttribute('aria-pressed',isOwner); ms.setAttribute('aria-pressed',!isOwner);
+  var mo=$('#modeOwner'), mu=$('#modeSu'), ms=$('#modeSup'), m2=$('#modes2');
+  var em=(mode==='owner'&&accountOwner)?'owner':(mode==='su'&&canSu())?'su':'user';
+  isOwner=em==='owner';
+  $('#modes').hidden=!canSu();
+  mo.hidden=!accountOwner; mu.hidden=!canSu(); m2.className=canSu()?'':'one';
+  mo.setAttribute('aria-pressed',em==='owner'); mu.setAttribute('aria-pressed',em==='su'); ms.setAttribute('aria-pressed',em==='user');
 }
 function setMode(m){
-  isOwner=accountOwner&&m==='owner';
+  mode=m;
   try{ localStorage.setItem('crMode',m); }catch(e){}
-  if(!isOwner&&(sub==='gr'||sub==='cs'||sub==='home')) sub='ct'; if(isOwner&&sub==='ct') sub='home';
-  modeSync(); sig=''; toast(isOwner?'Owner mode':'User mode'); render();
+  if(!isOwner&&(sub==='gr'||sub==='cs'||sub==='home')) sub='ct'; if(isOwner&&(sub==='ct'||sub==='gr')) sub='home';
+  modeSync(); sig=''; toast(m==='owner'?'Owner mode':m==='su'?'SuperUser mode':'User mode'); render();
 }
-$('#modeOwner').addEventListener('click',function(){
-  if(!accountOwner){ toast('Owner Mode is only for the owner. Sign out and sign in with the owner email.',4000); return; }
-  if(!isOwner) setMode('owner');
-});
-$('#modeSup').addEventListener('click',function(){ if(accountOwner){ if(isOwner) setMode('user'); } });
+$('#modeOwner').addEventListener('click',function(){ if(mode!=='owner') setMode('owner'); });
+$('#modeSu').addEventListener('click',function(){ if(mode!=='su') setMode('su'); });
+$('#modeSup').addEventListener('click',function(){ if(mode!=='user') setMode('user'); });
 /* ---------- dark and light mode ---------- */
 function themeNow(){ return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; }
 function themeSync(){ $('#themeBtn').textContent=themeNow()==='dark'?'Light Mode':'Dark Mode'; var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',themeNow()==='dark'?'#0F1713':'#EDF2EC'); }
@@ -550,7 +592,7 @@ function startData(){
     var c=window.claude;
     if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
     db=await c.use('db'); user=await c.use('user');
-    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} isOwner=accountOwner&&sm!=='supervisor'&&sm!=='user'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
+    var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} mode=accountOwner?(sm==='su'||sm==='user'||sm==='supervisor'?(sm==='supervisor'?'user':sm):'owner'):(sm==='user'?'user':'su'); isOwner=accountOwner&&mode==='owner'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
     started=true;
     modeSync();
     if(accountOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
@@ -561,7 +603,8 @@ function startData(){
         if(!made){ made=true; try{ await db.doc('cr/users/'+uid).set({n:myName||'New user',ph:myPhone||'',st:'pending',at:Date.now()}); }catch(e){ made=false; } }
         return;
       }
-      me=s.data(); meLoaded=true;
+      var oldRl=me&&me.rl; me=s.data(); meLoaded=true; var rlChanged=started&&startData.done&&(oldRl||'')!==(me.rl||'');
+      if(rlChanged){ modeSync(); logSub(); }
       if(me.st==='ok'){ var first=!startData.done; startData(); if(first) callBack(0); }
       render();
     },function(){ meLoaded=true; render(); });

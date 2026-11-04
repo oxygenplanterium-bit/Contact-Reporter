@@ -18,3 +18,7 @@ Contact Reporter has its own Supabase project, separate from Nursery Manager. Cr
 - **Owner:** everything.
 - **Approved user:** only the groups assigned to them and their own calls and reports.
 - **Not yet approved:** nothing except their own account record.
+
+## SuperUsers (added later)
+
+Run `supabase.sql` again in the SQL Editor (it is safe to run more than once). This switches on SuperUser reports. In the app, open Owner Mode, then Users, and tap **Make SuperUser** on an approved person. A SuperUser can see and share the reports of ordinary users and their own reports. Nobody except the owner and that SuperUser can see a SuperUser's reports.

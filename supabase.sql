@@ -17,6 +17,16 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'ok')
 $$;
 
+-- A SuperUser is an approved person the owner has marked with rl = 'su'. SuperUsers can read the call reports of ordinary users, never of other SuperUsers.
+create or replace function public.is_su() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'ok' and data ->> 'rl' = 'su')
+$$;
+create or replace function public.is_su_uid(u text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'rl' = 'su')
+$$;
+
 alter table public.docs enable row level security;
 drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
@@ -32,12 +42,13 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/users/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
-     or (path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)))
+     or (path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text
+          or (public.is_su() and not public.is_su_uid(split_part(path, '/', 4)))))))
 );
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
   public.is_owner()
-  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending')
+  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl'))
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
 );
 create policy docs_update on public.docs for update to authenticated
