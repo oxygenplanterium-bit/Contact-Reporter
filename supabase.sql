@@ -70,8 +70,8 @@ create policy docs_insert on public.docs for insert to authenticated with check 
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
+  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text or (public.is_su() and public.is_my_user(split_part(path, '/', 4))))) or path = 'cr/pay/' || auth.uid()::text)
+  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text or (public.is_su() and public.is_my_user(split_part(path, '/', 4))))) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key
