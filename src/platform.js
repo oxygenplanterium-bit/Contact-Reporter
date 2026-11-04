@@ -119,10 +119,10 @@ function loginName(v) {
 let current = null;
 const ready = new Promise(resolve => {
   const style = document.createElement('style');
-  style.textContent = '#loginBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#loginBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginBox button.alt{background:#fff;color:#1f6b34}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small{color:#5a6b5a}';
+  style.textContent = '#loginBox{position:fixed;inset:0;z-index:99999;background:#f4f8f4;display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,sans-serif;overflow:auto}#loginBox form{background:#fff;border:1px solid #cfe0cf;border-radius:14px;padding:20px;width:100%;max-width:360px;display:grid;gap:12px}#loginBox h1{font-size:1.2rem;margin:0;color:#1f6b34}#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #9bb59b;border-radius:10px}#loginBox button{font:inherit;padding:12px;border-radius:10px;border:1px solid #2a7f3e;background:#2a7f3e;color:#fff;font-weight:600}#loginBox button.alt{background:#fff;color:#1f6b34}#loginMsg{color:#b3261e;font-size:.9rem;min-height:1.2em;margin:0}#loginBox small{color:#5a6b5a}#loginTheme{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;padding:6px 12px !important;background:transparent !important;color:#1f6b34 !important;font-size:.85rem}html[data-theme=dark] #loginBox{background:#0F1713}html[data-theme=dark] #loginBox form{background:#1A2620;border-color:#2C3D33}html[data-theme=dark] #loginBox h1{color:#6DBE6F}html[data-theme=dark] #loginBox input{background:#111A15;color:#E9F1EB;border-color:#2C3D33}html[data-theme=dark] #loginBox button{background:#6DBE6F;border-color:#6DBE6F;color:#0B1A10}html[data-theme=dark] #loginBox button.alt,html[data-theme=dark] #loginTheme{background:transparent !important;color:#6DBE6F !important;border-color:#6DBE6F}html[data-theme=dark] #loginBox small{color:#9DB1A4}html[data-theme=dark] #loginMsg{color:#FF9381}';
   document.head.appendChild(style);
   const box = document.createElement('div'); box.id = 'loginBox';
-  box.innerHTML = '<form id="loginForm" novalidate><h1 id="loginTitle">Contact Reporter</h1>' +
+  box.innerHTML = '<button type="button" id="loginTheme"></button><form id="loginForm" novalidate><h1 id="loginTitle">Contact Reporter</h1>' +
     '<input id="loginName" type="text" autocomplete="name" placeholder="Your name" hidden>' +
     '<input id="loginEmail" type="text" inputmode="text" autocomplete="username" placeholder="Phone number or owner email" autocapitalize="none">' +
     '<input id="loginPass" type="password" autocomplete="current-password" placeholder="Password">' +
@@ -130,6 +130,10 @@ const ready = new Promise(resolve => {
     '<p id="loginMsg" role="alert"></p><button type="submit" id="loginGo">Sign in</button>' +
     '<button type="button" class="alt" id="loginSwap">Create new account</button>' +
     '<small id="loginNote">New here? Create an account with your phone number. The owner approves it before you can use the app.</small></form>';
+  const themeNow = () => document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const themeSync = () => { box.querySelector('#loginTheme').textContent = themeNow() === 'dark' ? 'Light Mode' : 'Dark Mode'; };
+  box.querySelector('#loginTheme').addEventListener('click', () => { const n = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); try { localStorage.setItem('crTheme', n); } catch (e) {} themeSync(); window.dispatchEvent(new Event('crtheme')); });
+  themeSync();
   const attach = () => document.body.appendChild(box);
   if (document.body) attach(); else document.addEventListener('DOMContentLoaded', attach);
   const q = id => box.querySelector(id);

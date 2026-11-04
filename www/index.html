@@ -1,14 +1,13 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Contact Reporter"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Contact Reporter</title>
+<script>(function(){ var t=""; try{ t=localStorage.getItem("crTheme")||""; }catch(e){} if(t!=="light"&&t!=="dark") t=(window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark"; document.documentElement.setAttribute("data-theme",t); })();</script>
 <style>
 :root{
   --bg:#0F1713; --card:#1A2620; --line:#2C3D33; --field:#111A15; --ink:#E9F1EB; --muted:#9DB1A4;
   --accent:#6DBE6F; --accent-ink:#0B1A10; --loss:#FF9381; --warn:#E8B64D;
   --f:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color-scheme:dark;
 }
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){ --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D; --accent:#2A7F3E; --accent-ink:#FFFFFF; --loss:#B0301F; --warn:#8F5B00; color-scheme:light; }
-}
+:root[data-theme="light"]{ --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D; --accent:#2A7F3E; --accent-ink:#FFFFFF; --loss:#B0301F; --warn:#8F5B00; color-scheme:light; }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 body{background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4; margin:0;
@@ -17,18 +16,18 @@ input,textarea{text-transform:none}
 html{-webkit-text-size-adjust:100%}
 .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px}
 .brand{display:flex; align-items:center; gap:12px}
-.brand img{width:52px; height:52px; border-radius:14px}
-h1{margin:0; font-size:1.5rem; line-height:1.15}
+.brand img{width:44px; height:44px; border-radius:12px}
+h1{margin:0; font-size:1.25rem; line-height:1.15; white-space:nowrap}
 h2{margin:0 0 8px; font-size:1.15rem}
 button,input,select,textarea{font:inherit; font-size:16px !important; color:inherit}
 button,a,label{touch-action:manipulation}
 .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px}
-input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:12px; padding:10px 12px; min-width:0}
+input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:8px 12px; min-width:0}
 textarea{resize:vertical}
 .f{display:flex; flex-direction:column; gap:4px; margin:0}
 .f>span{color:var(--muted); font-size:.9rem}
-.btn{background:var(--field); border:1px solid var(--line); border-radius:12px; padding:10px 14px; min-height:44px; font-weight:600; cursor:pointer}
-.btn.small{min-height:36px; padding:6px 12px; border-radius:10px}
+.btn{background:var(--field); border:1px solid var(--line); border-radius:10px; padding:6px 12px; min-height:38px; font-size:.9rem !important; font-weight:600; cursor:pointer}
+.btn.small{min-height:30px; padding:3px 10px; border-radius:8px; font-size:.82rem !important}
 .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .btn.danger{color:var(--loss); border-color:var(--loss)}
 .btn:disabled{opacity:.5}
@@ -36,26 +35,26 @@ textarea{resize:vertical}
 .sline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .two{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .aseg{display:grid; gap:8px}
-.aseg .btn{padding:8px 4px; font-size:.92rem}
+.aseg .btn{padding:5px 4px; min-height:34px; font-size:.85rem !important}
 .aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
 .dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
 #toast[hidden]{display:none}
-.modes{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
-.modes .btn{min-height:54px; font-size:.95rem; border-radius:12px; white-space:nowrap; padding-left:6px; padding-right:6px}
+.modes{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:4px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+.modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
 .bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 </style></head><body>
 <div class="wrap">
-  <div class="brand"><img src="icon-192.png" alt=""><div><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div></div>
+  <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></nav>
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 9:05 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 9:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -280,18 +279,18 @@ function render(){
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div','card'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
-    el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
-    hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; top.style.cssText='flex:1 1 auto;min-width:0';
-    top.append(mk('b',null,c.n)); top.append(mk('div','pmeta',c.p));
-    var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[gn,c.nt].filter(Boolean).join(' · '); if(meta) top.append(mk('div','pmeta',meta));
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; hd.append(top,cb); el.append(hd);
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border-radius:12px'; tint(el,ix);
+    hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
+    top.append(mk('b',null,c.n));
+    var gn=c.g&&groups[c.g]?groups[c.g].n:''; var meta=[c.p,gn,c.nt].filter(Boolean).join(' · '); var mt=mk('div','pmeta',meta); mt.style.fontSize='.82rem'; top.append(mt);
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; hd.append(top,cb); el.append(hd);
     if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
     box.append(el);
   });
 }
 function viewHome(body){
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
-  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(lst);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:5px'; body.append(lst);
   function fill(){
     lst.textContent=''; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
     if(!all.length){ lst.append(mk('p','pmeta',ctAll().length?'No contacts match.':'No contacts yet. Open the Contacts tab to add them.')); return; }
@@ -308,7 +307,7 @@ function viewCt(body){
   var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=callQ; q.autocomplete='off';
   var gs=groupSel(callG,true); bar.append(q); if(isOwner||grList().length>1) bar.append(gs); body.append(bar);
-  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(lst);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:5px'; body.append(lst);
   function fill(){
     lst.textContent=''; var qq=callQ.trim().toLowerCase(), all=ctAll().filter(function(it){
       if(callG==='-'){ if(it[1].g) return false; } else if(callG&&it[1].g!==callG) return false;
@@ -398,6 +397,11 @@ $('#modeOwner').addEventListener('click',function(){
   if(!isOwner) setMode('owner');
 });
 $('#modeSup').addEventListener('click',function(){ if(accountOwner){ if(isOwner) setMode('supervisor'); } });
+/* ---------- dark and light mode ---------- */
+function themeNow(){ return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; }
+function themeSync(){ $('#themeBtn').textContent=themeNow()==='dark'?'Light Mode':'Dark Mode'; var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',themeNow()==='dark'?'#0F1713':'#EDF2EC'); }
+$('#themeBtn').addEventListener('click',function(){ var t=themeNow()==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); try{ localStorage.setItem('crTheme',t); }catch(e){} themeSync(); });
+window.addEventListener('crtheme',themeSync); themeSync();
 /* ---------- app refresh ---------- */
 async function appRefresh(){
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.filter(function(k){ return k.indexOf('contactreporter-shell-')===0; }).map(function(k){ return caches.delete(k); })); } }catch(e){}
