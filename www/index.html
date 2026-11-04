@@ -62,7 +62,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 4:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 5:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -320,6 +320,12 @@ function rows(box,list,own,off){
   });
 }
 async function assignContacts(target,ids){
+  if(target==='-'){
+    var rem0={}, add0={ct:{}}; ids.forEach(function(id){ var c=ctGet(id); if(!c||!c.g) return; add0.ct[id]={n:c.n,p:c.p,nt:c.nt||''}; (rem0[c.g]=rem0[c.g]||{ct:{}}).ct[id]=null; });
+    if(!Object.keys(add0.ct).length) return true;
+    if(!(await grPut('none',add0))) return false;
+    var k0=Object.keys(rem0); for(var j=0;j<k0.length;j++){ if(!(await grPut(k0[j],rem0[k0[j]]))) return false; } return true;
+  }
   var gid='u'+target, tn=(target===uid&&accountOwner)?'Owner':((users[target]&&users[target].n)||'User');
   var ok=true;
   if(!groups[gid]) ok=await grPut(gid,{n:tn,all:false,to:[target]});
@@ -335,14 +341,14 @@ function viewHome(body){
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
       gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); am.append(btn('Add Many',ctBulk),sb,gb); body.append(am);
-      if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; var us=document.createElement('select'), u0=mk('option',null,'Choose user'); u0.value=''; us.append(u0);
+      if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; var us=document.createElement('select'), u0=mk('option',null,'Choose user'); u0.value=''; us.append(u0); var un=mk('option',null,'No one (remove assignment)'); un.value='-'; us.append(un);
         if(accountOwner&&uid){ var uo=mk('option',null,'Owner (me)'); uo.value=uid; us.append(uo); }
         okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; us.append(o); });
-        var inf=mk('p','pmeta','Tick the contacts, then choose the user.'); var ar=mk('div','two'), go=mk('button','btn primary','Assign To User'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
+        var inf=mk('p','pmeta','Tick the contacts, then choose the user.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
         selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Tick the contacts, then choose the user.'; }; selCnt();
         cl.addEventListener('click',function(){ selMode=false; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
         go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!us.value){ toast('Choose a user.'); return; }
-          if(await assignContacts(us.value,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+' assigned'); selMode=false; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
+          if(await assignContacts(us.value,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(us.value==='-'?' unassigned':' assigned')); selMode=false; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
         ab.append(fld('Assign to',us),inf,ar); body.append(ab); }
       viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
