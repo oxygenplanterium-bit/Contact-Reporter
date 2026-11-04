@@ -62,7 +62,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 3:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 3:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -288,17 +288,20 @@ function render(){
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
 }
-var ctOpen={};
+var ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
     el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(el,ix);
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; top.style.cssText='flex:1 1 auto;min-width:0;line-height:1.25';
+    var selOn=own&&selMode&&sub==='home';
     var nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var mt=mk('div','pmeta'); mt.style.cssText='font-size:.82rem;display:flex;flex-direction:column;gap:1px;margin-top:2px';
     [['Phone',c.p],['Group',gn||'No group'],['Note',c.nt]].forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(own&&sub==='ct') hd.append(top); else if(own){ var ics=mk('div'); ics.style.cssText='display:flex;gap:2px;flex:0 0 auto';
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='3px 14px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
+      top.addEventListener('click',function(){ sc.checked=!sc.checked; sc.dispatchEvent(new Event('change')); }); hd.append(sc,top); }
+    else if(own&&sub==='ct') hd.append(top); else if(own){ var ics=mk('div'); ics.style.cssText='display:flex;gap:2px;flex:0 0 auto';
       var SV='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
       function ib(lbl,svg,fn){ var x=document.createElement('button'); x.type='button'; x.setAttribute('aria-label',lbl); x.title=lbl; x.innerHTML=SV+svg+'</svg>'; x.style.cssText='width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer'; x.addEventListener('click',fn); return x; }
       var eb=ib('Edit','<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',function(){ ctEdit(id); });
@@ -309,10 +312,32 @@ function rows(box,list,own,off){
     box.append(el);
   });
 }
+async function assignContacts(target,ids){
+  var gid='u'+target, tn=(target===uid&&accountOwner)?'Owner':((users[target]&&users[target].n)||'User');
+  var ok=true;
+  if(!groups[gid]) ok=await grPut(gid,{n:tn,all:false,to:[target]});
+  if(!ok) return false;
+  var add={ct:{}}, rem={};
+  ids.forEach(function(id){ var c=ctGet(id); if(!c) return; var og=c.g||'none'; if(og===gid) return; add.ct[id]={n:c.n,p:c.p,nt:c.nt||''}; (rem[og]=rem[og]||{ct:{}}).ct[id]=null; });
+  if(!Object.keys(add.ct).length) return true;
+  ok=await grPut(gid,add); if(!ok) return false;
+  var gs=Object.keys(rem); for(var i=0;i<gs.length;i++){ if(!(await grPut(gs[i],rem[gs[i]]))) return false; }
+  return true;
+}
 function viewHome(body){
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
-      gb.setAttribute('aria-pressed',grShow); am.append(btn('Add Many',ctBulk),gb); body.append(am); viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
+      gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); am.append(btn('Add Many',ctBulk),sb,gb); body.append(am);
+      if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; var us=document.createElement('select'), u0=mk('option',null,'Choose user'); u0.value=''; us.append(u0);
+        if(accountOwner&&uid){ var uo=mk('option',null,'Owner (me)'); uo.value=uid; us.append(uo); }
+        okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; us.append(o); });
+        var inf=mk('p','pmeta','Tick the contacts, then choose the user.'); var ar=mk('div','two'), go=mk('button','btn primary','Assign To User'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
+        selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Tick the contacts, then choose the user.'; }; selCnt();
+        cl.addEventListener('click',function(){ selMode=false; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
+        go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!us.value){ toast('Choose a user.'); return; }
+          if(await assignContacts(us.value,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+' assigned'); selMode=false; selSet={}; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
+        ab.append(fld('Assign to',us),inf,ar); body.append(ab); }
+      viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
