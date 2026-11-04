@@ -64,7 +64,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 8:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 9:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -273,7 +273,7 @@ function render(){
   var ae=document.activeElement, body=$('#body');
   if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   if(!isOwner&&sub==='home') sub='ct';
-  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,me,groups,users,logRows,logKey,groupsLoaded]);
+  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,usShow,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -306,7 +306,7 @@ function render(){
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
 }
-var viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -421,6 +421,11 @@ function viewCs(body){
   body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
+  var fr=mk('div','aseg'); fr.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+  [['su','Show SuperUsers'],['us','Show Users']].forEach(function(t){ var fb2=mk('button','btn',t[1]); fb2.type='button'; fb2.setAttribute('aria-pressed',usShow===t[0]); fb2.addEventListener('click',function(){ usShow=usShow===t[0]?'':t[0]; sig=''; render(); }); fr.append(fb2); });
+  body.append(fr);
+  if(usShow) l=l.filter(function(it){ return (it[1].rl==='su')===(usShow==='su'); });
+  if(!l.length){ body.append(mk('p','pmeta',usShow==='su'?'No SuperUsers yet. Tap Make SuperUser on an approved person.':'No ordinary users.')); return; }
   l.forEach(function(it,ix){
     var id=it[0], u=it[1], el=mk('div','card'), ac=mk('div','sline'), ok=u.st==='ok';
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
