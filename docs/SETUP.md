@@ -22,3 +22,9 @@ Contact Reporter has its own Supabase project, separate from Nursery Manager. Cr
 ## SuperUsers (added later)
 
 Run `supabase.sql` again in the SQL Editor (it is safe to run more than once). This switches on SuperUser reports. In the app, open Owner Mode, then Users, and tap **Make SuperUser** on an approved person. A SuperUser can see and share the reports of ordinary users and their own reports. Nobody except the owner and that SuperUser can see a SuperUser's reports.
+
+## Subscriptions with UPI payment (added later)
+
+Run `supabase.sql` again (safe to repeat). In Owner Mode open **Payments**, fill in your name, UPI ID, amount, days for each payment and free days for new people, tick "Subscription is switched on" and save. Then tap **Give Everyone 30 Days** so people approved earlier are not locked out.
+
+When a person's time ends they see a payment screen with a UPI QR code. After paying they enter the UPI reference number and tap **I Have Paid**. You see it under Payments, check it against your UPI app, and tap **Confirm Payment** to give them the next period. You can also add days to anyone from the Users tab. The owner is never locked out.

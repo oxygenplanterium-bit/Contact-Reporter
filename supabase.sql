@@ -12,15 +12,23 @@ create or replace function public.is_owner() returns boolean
 language sql stable as $$ select lower(coalesce(auth.jwt() ->> 'email','')) = 'oxygenplanterium@gmail.com' $$;
 
 -- A caller is a person whose account the owner has approved.
+-- When the owner switches subscriptions on (cr/settings has on = true), a person also needs an end date (ex, milliseconds) in the future.
 create or replace function public.is_ok() returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'ok')
+  select exists (
+    select 1 from public.docs u
+    where u.path = 'cr/users/' || auth.uid()::text and u.data ->> 'st' = 'ok'
+      and (
+        coalesce((select s.data ->> 'on' from public.docs s where s.path = 'cr/settings'), 'false') <> 'true'
+        or coalesce((u.data ->> 'ex')::numeric, 0) > extract(epoch from now()) * 1000
+      )
+  )
 $$;
 
 -- A SuperUser is an approved person the owner has marked with rl = 'su'. SuperUsers can read the call reports of ordinary users, never of other SuperUsers.
 create or replace function public.is_su() returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'ok' and data ->> 'rl' = 'su')
+  select public.is_ok() and exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'rl' = 'su')
 $$;
 create or replace function public.is_su_uid(u text) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -40,6 +48,8 @@ drop policy if exists docs_delete on public.docs;
 create policy docs_select on public.docs for select to authenticated using (
   public.is_owner()
   or path = 'cr/users/' || auth.uid()::text
+  or path = 'cr/settings'
+  or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
      or (path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text
@@ -48,12 +58,13 @@ create policy docs_select on public.docs for select to authenticated using (
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
   public.is_owner()
-  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl'))
+  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl') and not (data ? 'ex'))
+  or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text))
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text));
+  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
+  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key

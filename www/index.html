@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 12:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -96,9 +96,71 @@ function todayKey(){ return dayKey(); }
 function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
 function fmtTime(ms){ if(!ms) return ''; var d=new Date(ms), h=d.getHours(), m=two(d.getMinutes()); return (h%12||12)+':'+m+' '+(h<12?'AM':'PM'); }
 function fmtPhone(d){ d=String(d||''); return d.length===12&&d.slice(0,2)==='91' ? '+91 '+d.slice(2,7)+' '+d.slice(7) : (d?'+'+d:''); }
+/* Minimal QR Code encoder: byte mode, error correction M, versions 1 to 10 (port of the well-known public algorithm). */
+var QR=(function(){
+  var ECPB=[0,10,16,26,18,24,16,18,22,22,26], NB=[0,1,1,1,2,2,4,4,4,5,5];
+  var EXP=[], LOG=[];
+  (function(){ var x=1; for(var i=0;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&256) x^=0x11D; } for(i=255;i<512;i++) EXP[i]=EXP[i-255]; })();
+  function gmul(a,b){ return (a&&b)?EXP[LOG[a]+LOG[b]]:0; }
+  function rsGen(n){ var g=[1]; for(var i=0;i<n;i++){ var ng=new Array(g.length+1).fill(0); for(var j=0;j<g.length;j++){ ng[j]^=g[j]; ng[j+1]^=gmul(g[j],EXP[i]); } g=ng; } return g; }
+  function rsRem(data,n){ var g=rsGen(n), r=new Array(n).fill(0); data.forEach(function(b){ var f=b^r[0]; r.shift(); r.push(0); for(var i=0;i<n;i++) r[i]^=gmul(g[i+1],f); }); return r; }
+  function rawModules(v){ var r=(16*v+128)*v+64; if(v>=2){ var na=Math.floor(v/7)+2; r-=(25*na-10)*na-55; if(v>=7) r-=36; } return r; }
+  function dataCw(v){ return Math.floor(rawModules(v)/8)-ECPB[v]*NB[v]; }
+  function alignPos(v){ if(v===1) return []; var na=Math.floor(v/7)+2, step=(v===32)?26:Math.ceil((v*4+4)/(na*2-2))*2, r=[6]; for(var p=v*4+10,i=na-1;i>=1;i--,p-=step) r.splice(1,0,p); return r; }
+  function bits(val,n,out){ for(var i=n-1;i>=0;i--) out.push((val>>>i)&1); }
+  function encode(text){
+    var bytes=unescape(encodeURIComponent(text)).split('').map(function(c){ return c.charCodeAt(0); });
+    var v=1; for(;v<=10;v++){ var cc=v<=9?8:16; if(4+cc+bytes.length*8<=dataCw(v)*8) break; } if(v>10) return null;
+    var b=[]; bits(4,4,b); bits(bytes.length,v<=9?8:16,b); bytes.forEach(function(x){ bits(x,8,b); });
+    var cap=dataCw(v)*8; bits(0,Math.min(4,cap-b.length),b); while(b.length%8) b.push(0);
+    for(var pad=0xEC;b.length<cap;pad^=0xEC^0x11) bits(pad,8,b);
+    var cw=[]; for(var i=0;i<b.length;i+=8){ var x=0; for(var j=0;j<8;j++) x=(x<<1)|b[i+j]; cw.push(x); }
+    var nb=NB[v], ec=ECPB[v], raw=Math.floor(rawModules(v)/8), short=nb-raw%nb, sl=Math.floor(raw/nb), blocks=[], k=0;
+    for(i=0;i<nb;i++){ var len=sl-ec+(i<short?0:1), d=cw.slice(k,k+len); k+=len; blocks.push({d:d,e:rsRem(d,ec)}); }
+    var out=[]; for(i=0;i<=sl-ec;i++) blocks.forEach(function(bl){ if(i<bl.d.length) out.push(bl.d[i]); });
+    for(i=0;i<ec;i++) blocks.forEach(function(bl){ out.push(bl.e[i]); });
+    return {v:v,cw:out};
+  }
+  function build(text){
+    var enc=encode(text); if(!enc) return null; var v=enc.v, n=v*4+17, m=[], f=[], i, j;
+    for(i=0;i<n;i++){ m.push(new Array(n).fill(0)); f.push(new Array(n).fill(false)); }
+    function set(x,y,d){ if(x<0||y<0||x>=n||y>=n) return; m[y][x]=d?1:0; f[y][x]=true; }
+    function finder(cx,cy){ for(var dy=-4;dy<=4;dy++) for(var dx=-4;dx<=4;dx++){ var d=Math.max(Math.abs(dx),Math.abs(dy)); set(cx+dx,cy+dy,d!==2&&d!==4); } }
+    for(i=0;i<n;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+    finder(3,3); finder(n-4,3); finder(3,n-4);
+    var ap=alignPos(v), na=ap.length;
+    for(i=0;i<na;i++) for(j=0;j<na;j++){ if((i===0&&j===0)||(i===0&&j===na-1)||(i===na-1&&j===0)) continue; for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++) set(ap[i]+dx,ap[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1); }
+    function fmt(mask){ var d=(0<<3|mask), r=d; for(var q=0;q<10;q++) r=(r<<1)^((r>>>9)*0x537); var bitsF=((d<<10)|r)^0x5412;
+      var g=function(q){ return ((bitsF>>>q)&1)!==0; };
+      for(var q=0;q<=5;q++) set(8,q,g(q)); set(8,7,g(6)); set(8,8,g(7)); set(7,8,g(8)); for(q=9;q<15;q++) set(14-q,8,g(q));
+      for(q=0;q<8;q++) set(n-1-q,8,g(q)); for(q=8;q<15;q++) set(8,n-15+q,g(q)); set(8,n-8,true); }
+    fmt(0);
+    if(v>=7){ var rem=v; for(i=0;i<12;i++) rem=(rem<<1)^((rem>>>11)*0x1F25); var vb=(v<<12)|rem; for(i=0;i<18;i++){ var bt=((vb>>>i)&1)!==0, a=n-11+i%3, c=Math.floor(i/3); set(a,c,bt); set(c,a,bt); } }
+    var bitsAll=[]; enc.cw.forEach(function(x){ bits(x,8,bitsAll); }); var bi=0;
+    for(var right=n-1;right>=1;right-=2){ if(right===6) right=5; for(var vert=0;vert<n;vert++) for(j=0;j<2;j++){ var x=right-j, up=((right+1)&2)===0, y=up?n-1-vert:vert; if(!f[y][x]&&bi<bitsAll.length){ m[y][x]=bitsAll[bi++]; } } }
+    function masked(mask){ var r=m.map(function(row){ return row.slice(); });
+      for(var y=0;y<n;y++) for(var x=0;x<n;x++){ if(f[y][x]) continue; var inv; switch(mask){ case 0:inv=(x+y)%2===0;break; case 1:inv=y%2===0;break; case 2:inv=x%3===0;break; case 3:inv=(x+y)%3===0;break; case 4:inv=(Math.floor(x/3)+Math.floor(y/2))%2===0;break; case 5:inv=x*y%2+x*y%3===0;break; case 6:inv=(x*y%2+x*y%3)%2===0;break; default:inv=((x+y)%2+x*y%3)%2===0; } if(inv) r[y][x]^=1; } return r; }
+    function pen(r){ var p=0,y,x,run,c; for(var t=0;t<2;t++){ for(y=0;y<n;y++){ run=1; for(x=1;x<n;x++){ var a=t?r[x][y]:r[y][x], b2=t?r[x-1][y]:r[y][x-1]; if(a===b2){ run++; if(run===5) p+=3; else if(run>5) p++; } else run=1; } } }
+      for(y=0;y<n-1;y++) for(x=0;x<n-1;x++){ c=r[y][x]; if(c===r[y][x+1]&&c===r[y+1][x]&&c===r[y+1][x+1]) p+=3; }
+      var dark=0; r.forEach(function(row){ row.forEach(function(q){ dark+=q; }); }); p+=Math.floor(Math.abs(dark*20-n*n*10)/(n*n))*10; return p; }
+    var best=0, bp=1e9, bm=null; for(var mk=0;mk<8;mk++){ var r=masked(mk); var q=pen(r); if(q<bp){ bp=q; best=mk; bm=r; } }
+    var mm=m; m=bm; fmtApply(best); return {n:n,m:m};
+    function fmtApply(mask){ var d=(0<<3|mask), r=d; for(var q=0;q<10;q++) r=(r<<1)^((r>>>9)*0x537); var bF=((d<<10)|r)^0x5412; var g=function(q){ return ((bF>>>q)&1); };
+      function sm(x,y,dd){ m[y][x]=dd?1:0; }
+      for(var q=0;q<=5;q++) sm(8,q,g(q)); sm(8,7,g(6)); sm(8,8,g(7)); sm(7,8,g(8)); for(q=9;q<15;q++) sm(14-q,8,g(q));
+      for(q=0;q<8;q++) sm(n-1-q,8,g(q)); for(q=8;q<15;q++) sm(8,n-15+q,g(q)); sm(8,n-8,1); }
+  }
+  function draw(canvas,text,px){
+    var q=build(text); if(!q) return false; var n=q.n, quiet=4, s=Math.floor(px/(n+quiet*2)); if(s<1) s=1; var size=(n+quiet*2)*s; canvas.width=canvas.height=size;
+    var c=canvas.getContext('2d'); c.fillStyle='#fff'; c.fillRect(0,0,size,size); c.fillStyle='#000';
+    for(var y=0;y<n;y++) for(var x=0;x<n;x++) if(q.m[y][x]) c.fillRect((x+quiet)*s,(y+quiet)*s,s,s); return true;
+  }
+  return {draw:draw,build:build};
+})();
+
 /* ---------- state ---------- */
 var db=null, user=null, isOwner=false, accountOwner=false, mode='user', lgInc=true, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
-var groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
+var settings={}, settingsLoaded=false, claim=null, claims={}, lastSubOk=true, groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
 var sub='home', homeQ='', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
@@ -107,6 +169,33 @@ function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
 function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
+var DAY=86400000;
+function subsOn(){ return !!(settings&&settings.on===true); }
+function subOk(){ return accountOwner||!subsOn()||!!(me&&Number(me.ex)>Date.now()); }
+function subDays(){ return Math.max(1,Math.round(Number(settings&&settings.days)||30)); }
+function moneyTxt(a){ a=Number(a)||0; return '\u20b9'+(a%1?a.toFixed(2):String(a)); }
+function upiLink(){ var st=settings||{}; return 'upi://pay?pa='+encodeURIComponent(st.upi||'')+'&pn='+encodeURIComponent(st.pn||'Owner')+(Number(st.amt)>0?'&am='+encodeURIComponent(Number(st.amt).toFixed(2)):'')+'&cu=INR&tn='+encodeURIComponent('Contact Reporter subscription'); }
+function qrBox(px){ var w=mk('div'); w.style.cssText='background:#fff;padding:8px;border-radius:12px;align-self:center;line-height:0'; var cv=document.createElement('canvas'); cv.style.cssText='width:'+px+'px;height:'+px+'px;display:block'; if(QR.draw(cv,upiLink(),px*2)) w.append(cv); else w.append(mk('span',null,'QR is too long')); return w; }
+function payCard(expired){
+  var st=settings||{}, c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px';
+  c.append(mk('b',null,expired?'Your subscription has ended':'Renew your subscription'));
+  if(!st.upi){ c.append(mk('p','pmeta','The owner has not set up payment yet. Please contact the owner.')); return c; }
+  c.append(mk('p','pmeta','Pay '+moneyTxt(st.amt)+' for '+subDays()+' days. Scan this QR code with any UPI app, then enter the payment reference below.'));
+  c.append(qrBox(220));
+  var nm=mk('div'); nm.style.cssText='text-align:center'; nm.append(mk('b',null,st.pn||'Owner')); c.append(nm);
+  var ui=mk('div','pmeta',st.upi); ui.style.cssText='text-align:center;text-transform:none;word-break:break-all'; c.append(ui);
+  var ar=mk('div','two'), cp=mk('button','btn','Copy UPI ID'), pa=mk('button','btn primary','Pay With UPI App'); cp.type=pa.type='button'; ar.append(cp,pa); c.append(ar);
+  cp.addEventListener('click',function(){ try{ navigator.clipboard.writeText(st.upi).then(function(){ toast('UPI ID copied'); },function(){ toast(st.upi,4000); }); }catch(e){ toast(st.upi,4000); } });
+  pa.addEventListener('click',function(){ var a=document.createElement('a'); a.href=upiLink(); a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); });
+  if(claim&&claim.st==='pending'){ var w=mk('p',null,'Payment sent. You will get access when the owner confirms it.'); w.style.cssText='font-weight:600;color:var(--warn)'; c.append(w, mk('p','pmeta','Reference: '+(claim.ref||''))); }
+  var rf=mkIn('text','UPI reference number (UTR)',''); rf.maxLength=40; rf.style.textTransform='none';
+  var sv=mk('button','btn primary',claim&&claim.st==='pending'?'Send Again':'I Have Paid'); sv.type='button';
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  sv.addEventListener('click',async function(){ var r=cleanName(rf.value); if(r.length<6){ er.textContent='Enter the payment reference number from your UPI app.'; return; }
+    if(await putDoc('cr/pay/'+uid,{n:callerName(),ph:myPhone||(me&&me.ph)||'',ref:r,amt:Number(st.amt)||0,at:Date.now(),st:'pending'})){ toast('Payment sent to the owner'); sig=''; var d=document.getElementById('dlgPay'); if(d&&d.open) d.close(); render(); } });
+  c.append(fld('Payment reference',rf),er,sv); return c;
+}
+function payDlg(){ var r=dlg('dlgPay'), d=r[0], b=r[1]; b.append(payCard(false)); var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x); openDlg(d); }
 function isSuAcct(){ return !!(me&&me.st==='ok'&&me.rl==='su'); }
 function canSu(){ return accountOwner||isSuAcct(); }
 function isSuMode(){ return accountOwner?mode==='su':(isSuAcct()&&mode!=='user'); }
@@ -160,6 +249,7 @@ function pendGet(){ try{ return JSON.parse(localStorage.getItem(CALL_KEY)||'null
 function pendSet(o){ try{ if(o) localStorage.setItem(CALL_KEY,JSON.stringify(o)); else localStorage.removeItem(CALL_KEY); }catch(e){} }
 function callStart(cid){
   var c=ctGet(cid); if(!c) return;
+  if(!subOk()){ toast('Your subscription has ended.'); return; }
   if(!approved()){ toast('Your account is waiting for approval.'); return; }
   if(accountOwner&&viewAs&&viewAs!==uid){ toast('This is only a preview of that user. Choose Owner (me) to call.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
@@ -283,7 +373,7 @@ function render(){
   var ae=document.activeElement, body=$('#body');
   if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   if(!isOwner&&sub==='home') sub='ct';
-  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,me,groups,users,logRows,logKey,groupsLoaded]);
+  var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -301,20 +391,22 @@ function render(){
     seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true;
     var w2=mk('div','card'); w2.append(mk('b',null,'Nothing here in User Mode'),mk('p','pmeta','You are a SuperUser. Your contacts and your reports are in SuperUser Mode.')); w2.style.cssText='display:flex;flex-direction:column;gap:6px'; body.append(w2); return;
   }
+  if(!accountOwner&&settingsLoaded&&!subOk()){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; body.append(payCard(true)); return; }
   seg.hidden=false;
-  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'); });
+  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'); });
   if(isOwner&&(sub==='ct'||sub==='gr')) sub='home'; if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
+  if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
   if(accountOwner&&!isOwner&&sub==='ct'){
     var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
     var wantSu=isSuMode(); okUsers().filter(function(it){ return (it[1].rl==='su')===wantSu; }).forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
     vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
     body.append(fld('Viewing contacts of',vs));
   }
-  if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
+  if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
 var usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
@@ -432,6 +524,44 @@ function viewGr(body){
     gd.append(ac); body.append(el);
   });
 }
+function extendUser(id,days){ var u=users[id]||{}; var base=Math.max(Date.now(),Number(u.ex)||0); return putDoc('cr/users/'+id,{ex:base+days*DAY}); }
+function viewPay(body){
+  var st=settings||{}, c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px';
+  c.append(mk('b',null,'Subscription settings'));
+  var on=document.createElement('input'); on.type='checkbox'; on.checked=st.on===true; on.style.cssText='width:20px;height:20px;margin:0;flex:none';
+  var ol=mk('label'); ol.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; ol.append(on,mk('span',null,'Subscription is switched on'));
+  var pn=mkIn('text','Name shown with the QR code',st.pn||''), upi=mkIn('text','UPI ID, for example name@bank',st.upi||''), amt=mkIn('number','Amount in rupees',st.amt||''), days=mkIn('number','Days for each payment',st.days||30), tr=mkIn('number','Free days for a newly approved person',st.trial==null?'':st.trial);
+  upi.style.textTransform='none'; upi.autocapitalize='off'; upi.autocomplete='off'; amt.inputMode='decimal'; days.inputMode='numeric'; tr.inputMode='numeric'; pn.maxLength=40; upi.maxLength=60;
+  var er=mk('p','pmeta'); er.style.color='var(--warn)'; var sv=mk('button','btn primary','Save'); sv.type='button';
+  c.append(ol,fld('Name',pn),fld('UPI ID',upi),fld('Amount (rupees)',amt),fld('Days for each payment',days),fld('Free days for new people',tr),er,sv);
+  sv.addEventListener('click',async function(){
+    var u=upi.value.trim(), a=parseFloat(amt.value), d=Math.round(parseFloat(days.value)), t=Math.round(parseFloat(tr.value||'0'));
+    if(on.checked||u){ if(!/^[A-Za-z0-9._\-]{2,}@[A-Za-z0-9._\-]{2,}$/.test(u)){ er.textContent='Enter a valid UPI ID such as name@bank.'; return; } }
+    if(on.checked&&!(a>0)){ er.textContent='Enter the amount in rupees.'; return; }
+    if(!(d>=1)){ er.textContent='Enter the number of days.'; return; }
+    er.textContent='';
+    if(await putDoc('cr/settings',{on:on.checked,pn:cleanName(pn.value),upi:u,amt:a>0?a:0,days:d,trial:t>0?t:0})) toast('Subscription settings saved');
+  });
+  body.append(c);
+  if(st.on){
+    var g=mk('div','card'); g.style.cssText='display:flex;flex-direction:column;gap:8px'; g.append(mk('b',null,'Give everyone more time'),mk('p','pmeta','People who were approved before you switched subscriptions on have no end date and are blocked until they pay. Give every approved person '+subDays()+' more days.'));
+    var gb=btn('Give Everyone '+subDays()+' Days',function(){ arm(gb,'givall','Give Everyone '+subDays()+' Days',async function(){ var ok=true, n=0, ids=Object.keys(users).filter(function(k){ return users[k]&&users[k].st==='ok'; }); for(var i=0;i<ids.length;i++){ ok=ok&&await extendUser(ids[i],subDays()); n++; } if(ok) toast(n+' people extended'); }); },'');
+    g.append(gb); body.append(g);
+  }
+  var pend=Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; });
+  var p=mk('div','card'); p.style.cssText='display:flex;flex-direction:column;gap:8px'; p.append(mk('b',null,'Payments waiting for you'));
+  if(!pend.length) p.append(mk('p','pmeta','No payments are waiting.'));
+  pend.sort(function(a,b){ return (claims[b].at||0)-(claims[a].at||0); }).forEach(function(k,i){
+    var x=claims[k], r=mk('div'); r.style.cssText='display:flex;flex-direction:column;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:10px'; tint(r,i);
+    r.append(mk('b',null,x.n||'User'),mk('div','pmeta',[fmtPhone(x.ph),moneyTxt(x.amt),fmtIso(dayKey(x.at))+' '+fmtTime(x.at)].filter(Boolean).join(' · ')));
+    var rf=mk('div','pmeta','Reference: '+(x.ref||'')); rf.style.textTransform='none'; r.append(rf);
+    var ac=mk('div','sline'), ok=btn('Confirm Payment',function(){ arm(ok,'pcf'+k,'Confirm Payment',async function(){ var a=await extendUser(k,subDays()); if(a){ await putDoc('cr/users/'+k,{lp:{at:Date.now(),ref:x.ref||'',amt:x.amt||0}}); await delDoc('cr/pay/'+k); toast('Payment confirmed. '+(x.n||'User')+' has '+subDays()+' more days.',4000); } }); },'primary');
+    var no=btn('Reject',function(){ arm(no,'prj'+k,'Reject',async function(){ if(await delDoc('cr/pay/'+k)) toast('Payment rejected'); }); },'danger');
+    ac.append(ok,no); r.append(ac); p.append(r);
+  });
+  body.append(p);
+  if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
+}
 function viewCs(body){
   body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
@@ -456,8 +586,9 @@ function viewCs(body){
       tg.addEventListener('click',function(){ usOpen[id]=!usOpen[id]; cl.hidden=!usOpen[id]; tg.textContent=(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'; });
       el.append(mk('div','pmeta',mine.length?mine.length+' contact'+(mine.length===1?'':'s')+' assigned':'No contacts assigned'),tg,cl);
     }
-    if(!ok){ ac.append(btn('Approve',async function(){ if(await putDoc('cr/users/'+id,{st:'ok'})) toast(u.n+' approved'); },'primary')); }
-    else{ ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
+    if(ok&&subsOn()){ var vt=mk('div','pmeta',u.ex?(Number(u.ex)>Date.now()?'Valid till ':'Ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'); if(!(Number(u.ex)>Date.now())) vt.style.cssText='color:var(--warn);font-weight:600'; el.append(vt); }
+    if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary')); }
+    else{ if(subsOn()) ac.append(btn('Add '+subDays()+' Days',async function(){ if(await extendUser(id,subDays())) toast(u.n+' has '+subDays()+' more days'); },'')); ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
       var ok2=true; for(var gi=0;gi<grList().length;gi++){ var g=grList()[gi]; if((g[1].to||[]).indexOf(id)>=0) ok2=ok2&&await grPut(g[0],{to:g[1].to.filter(function(x){ return x!==id; })}); }
       if(ok2&&await delDoc('cr/users/'+id)) toast('Account record deleted'); }); }); ac.append(dl);
@@ -647,6 +778,7 @@ function startData(){
   if(startData.done) return; startData.done=true;
   watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
   if(accountOwner) watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); });
+  if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); render(); });
   logSub();
 }
 (async function boot(){
@@ -657,6 +789,9 @@ function startData(){
     var r=await Promise.all([user.canEdit(),user.id(),user.me()]); accountOwner=!!r[0]; var sm=''; try{ sm=localStorage.getItem('crMode')||''; }catch(e){} mode=accountOwner?(sm==='su'||sm==='user'||sm==='supervisor'?(sm==='supervisor'?'user':sm):'owner'):(sm==='user'?'user':'su'); isOwner=accountOwner&&mode==='owner'; uid=r[1]||''; myName=(r[2]&&r[2].name)||''; myPhone=(r[2]&&r[2].phone)||'';
     started=true;
     modeSync();
+    db.doc('cr/settings').onSnapshot(function(sn){ settings=(sn.exists&&sn.data())||{}; settingsLoaded=true; render(); },function(){ settingsLoaded=true; render(); });
+    if(!accountOwner) db.doc('cr/pay/'+uid).onSnapshot(function(sn){ claim=(sn.exists&&sn.data())||null; render(); },function(){});
+    setInterval(function(){ var k=subOk(); if(k!==lastSubOk){ lastSubOk=k; sig=''; render(); } },20000);
     if(accountOwner){ meLoaded=true; startData(); render(); callBack(0); return; }
     var made=false;
     db.doc('cr/users/'+uid).onSnapshot(async function(s){
