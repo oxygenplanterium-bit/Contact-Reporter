@@ -90,7 +90,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 4:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 5:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -218,6 +218,8 @@ var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
 function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
 function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
+function phone10(p){ var d=digitsOf(p); if(d.length===12&&d.slice(0,2)==='91') d=d.slice(2); else if(d.length===11&&d.charAt(0)==='0') d=d.slice(1); return d; }
+function nameKey(n){ return String(n||'').replace(/\s+/g,' ').trim().toLowerCase(); }
 function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
@@ -382,7 +384,7 @@ function ctEdit(id){
   var r=dlg('dlgCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
   var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), bc=mkIn('text','BNI chapter (optional)',c.bc||''), bk=mkIn('text','Category in BNI (optional)',c.bk||''), pl=mkIn('text','Place (optional)',c.pl||''), er=mk('p','pmeta');
-  bc.maxLength=60; bk.maxLength=60; pl.maxLength=60; nm.maxLength=60; ph.maxLength=20; ph.inputMode='tel'; nt.maxLength=120; er.style.color='var(--warn)';
+  bc.maxLength=60; bk.maxLength=60; pl.maxLength=60; nm.maxLength=60; ph.maxLength=16; ph.inputMode='numeric'; ph.addEventListener('input',function(){ var d=phone10(ph.value); if(d.length>10) d=d.slice(0,10); if(ph.value!==d) ph.value=d; }); nt.maxLength=120; er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
   b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Place',pl),fld('Note',nt));
   var cfBox=mk('div'); cfBox.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(cfBox); var cfRows=[], cfGone={};
@@ -403,8 +405,9 @@ function ctEdit(id){
   sv.addEventListener('click',async function(){
     var n=cleanName(nm.value), p=ph.value.trim();
     if(!n){ er.textContent='Enter a name.'; return; }
-    if(digitsOf(p).length<5){ er.textContent='Enter a valid phone number.'; return; }
-    if(ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); })){ er.textContent='This phone number is already saved.'; return; }
+    p=phone10(p); if(p.length!==10){ er.textContent='The phone number must be exactly 10 digits.'; return; }
+    var dp=ctAll().filter(function(it){ return it[0]!==id && phone10(it[1].p)===p; })[0]; if(dp){ er.textContent='This phone number is already saved for '+dp[1].n+'.'; return; }
+    var dn=ctAll().filter(function(it){ return it[0]!==id && nameKey(it[1].n)===nameKey(n); })[0]; if(dn){ er.textContent='A contact named '+dn[1].n+' already exists. Use a different name.'; return; }
     var k=id||callId(), ng=id?(c.g||'none'):'none', og=ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value),bc:cleanName(bc.value),bk:cleanName(bk.value),pl:cleanName(pl.value),cf:{}};
     Object.keys(cfGone).forEach(function(x){ pt.ct[k].cf[x]=null; });
     cfRows.forEach(function(o){ var l=o.l, v=cleanName(o.vi.value); if(!v&&!o.key) return; var key=o.key||('f'+Math.random().toString(36).slice(2,8)); pt.ct[k].cf[key]={l:l,v:v}; });
@@ -417,19 +420,19 @@ function ctEdit(id){
 function ctBulk(){
   var r=dlg('dlgCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,'Add Many Contacts'));
-  b.append(mk('p','pmeta','One contact per line: name, then phone number. For example: Ravi Kumar, 98765 43210'));
+  b.append(mk('p','pmeta','One contact per line: name, then a 10 digit phone number. For example: Ravi Kumar, 9876543210'));
   var ta=document.createElement('textarea'); ta.rows=8; ta.maxLength=8000; var gs=groupSel('',false), er=mk('p','pmeta'); er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Add'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
   b.append(fld('Contacts',ta),fld('Group for all',gs),er,row);
   cn.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
-    var seen={}; ctAll().forEach(function(it){ seen[digitsOf(it[1].p)]=1; });
+    var seen={}, seenN={}; ctAll().forEach(function(it){ seen[phone10(it[1].p)]=1; seenN[nameKey(it[1].n)]=1; });
     var pt={ct:{}}, n=0, skip=0, bad=0;
     ta.value.split(/\r?\n/).forEach(function(ln){
       ln=ln.trim(); if(!ln) return;
       var m=ln.match(/^(.*?)[\s,;\t:|-]+(\+?\d[\d\s-]{4,})$/); if(!m||!cleanName(m[1])){ bad++; return; }
-      var dg=digitsOf(m[2]); if(dg.length<5||seen[dg]){ skip++; return; } seen[dg]=1;
-      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:m[2].trim(),nt:''}; n++;
+      var dg=phone10(m[2]), nk=nameKey(m[1]); if(dg.length!==10){ bad++; return; } if(seen[dg]||seenN[nk]){ skip++; return; } seen[dg]=1; seenN[nk]=1;
+      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:dg,nt:''}; n++;
     });
     if(!n){ er.textContent='Nothing to add.'+(bad?' '+bad+' line(s) had no name and phone number.':'')+(skip?' '+skip+' already saved.':''); return; }
     if(await grPut(gs.value||'none',pt)){ d.close(); toast(n+' contact'+(n>1?'s':'')+' added'+(skip||bad?'; '+(skip+bad)+' skipped':'')); }
