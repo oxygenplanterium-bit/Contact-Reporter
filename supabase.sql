@@ -25,26 +25,17 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
--- A SuperUser is an approved person the owner has marked with rl = 'su'. SuperUsers can read the reports of the ordinary users assigned to them, never of other SuperUsers.
-create or replace function public.is_su() returns boolean
-language sql stable security definer set search_path = public as $$
-  select public.is_ok() and exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'rl' = 'su')
-$$;
--- A SuperUser sees only the ordinary users the owner has assigned to them (cr/users/<id> has sp = the SuperUser's id).
-create or replace function public.is_my_user(u text) returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'st' = 'ok' and data ->> 'sp' = auth.uid()::text)
-$$;
-create or replace function public.group_has_mine(j jsonb) returns boolean
-language sql stable security definer set search_path = public as $$
-  select coalesce(jsonb_typeof(j), '') = 'array' and exists (select 1 from jsonb_array_elements_text(j) e where public.is_my_user(e))
-$$;
-
 alter table public.docs enable row level security;
 drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
+
+-- This app has no SuperUsers. Remove the old SuperUser helpers and any SuperUser data left in the database.
+drop function if exists public.group_has_mine(jsonb);
+drop function if exists public.is_my_user(text);
+drop function if exists public.is_su();
+update public.docs set data = data - 'rl' - 'sp' where path like 'cr/users/%' and (data ? 'rl' or data ? 'sp');
 
 -- Paths:  cr/users/<user id>      the person's account record (name, phone, pending or approved)
 --         cr/g/<group id>         a group of contacts and the callers it is assigned to
@@ -55,23 +46,20 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/users/' || auth.uid()::text
   or path = 'cr/settings'
   or path = 'cr/pay/' || auth.uid()::text
-  or (public.is_su() and path like 'cr/users/%' and data ->> 'st' = 'ok' and data ->> 'sp' = auth.uid()::text)
-  or (public.is_su() and path like 'cr/g/%' and public.group_has_mine(data -> 'to'))
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
-     or (path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text
-          or (public.is_su() and public.is_my_user(split_part(path, '/', 4)))))))
+     or (path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)))
 );
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
   public.is_owner()
-  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl') and not (data ? 'ex') and not (data ? 'sp'))
+  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'ex'))
   or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text or (public.is_su() and public.is_my_user(split_part(path, '/', 4))))) or path = 'cr/pay/' || auth.uid()::text)
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text or (public.is_su() and public.is_my_user(split_part(path, '/', 4))))) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
+  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
+  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key

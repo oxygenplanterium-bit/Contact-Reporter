@@ -19,10 +19,6 @@ Contact Reporter has its own Supabase project, separate from Nursery Manager. Cr
 - **Approved user:** only the groups assigned to them and their own calls and reports.
 - **Not yet approved:** nothing except their own account record.
 
-## SuperUsers (added later)
-
-Run `supabase.sql` again in the SQL Editor (it is safe to run more than once). This switches on SuperUser reports. In the app, open Owner Mode, then Users, and tap **Make SuperUser** on an approved person. A SuperUser sees and shares their own reports and those of the ordinary users you assign to them (Users tab, **Assign SuperUser** on a user's card). Nobody except the owner and that SuperUser can see a SuperUser's reports.
-
 ## Subscriptions with UPI payment (added later)
 
 Run `supabase.sql` again (safe to repeat). In Owner Mode open **Payments**, fill in your name, UPI ID, amount, days for each payment and free days for new people, tick "Subscription is switched on" and save. Then tap **Give Everyone 30 Days** so people approved earlier are not locked out.

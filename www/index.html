@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -232,9 +232,10 @@ function payCard(expired){
   c.append(fld('Payment reference',rf),er,sv); return c;
 }
 function payDlg(){ var r=dlg('dlgPay'), d=r[0], b=r[1]; b.append(payCard(false)); var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x); openDlg(d); }
-function isSuAcct(){ return !!(me&&me.st==='ok'&&me.rl==='su'); }
-function canSu(){ return accountOwner||isSuAcct(); }
-function isSuMode(){ return accountOwner?mode==='su':(isSuAcct()&&mode!=='user'); }
+/* This app has no SuperUsers. */
+function isSuAcct(){ return false; }
+function canSu(){ return false; }
+function isSuMode(){ return false; }
 function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
@@ -625,7 +626,7 @@ function viewPay(body){
 function wipeDlg(){
   var r=dlg('dlgWipe'), d=r[0], b=r[1]; b.append(mk('h2',null,'Delete Everything'));
   b.append(mk('p','pmeta','Choose what to delete for all users and all phones. This cannot be undone.'));
-  var cks=[]; [['Call Logs','lg'],['Contacts','ct'],['Groups (this also deletes every contact in them)','gr'],['SuperUsers (they become ordinary users)','su']].forEach(function(x){ var c=document.createElement('input'); c.type='checkbox'; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,x[0])); b.append(l); cks.push([x[1],c]); });
+  var cks=[]; [['Call Logs','lg'],['Contacts','ct'],['Groups (this also deletes every contact in them)','gr']].forEach(function(x){ var c=document.createElement('input'); c.type='checkbox'; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,x[0])); b.append(l); cks.push([x[1],c]); });
   var er=mk('p','pmeta'); er.style.color='var(--warn)'; var row=mk('div','two'), go=mk('button','btn danger','Delete Selected'), cn=mk('button','btn','Cancel'); go.type=cn.type='button'; row.append(go,cn); b.append(er,row);
   cn.addEventListener('click',function(){ d.close(); });
   var armedW=false;
@@ -638,7 +639,6 @@ function wipeDlg(){
       if(on.lg){ var l=await db.list('cr/log/'); for(var i=0;i<l.length;i++) ok=(await delDoc(l[i].path))&&ok; logRows={}; }
       if(on.gr){ var gk=Object.keys(groups); for(var m=0;m<gk.length;m++) ok=(await delDoc('cr/g/'+gk[m]))&&ok; }
       else if(on.ct){ var ks=Object.keys(groups); for(var j=0;j<ks.length;j++){ var g=groups[ks[j]]; if(g&&g.ct&&Object.keys(g.ct).length) ok=(await putDoc('cr/g/'+ks[j],{ct:null}))&&ok; } }
-      if(on.su){ var us=userList(); for(var k=0;k<us.length;k++){ var u=us[k][1]; if(u.rl||u.sp) ok=(await putDoc('cr/users/'+us[k][0],{rl:null,sp:null}))&&ok; } }
     }catch(e){ ok=false; }
     go.disabled=false; sig=''; render();
     if(ok){ d.close(); toast('Deleted'); } else er.textContent='Some items could not be deleted. Check your connection and try again.';
