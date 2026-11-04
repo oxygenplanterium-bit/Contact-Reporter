@@ -429,6 +429,7 @@ function render(){
     if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
     viewCs(body,'us',true); return;
   }
+  if(isSuMode()){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; return; }
   seg.hidden=false;
   var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]==='home'):(t[0]==='ct'||t[0]==='lg'||(accountOwner&&t[0]==='cs')); })
   if(!isOwner&&accountOwner) tabs.forEach(function(t){ if(t[0]==='cs') t[1]=isSuMode()?'SuperUsers':'Users'; });;
