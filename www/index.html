@@ -57,7 +57,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 11:55 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 12:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -358,7 +358,57 @@ function viewCs(body){
     el.append(ac); body.append(el);
   });
 }
+function logEdit(id,e){
+  var isNew=!e, r=dlg('dlgLog'), d=r[0], b=r[1], k0=isNew?logKey:logKey;
+  b.append(mk('h2',null,isNew?'Add Log Entry':'Edit Log Entry'));
+  var cs=null;
+  if(isNew){
+    cs=document.createElement('select'); var p0=mk('option',null,'Choose contact'); p0.value=''; cs.append(p0);
+    ctAll().forEach(function(it){ var o=mk('option',null,it[1].n+(it[1].p?' · '+it[1].p:'')); o.value=it[0]; cs.append(o); });
+    b.append(fld('Contact',cs));
+  }else b.append(mk('p','pmeta',e.n+' · '+e.p+(clGroup(e)?' · '+clGroup(e):'')+' · By '+(e.by||'Unknown')));
+  var dt=document.createElement('input'); dt.type='date'; dt.value=k0;
+  var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
+  CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=(e&&e.o)||'';
+  var tx=document.createElement('textarea'); tx.rows=5; tx.maxLength=600; tx.value=(e&&e.r)||''; tx.placeholder='Short summary of the conversation';
+  var nx=document.createElement('input'); nx.type='date'; nx.value=(e&&e.nx)||'';
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('Date',dt),fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date (optional)',nx),er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var o=os.value, t=cleanName(tx.value), day=dt.value;
+    if(!day){ er.textContent='Choose a date.'; return; }
+    var future=day>todayKey();
+    if(isNew&&!cs.value){ er.textContent='Choose a contact.'; return; }
+    if(!o&&!future){ er.textContent='Choose what happened.'; return; }
+    if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
+    var sid=isNew?uid:(e.sid||uid), ent, nid=id;
+    if(isNew){
+      var c=ctGet(cs.value); if(!c){ er.textContent='Contact not found.'; return; }
+      var pa=day.split('-'); nid=callId();
+      ent={c:cs.value,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),by:callerName(),sid:uid,at:new Date(+pa[0],+pa[1]-1,+pa[2],12,0,0).getTime(),d:0,o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now(),man:true};
+    }else{
+      ent=Object.assign({},e,{o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now()});
+      if(day!==k0){ var q=day.split('-'); ent.at=new Date(+q[0],+q[1]-1,+q[2],12,0,0).getTime(); }
+    }
+    if(!ent.nx) delete ent.nx; if(!ent.o) ent.o='';
+    var p={}; p[nid]=ent;
+    if(!(await putDoc('cr/log/'+day+'/'+sid,{cl:p}))) return;
+    if(!isNew&&day!==k0){ var z={}; z[id]=null; if(!(await putDoc('cr/log/'+k0+'/'+sid,{cl:z}))) return; }
+    d.close(); toast('Log saved');
+    if(day!==logKey){ logKey=day; $('#logDate').value=day; logSub(); }
+    else if(!isNew||true){ logRows[nid]=ent; }
+    sig=''; render();
+  });
+  openDlg(d);
+}
+function logDel(id,e){
+  var z={}; z[id]=null;
+  putDoc('cr/log/'+logKey+'/'+(e.sid||uid),{cl:z}).then(function(ok){ if(ok){ delete logRows[id]; toast('Log deleted'); sig=''; render(); } });
+}
 function viewLg(body){
+  var adl=mk('div','sline'); adl.append(btn('Add Log Entry',function(){ logEdit('',null); },'primary')); body.append(adl);
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
   if(isOwner){
@@ -384,6 +434,7 @@ function viewLg(body){
     el.append(mk('div','pmeta',[e.p,clGroup(e)?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ var oc=mk('div',null,callOutName(e.o)); oc.style.fontWeight='600'; el.append(oc); if(e.r) el.append(mk('div',null,e.r)); if(e.nx) el.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
     else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(e.sid===uid) el.append(btn('Write Report',function(){ repOpen(id,e,logKey); })); }
+    if(isOwner||e.sid===uid){ var la=mk('div','sline'); la.append(btn('Edit',function(){ logEdit(id,e); })); if(isOwner){ var ld=btn('Delete',function(){},'danger'); ld.addEventListener('click',function(){ arm(ld,'lgd'+id,'Delete',function(){ logDel(id,e); }); }); la.append(ld); } el.append(la); }
     body.append(el);
   });
 }
