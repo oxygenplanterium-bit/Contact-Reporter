@@ -74,7 +74,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:15 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -345,8 +345,7 @@ function ctEdit(id){
   b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Note',nt));
   var cfBox=mk('div'); cfBox.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(cfBox); var cfRows=[], cfGone={};
   function addCf(key,l,v){ var vi=mkIn('text','Enter '+(l||'value'),v||''); vi.maxLength=120; var fl=fld(l||'Field',vi); fl.style.flex='1 1 0'; fl.style.minWidth='0';
-    var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var rm=mk('button','btn small','Remove'); rm.type='button'; var o={key:key,l:l||'Field',vi:vi,rw:rw};
-    rm.addEventListener('click',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); });
+    var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var o={key:key,l:l||'Field',vi:vi,rw:rw}; var rm=iconBtn('Remove field','<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); },'var(--loss)'); rm.style.marginBottom='6px';
     rw.append(fl,rm); cfBox.append(rw); cfRows.push(o); return vi; }
   Object.keys(c.cf||{}).forEach(function(k){ addCf(k,c.cf[k].l,c.cf[k].v); });
   function titleDlg(){
