@@ -430,9 +430,9 @@ function render(){
     viewCs(body,'us',true); return;
   }
   seg.hidden=false;
-  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'||(accountOwner&&t[0]==='cs')); })
+  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]==='home'):(t[0]==='ct'||t[0]==='lg'||(accountOwner&&t[0]==='cs')); })
   if(!isOwner&&accountOwner) tabs.forEach(function(t){ if(t[0]==='cs') t[1]=isSuMode()?'SuperUsers':'Users'; });;
-  if(isOwner&&(sub==='ct'||sub==='gr')) sub='home'; if(!isOwner&&(sub==='gr'||sub==='home'||sub==='pay'||(sub==='cs'&&!accountOwner))) sub='ct';
+  if(isOwner) sub='home'; if(!isOwner&&(sub==='gr'||sub==='home'||sub==='pay'||(sub==='cs'&&!accountOwner))) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
@@ -497,7 +497,7 @@ async function assignContacts(target,ids){
 function viewHome(body){
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
-      gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); am.append(btn('Add Many',ctBulk),sb,gb); body.append(am);
+      gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); 
       if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
           list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
         var supL=[]; if(accountOwner&&uid) supL.push(['Owner (me)',uid]); okUsers().filter(function(it){ return it[1].rl==='su'; }).forEach(function(it){ supL.push([it[1].n+' · '+fmtPhone(it[1].ph),it[0]]); });
@@ -514,7 +514,7 @@ function viewHome(body){
         var urow=mk('div','sline'); urow.append(uv,ua);
         var sr2=mk('div'); sr2.style.cssText='display:flex;gap:8px'; var f1=fld('Assign To SuperUsers',us), f2=fld('Assign To Users',uu); f1.style.cssText+=';flex:1 1 0;min-width:0'; f2.style.cssText+=';flex:1 1 0;min-width:0'; sr2.append(f1,f2);
         ab.append(sr2,inf,ar,urow); body.append(ab); }
-      viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
+      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } else if(selMode&&selUser&&selUser!=='-'){ var gg=it[1].g&&groups[it[1].g]; if(!gg||(gg.to||[]).indexOf(selUser)<0) return false; } return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0; });
@@ -955,7 +955,7 @@ function modeSync(){
 function setMode(m){
   mode=m;
   try{ localStorage.setItem('crMode',m); }catch(e){}
-  if(!isOwner&&(sub==='gr'||sub==='cs'||sub==='home')) sub='ct'; if(isOwner&&(sub==='ct'||sub==='gr')) sub='home';
+  if(!isOwner&&(sub==='gr'||sub==='cs'||sub==='home')) sub='ct'; if(isOwner) sub='home';
   modeSync(); sig=''; toast(m==='owner'?'Owner mode':m==='su'?'SuperUser mode':'User mode'); render();
 }
 $('#modeOwner').addEventListener('click',function(){ if(mode!=='owner') setMode('owner'); });
