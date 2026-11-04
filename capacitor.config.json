@@ -1,0 +1,6 @@
+{
+  "appId": "com.oxygenplanterium.contactreporter",
+  "appName": "Contact Reporter",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0F1713"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Contact Reporter"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Contact Reporter</title>
+<style>
+:root{
+  --bg:#0F1713; --card:#1A2620; --line:#2C3D33; --field:#111A15; --ink:#E9F1EB; --muted:#9DB1A4;
+  --accent:#6DBE6F; --accent-ink:#0B1A10; --loss:#FF9381; --warn:#E8B64D;
+  --f:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D; --accent:#2A7F3E; --accent-ink:#FFFFFF; --loss:#B0301F; --warn:#8F5B00; color-scheme:light; }
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4; margin:0;
+  padding-block:max(28px, calc(env(safe-area-inset-top, 0px) + 14px)) 40px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); text-transform:capitalize}
+input,textarea{text-transform:none} 
+html{-webkit-text-size-adjust:100%}
+.wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px}
+.brand{display:flex; align-items:center; gap:12px}
+.brand img{width:52px; height:52px; border-radius:14px}
+h1{margin:0; font-size:1.5rem; line-height:1.15}
+h2{margin:0 0 8px; font-size:1.15rem}
+button,input,select,textarea{font:inherit; font-size:16px !important; color:inherit}
+button,a,label{touch-action:manipulation}
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px}
+input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:12px; padding:10px 12px; min-width:0}
+textarea{resize:vertical}
+.f{display:flex; flex-direction:column; gap:4px; margin:0}
+.f>span{color:var(--muted); font-size:.9rem}
+.btn{background:var(--field); border:1px solid var(--line); border-radius:12px; padding:10px 14px; min-height:44px; font-weight:600; cursor:pointer}
+.btn.small{min-height:36px; padding:6px 12px; border-radius:10px}
+.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.danger{color:var(--loss); border-color:var(--loss)}
+.btn:disabled{opacity:.5}
+.pmeta{margin:0; color:var(--muted); font-size:.9rem}
+.sline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.aseg{display:grid; gap:8px}
+.aseg .btn{padding:8px 4px; font-size:.92rem}
+.aseg .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
+#toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
+#toast[hidden]{display:none}
+.bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+</style></head><body>
+<div class="wrap">
+  <div class="brand"><img src="icon-192.png" alt=""><div><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div></div>
+  <div class="card" id="idCard" hidden>
+    <label class="f"><span>Who is calling</span><select id="callerSel" aria-label="Choose your name"></select></label>
+    <p class="pmeta" id="idHint" style="color:var(--warn)" hidden></p>
+  </div>
+  <div class="aseg" id="seg"></div>
+  <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
+  <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 7:00 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button></div>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
+<script>var APP_BUILD='__BUILD__';</script>
+<script src="platform.js?v=__BUILD__"></script>
+<script>
+(function(){
+'use strict';
+function $(s){ return document.querySelector(s); }
+function mk(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function mkIn(type,ph,v){ var i=document.createElement('input'); i.type=type; if(ph) i.placeholder=ph; if(v!==undefined) i.value=v; return i; }
+function cleanName(s){ return String(s||'').trim().replace(/\s+/g,' '); }
+var tt=0; function toast(m,ms){ var t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(function(){ t.hidden=true; },ms||2500); }
+var armed={};
+function arm(btn,key,label,fn){ if(!armed[key]){ armed[key]=true; btn.textContent='Tap again to confirm'; setTimeout(function(){ armed[key]=false; btn.textContent=label; },4000); return; } armed[key]=false; btn.textContent=label; fn(); }
+function two(n){ return ('0'+n).slice(-2); }
+function dayKey(ms){ var d=new Date(ms||Date.now()); return d.getFullYear()+'-'+two(d.getMonth()+1)+'-'+two(d.getDate()); }
+function todayKey(){ return dayKey(); }
+function fmtIso(k){ var q=String(k||'').split('-'); return q.length===3?q[2]+'/'+q[1]+'/'+q[0]:''; }
+function fmtTime(ms){ if(!ms) return ''; var d=new Date(ms), h=d.getHours(), m=two(d.getMinutes()); return (h%12||12)+':'+m+' '+(h<12?'AM':'PM'); }
+/* ---------- state ---------- */
+var db=null, user=null, isOwner=false, myName='', ready=false;
+var book={ct:{},cg:{},cs:{}}, bookLoaded=false, logData={}, logKey=todayKey(), logUnsub=null;
+var callerId='', sub='ct', callQ='', callG='', callLs='', callLg='', sig='';
+try{ callerId=localStorage.getItem('crCaller')||''; }catch(e){}
+var ct=function(){ return book.ct||{}; }, cg=function(){ return book.cg||{}; }, cs=function(){ return book.cs||{}; };
+var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
+function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
+function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
+function digitsOf(p){ return String(p||'').replace(/\D/g,''); }
+function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
+function callers(){ return Object.keys(cs()).filter(function(k){ return cs()[k]&&cs()[k].n; }).map(function(k){ return [k,cs()[k]]; }).sort(byName); }
+function grList(){ return Object.keys(cg()).filter(function(k){ return cg()[k]&&cg()[k].n; }).map(function(k){ return [k,cg()[k]]; }).sort(byName); }
+function ctAll(){ return Object.keys(ct()).filter(function(k){ return ct()[k]&&ct()[k].n; }).map(function(k){ return [k,ct()[k]]; }).sort(byName); }
+function grSee(g){ if(isOwner) return true; var to=(g&&g.to)||[]; return !to.length || to.indexOf(callerId)>=0; }
+function ctSee(){ return ctAll().filter(function(it){ return isOwner || (it[1].g && cg()[it[1].g] && grSee(cg()[it[1].g])); }); }
+function grWho(g){ var to=(g.to||[]).filter(function(id){ return cs()[id]&&cs()[id].n; }); return to.length ? to.map(function(id){ return cs()[id].n; }).join(', ') : 'All callers'; }
+function callerName(){ if(isOwner) return 'Owner'; return callerId&&cs()[callerId]?cs()[callerId].n:''; }
+function needCaller(){ return !isOwner && !callerId; }
+function clGroup(e){ if(e.gn) return e.gn; var c=ct()[e.c]; return c&&c.g&&cg()[c.g]?cg()[c.g].n:''; }
+function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
+function fld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
+function tint(el,i){ el.style.background=i%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; }
+function btn(label,fn,cls){ var b=mk('button','btn small'+(cls?' '+cls:''),label); b.type='button'; b.addEventListener('click',fn); return b; }
+function dlg(id){ var d=$('#'+id); if(!d){ d=document.createElement('dialog'); d.id=id; document.body.append(d); d.addEventListener('click',function(e){ if(!e.target.closest('.dbody')) d.close(); }); } d.textContent=''; var b=mk('div','dbody'); d.append(b); return [d,b]; }
+function openDlg(d){ if(!d.open) d.showModal(); setTimeout(function(){ var a=document.activeElement; if(a&&d.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur(); },0); }
+function writeErr(e){ toast(e&&e.code==='revoked'?'You are not allowed to do that.':'Could not save. Check your connection and try again.'); return false; }
+/* ---------- storage ---------- */
+function stripNull(o){ if(!o||typeof o!=='object') return o; var r={}; Object.keys(o).forEach(function(k){ if(o[k]===null) return; r[k]=(typeof o[k]==='object'&&!Array.isArray(o[k]))?stripNull(o[k]):o[k]; }); return r; }
+async function putDoc(path,patch){
+  try{
+    var d=db.doc(path), s=await d.get();
+    if(s.exists) await d.update(patch); else await d.set(stripNull(patch));
+    return true;
+  }catch(e){ return writeErr(e); }
+}
+function bookSave(p){ return putDoc('cr/book',p); }
+function logSave(p){ return putDoc('cr/log/'+todayKey(),{cl:p}); }
+function logSub(){
+  if(logUnsub){ try{ logUnsub(); }catch(e){} logUnsub=null; }
+  var k=logKey;
+  logUnsub=db.doc('cr/log/'+k).onSnapshot(function(s){ if(k!==logKey) return; logData=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
+}
+/* ---------- dialer ---------- */
+var CALL_KEY='crCallPend';
+function pendGet(){ try{ return JSON.parse(localStorage.getItem(CALL_KEY)||'null'); }catch(e){ return null; } }
+function pendSet(o){ try{ if(o) localStorage.setItem(CALL_KEY,JSON.stringify(o)); else localStorage.removeItem(CALL_KEY); }catch(e){} }
+function callStart(cid){
+  var c=ct()[cid]; if(!c) return;
+  if(needCaller()){ toast('Choose your name at the top first.'); return; }
+  var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
+  pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&cg()[c.g]?cg()[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:callerId||''});
+  var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
+}
+function callHidden(){ var p=pendGet(); if(p&&!p.hid){ p.hid=Date.now(); pendSet(p); } }
+async function callBack(tries){
+  var p=pendGet(); if(!p) return;
+  if(!p.hid){ if(Date.now()-p.at>600000) pendSet(null); return; }
+  if(!db||!ready){ if((tries||0)<30) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
+  pendSet(null);
+  var e={c:p.c,n:p.n,p:p.p,g:p.g||'',gn:p.gn||'',by:p.by||'',sid:p.sid||'',at:p.at,d:Math.max(0,Math.round((Date.now()-p.hid)/1000)),o:''};
+  var o={}; o[p.id]=e;
+  var k=dayKey(p.at); 
+  if(await putDoc('cr/log/'+k,{cl:o})){ if(k===logKey){ logData[p.id]=e; render(); } repOpen(p.id,e,k); }
+}
+document.addEventListener('visibilitychange',function(){ if(document.hidden) callHidden(); else callBack(0); });
+window.addEventListener('pagehide',callHidden);
+window.addEventListener('pageshow',function(){ callBack(0); });
+function repOpen(id,e,k){
+  var r=dlg('dlgRep'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'Call Report'));
+  b.append(mk('p','pmeta',e.n+' · '+e.p+(clGroup(e)?' · '+clGroup(e):'')+(e.d?' · About '+callDur(e.d):'')));
+  var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
+  CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=e.o||'';
+  var tx=document.createElement('textarea'); tx.rows=5; tx.maxLength=600; tx.value=e.r||''; tx.placeholder='Short summary of the conversation';
+  var nx=document.createElement('input'); nx.type='date'; nx.value=e.nx||'';
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Submit Report'), lt=mk('button','btn','Later'); sv.type=lt.type='button'; row.append(sv,lt);
+  b.append(fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date (optional)',nx),er,row);
+  lt.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var o=os.value, t=cleanName(tx.value);
+    if(!o){ er.textContent='Choose what happened.'; return; }
+    if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
+    var p={}; p[id]={o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now()};
+    if(await putDoc('cr/log/'+(k||todayKey()),{cl:p})){ d.close(); toast('Report submitted'); }
+  });
+  openDlg(d);
+}
+/* ---------- owner dialogs ---------- */
+function groupSel(cur,withAll){
+  var s=document.createElement('select'); if(withAll){ var a=mk('option',null,'All groups'); a.value=''; s.append(a); }
+  var n=mk('option',null,'No group'); n.value=withAll?'-':''; s.append(n);
+  grList().forEach(function(it){ if(!grSee(it[1])) return; var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
+  s.value=cur||''; return s;
+}
+function ctEdit(id){
+  var c=id?ct()[id]:{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
+  var r=dlg('dlgCt'), d=r[0], b=r[1];
+  b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
+  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), er=mk('p','pmeta');
+  nm.maxLength=60; ph.maxLength=20; ph.inputMode='tel'; nt.maxLength=120; er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('Name',nm),fld('Phone number',ph),fld('Group',gs),fld('Note',nt),er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var n=cleanName(nm.value), p=ph.value.trim();
+    if(!n){ er.textContent='Enter a name.'; return; }
+    if(digitsOf(p).length<5){ er.textContent='Enter a valid phone number.'; return; }
+    if(ctAll().some(function(it){ return it[0]!==id && digitsOf(it[1].p)===digitsOf(p); })){ er.textContent='This phone number is already saved.'; return; }
+    var k=id||callId(), pt={ct:{}}; pt.ct[k]={n:n,p:p,g:gs.value||'',nt:cleanName(nt.value)};
+    if(await bookSave(pt)){ d.close(); toast('Contact saved'); }
+  });
+  openDlg(d);
+}
+function ctBulk(){
+  var r=dlg('dlgCt'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'Add Many Contacts'));
+  b.append(mk('p','pmeta','One contact per line: name, then phone number. For example: Ravi Kumar, 98765 43210'));
+  var ta=document.createElement('textarea'); ta.rows=8; ta.maxLength=8000; var gs=groupSel('',false), er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Add'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('Contacts',ta),fld('Group for all',gs),er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var seen={}; ctAll().forEach(function(it){ seen[digitsOf(it[1].p)]=1; });
+    var pt={ct:{}}, n=0, skip=0, bad=0;
+    ta.value.split(/\r?\n/).forEach(function(ln){
+      ln=ln.trim(); if(!ln) return;
+      var m=ln.match(/^(.*?)[\s,;\t:|-]+(\+?\d[\d\s-]{4,})$/); if(!m||!cleanName(m[1])){ bad++; return; }
+      var dg=digitsOf(m[2]); if(dg.length<5||seen[dg]){ skip++; return; } seen[dg]=1;
+      pt.ct[callId()+n]={n:cleanName(m[1]).slice(0,60),p:m[2].trim(),g:gs.value||'',nt:''}; n++;
+    });
+    if(!n){ er.textContent='Nothing to add.'+(bad?' '+bad+' line(s) had no name and phone number.':'')+(skip?' '+skip+' already saved.':''); return; }
+    if(await bookSave(pt)){ d.close(); toast(n+' contact'+(n>1?'s':'')+' added'+(skip||bad?'; '+(skip+bad)+' skipped':'')); }
+  });
+  openDlg(d);
+}
+function grEdit(id){
+  var g=id?cg()[id]:{n:'',to:[]}; if(id&&!g) return;
+  var r=dlg('dlgGr'), d=r[0], b=r[1];
+  b.append(mk('h2',null,id?'Edit Group':'New Group'));
+  var nm=mkIn('text','Group name',g.n), er=mk('p','pmeta'); nm.maxLength=40; er.style.color='var(--warn)';
+  b.append(fld('Group name',nm));
+  b.append(mk('p','pmeta','Assigned to. Tick none to give this group to all callers.'));
+  var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:6px';
+  callers().forEach(function(it){
+    var l=mk('label'), c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0';
+    l.append(c,mk('span',null,it[1].n)); wrap.append(l); sel[it[0]]=c;
+  });
+  if(!callers().length) wrap.append(mk('p','pmeta','No callers added yet. Add them in the Callers tab.'));
+  b.append(wrap,er);
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn); b.append(row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var n=cleanName(nm.value); if(!n){ er.textContent='Enter a group name.'; return; }
+    if(grList().some(function(it){ return it[0]!==id && it[1].n.toLowerCase()===n.toLowerCase(); })){ er.textContent='A group with this name already exists.'; return; }
+    var to=Object.keys(sel).filter(function(k){ return sel[k].checked; }), pt={cg:{}}; pt.cg[id||callId()]={n:n,to:to};
+    if(await bookSave(pt)){ d.close(); toast('Group saved'); }
+  });
+  openDlg(d);
+}
+function csEdit(id){
+  var c=id?cs()[id]:{n:''}; if(id&&!c) return;
+  var r=dlg('dlgCs'), d=r[0], b=r[1];
+  b.append(mk('h2',null,id?'Edit Caller':'Add Caller'));
+  var nm=mkIn('text','Name',c.n), er=mk('p','pmeta'); nm.maxLength=40; er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('Caller name',nm),er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){
+    var n=cleanName(nm.value); if(!n){ er.textContent='Enter a name.'; return; }
+    if(callers().some(function(it){ return it[0]!==id && it[1].n.toLowerCase()===n.toLowerCase(); })){ er.textContent='This name already exists.'; return; }
+    var pt={cs:{}}; pt.cs[id||callId()]={n:n};
+    if(await bookSave(pt)){ d.close(); toast('Caller saved'); }
+  });
+  openDlg(d);
+}
+/* ---------- render ---------- */
+function render(){
+  if(!ready) return;
+  var ae=document.activeElement, body=$('#body');
+  if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+  var cl=callers();
+  var s=JSON.stringify([sub,callQ,callG,callLs,callLg,isOwner,callerId,book,logData,logKey]);
+  if(s===sig) return; sig=s;
+  $('#who').textContent=isOwner?'Owner':(callerName()||myName||'');
+  var idc=$('#idCard'); idc.hidden=isOwner;
+  if(!isOwner){
+    var sel=$('#callerSel'); sel.textContent=''; var o0=mk('option',null,'Choose your name'); o0.value=''; sel.append(o0);
+    cl.forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; sel.append(o); });
+    if(bookLoaded&&callerId&&!cs()[callerId]){ callerId=''; try{ localStorage.removeItem('crCaller'); }catch(e){} }
+    sel.value=callerId; var h=$('#idHint'); h.hidden=!!callerId||!bookLoaded; h.textContent=cl.length?'Choose your name before calling.':'The owner has not added any callers yet.';
+  }
+  if(!isOwner&&sub==='cs') sub='ct'; if(!isOwner&&sub==='gr') sub='ct';
+  var seg=$('#seg'); seg.textContent=''; var tabs=[['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Callers']].filter(function(t){ return isOwner||t[0]==='ct'||t[0]==='lg'; });
+  seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
+  tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
+  $('#dateCard').hidden=sub!=='lg';
+  body.textContent='';
+  if(!bookLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
+  if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
+}
+function rows(box,list,own){
+  list.forEach(function(it,ix){
+    var id=it[0], c=it[1], el=mk('div','card'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
+    hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; top.style.cssText='flex:1 1 auto;min-width:0';
+    top.append(mk('b',null,c.n)); top.append(mk('div','pmeta',c.p));
+    var gn=c.g&&cg()[c.g]?cg()[c.g].n:''; var meta=[gn,c.nt].filter(Boolean).join(' · '); if(meta) top.append(mk('div','pmeta',meta));
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; hd.append(top,cb); el.append(hd);
+    if(own){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await bookSave(pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
+    box.append(el);
+  });
+}
+function viewCt(body){
+  if(needCaller()){ var w=mk('p','pmeta','Choose your name above before calling.'); w.style.color='var(--warn)'; body.append(w); }
+  if(isOwner){ var ad=mk('div','sline'); ad.append(btn('Add Contact',function(){ ctEdit(''); },'primary'),btn('Add Many',ctBulk),btn('New Group',function(){ grEdit(''); })); body.append(ad); }
+  var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
+  var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=callQ; q.autocomplete='off';
+  var gs=groupSel(callG,true); bar.append(q,gs); body.append(bar);
+  var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(lst);
+  function fill(){
+    lst.textContent=''; var qq=callQ.trim().toLowerCase(), all=ctSee().filter(function(it){
+      if(callG==='-'){ if(it[1].g) return false; } else if(callG&&it[1].g!==callG) return false;
+      return !qq||(it[1].n+' '+it[1].p+' '+(it[1].nt||'')).toLowerCase().indexOf(qq)>=0;
+    });
+    if(!all.length){ lst.append(mk('p','pmeta',ctSee().length?'No contacts match.':(isOwner?'No contacts yet. Tap Add Contact.':'No contacts are assigned to you yet. The owner assigns groups to callers.'))); return; }
+    lst.append(mk('p','pmeta',all.length+' contact'+(all.length>1?'s':''))); rows(lst,all,isOwner);
+  }
+  q.addEventListener('input',function(){ callQ=q.value; fill(); });
+  gs.addEventListener('change',function(){ callG=gs.value; fill(); });
+  fill();
+}
+function viewGr(body){
+  var ad=mk('div','sline'); ad.append(btn('New Group',function(){ grEdit(''); },'primary')); body.append(ad);
+  var l=grList(); if(!l.length){ body.append(mk('p','pmeta','No groups yet. A group collects contacts that go to the same callers.')); return; }
+  l.forEach(function(it,ix){
+    var id=it[0], g=it[1], el=mk('div','card'), n=ctAll().filter(function(x){ return x[1].g===id; }).length, ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px 12px'; tint(el,ix);
+    el.append(mk('b',null,g.n),mk('div','pmeta',n+' contact'+(n===1?'':'s')+' · Assigned to: '+grWho(g)));
+    ac.append(btn('Edit / Assign',function(){ grEdit(id); }));
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'grd'+id,'Delete',async function(){
+      var pt={cg:{},ct:{}}; pt.cg[id]=null; ctAll().forEach(function(x){ if(x[1].g===id) pt.ct[x[0]]={g:''}; }); if(!Object.keys(pt.ct).length) delete pt.ct;
+      if(await bookSave(pt)) toast('Group deleted'); }); }); ac.append(dl);
+    el.append(ac); body.append(el);
+  });
+}
+function viewCs(body){
+  var ad=mk('div','sline'); ad.append(btn('Add Caller',function(){ csEdit(''); },'primary')); body.append(ad);
+  body.append(mk('p','pmeta','Callers are the people who make the calls. Each caller picks their name on their phone, then sees only the groups assigned to them.'));
+  var l=callers(); if(!l.length){ body.append(mk('p','pmeta','No callers yet.')); return; }
+  l.forEach(function(it,ix){
+    var id=it[0], el=mk('div','card'), ac=mk('div','sline');
+    el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
+    var gs=grList().filter(function(g){ return (g[1].to||[]).indexOf(id)>=0; }).map(function(g){ return g[1].n; });
+    el.append(mk('b',null,it[1].n),mk('div','pmeta','Groups: '+(gs.length?gs.join(', '):'None assigned directly')));
+    ac.append(btn('Rename',function(){ csEdit(id); }));
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'csd'+id,'Delete',async function(){
+      var pt={cs:{},cg:{}}; pt.cs[id]=null; grList().forEach(function(g){ if((g[1].to||[]).indexOf(id)>=0) pt.cg[g[0]]={to:g[1].to.filter(function(x){ return x!==id; })}; }); if(!Object.keys(pt.cg).length) delete pt.cg;
+      if(await bookSave(pt)) toast('Caller deleted'); }); }); ac.append(dl);
+    el.append(ac); body.append(el);
+  });
+}
+function viewLg(body){
+  var all=Object.keys(logData).map(function(k){ return [k,logData[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
+  var mine=!isOwner;
+  if(mine) all=all.filter(function(it){ return callerId ? it[1].sid===callerId : false; });
+  if(isOwner){
+    var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
+    var fs=document.createElement('select'), a=mk('option',null,'All callers'); a.value=''; fs.append(a);
+    Object.keys(by).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; fs.append(o); }); fs.value=callLs;
+    fs.addEventListener('change',function(){ callLs=fs.value; sig=''; render(); }); body.append(fld('Show calls by',fs));
+    if(callLs) all=all.filter(function(it){ return it[1].by===callLs; });
+  }
+  var gset={}; all.forEach(function(it){ var g=clGroup(it[1]); if(g) gset[g]=1; });
+  var gf=document.createElement('select'), ga=mk('option',null,'All groups'); ga.value=''; gf.append(ga);
+  Object.keys(gset).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; gf.append(o); });
+  var g0=mk('option',null,'No group'); g0.value='-'; gf.append(g0); gf.value=callLg;
+  gf.addEventListener('change',function(){ callLg=gf.value; sig=''; render(); }); body.append(fld('Show group',gf));
+  if(callLg) all=all.filter(function(it){ var g=clGroup(it[1]); return callLg==='-'?!g:g===callLg; });
+  all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
+  var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
+  body.append(mk('p','pmeta',fmtIso(logKey)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' report'+(pd===1?'':'s')+' pending'));
+  if(!all.length){ body.append(mk('p','pmeta','No calls on this day.')); return; }
+  all.forEach(function(it,ix){
+    var id=it[0], e=it[1], el=mk('div','card'); el.style.cssText='display:flex;flex-direction:column;gap:3px;padding:10px 12px'; tint(el,ix);
+    var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px'; h.append(mk('b',null,e.n),mk('span','pmeta',fmtTime(e.at))); el.append(h);
+    el.append(mk('div','pmeta',[e.p,clGroup(e)?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
+    if(e.o){ var oc=mk('div',null,callOutName(e.o)); oc.style.fontWeight='600'; el.append(oc); if(e.r) el.append(mk('div',null,e.r)); if(e.nx) el.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
+    else{ var pe=mk('div',null,'Report pending'); pe.style.cssText='color:var(--warn);font-weight:600'; el.append(pe); if(mine||(isOwner&&e.by==='Owner')) el.append(btn('Write Report',function(){ repOpen(id,e,logKey); })); }
+    body.append(el);
+  });
+}
+/* ---------- app refresh and updates ---------- */
+async function appRefresh(){
+  try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.filter(function(k){ return k.indexOf('contactreporter-shell-')===0; }).map(function(k){ return caches.delete(k); })); } }catch(e){}
+  try{ if('serviceWorker' in navigator){ var rg=await navigator.serviceWorker.getRegistrations(); await Promise.all(rg.filter(function(r){ return (r.scope||'').indexOf(location.pathname.replace(/[^\/]*$/,''))===0; }).map(function(r){ return r.unregister(); })); } }catch(e){}
+  location.replace(location.pathname+'?r='+Date.now());
+}
+$('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app...',2000); appRefresh(); });
+$('#callerSel').addEventListener('change',function(){ callerId=this.value; try{ if(callerId) localStorage.setItem('crCaller',callerId); else localStorage.removeItem('crCaller'); }catch(e){} sig=''; render(); });
+$('#logDate').value=logKey;
+$('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; logData={}; sig=''; logSub(); render(); });
+/* ---------- start ---------- */
+(async function boot(){
+  try{
+    var c=window.claude;
+    if(!c){ $('#body').append(mk('p','pmeta','This app could not start. Please reload.')); return; }
+    db=await c.use('db'); user=await c.use('user');
+    var r=await Promise.all([user.canEdit(),user.me()]); isOwner=!!r[0]; myName=(r[1]&&r[1].name)||'';
+    ready=true;
+    db.doc('cr/book').onSnapshot(function(s){ var d=(s.exists&&s.data())||{}; book={ct:d.ct||{},cg:d.cg||{},cs:d.cs||{}}; bookLoaded=true; render(); },function(){ bookLoaded=true; render(); });
+    logSub(); render(); callBack(0);
+  }catch(e){ $('#body').textContent=''; $('#body').append(mk('p','pmeta','Could not connect. Check your internet and reload.')); }
+})();
+})();
+</script>
+</body></html>
