@@ -423,7 +423,7 @@ function render(){
     if(meLoaded) w.append(mk('p','pmeta','Your account has been created. The owner needs to approve it before you can see your contacts. Open this app again after you have been approved.'));
     body.append(w); return;
   }
-  if(!isOwner){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; return; }
+  if(!isOwner){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; if(mode==='user') viewMyCard(body); return; }
   if(!accountOwner&&isSuAcct()&&!isSuMode()){
     seg.hidden=false; $('#dateCard').hidden=true; fb.hidden=true;
     var ub=mk('button','btn','Users'); ub.type='button'; ub.setAttribute('aria-pressed','true'); seg.style.gridTemplateColumns='minmax(0,1fr)'; seg.append(ub);
@@ -447,6 +447,25 @@ function render(){
     body.append(fld('Viewing contacts of',vs));
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
+}
+function viewMyCard(body){
+  var key='crMyCard', d={}; try{ d=JSON.parse(localStorage.getItem(key)||'{}')||{}; }catch(e){}
+  var nm=d.n!==undefined?d.n:callerName(), ph=d.p!==undefined?d.p:(me&&me.ph?fmtPhone(me.ph):myPhone||''), nt=d.t||'', editing=false;
+  var card=mk('div','card'); card.style.cssText='display:flex;flex-direction:column;gap:8px'; body.append(card);
+  function draw(){
+    card.textContent='';
+    if(!editing){
+      card.append(mk('b',null,nm||'Your name'));
+      if(ph) card.append(mk('div','pmeta',ph));
+      if(nt) card.append(mk('div','pmeta',nt));
+      card.append(btn('Edit',function(){ editing=true; draw(); },'primary'));
+    } else {
+      var n=mkIn('text','Name',nm), p=mkIn('tel','Phone number',ph), t=document.createElement('textarea'); t.rows=3; t.maxLength=500; t.placeholder='Note (optional)'; t.value=nt; n.maxLength=40;
+      var row=mk('div','two'), sv=btn('Save',function(){ nm=cleanName(n.value); ph=cleanName(p.value); nt=t.value.trim(); try{ localStorage.setItem(key,JSON.stringify({n:nm,p:ph,t:nt})); }catch(e){} editing=false; toast('Saved'); draw(); },'primary'), cn=btn('Cancel',function(){ editing=false; draw(); },'');
+      row.append(sv,cn); card.append(fld('Name',n),fld('Phone number',p),fld('Note',t),row);
+    }
+  }
+  draw();
 }
 var usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
