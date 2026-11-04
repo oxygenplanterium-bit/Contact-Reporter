@@ -55,6 +55,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .sw input:checked + i{background:var(--accent)}
 .sw input:checked + i::after{transform:translateX(20px)}
 .sw input:focus-visible + i{outline:2px solid var(--accent); outline-offset:2px}
+.clr{position:relative; display:block}
+.clr input{padding-right:42px}
+.clr .clrx{position:absolute; right:4px; top:50%; transform:translateY(-50%); width:34px; height:34px; padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted,#667); display:inline-flex; align-items:center; justify-content:center; cursor:pointer}
+.clr .clrx[hidden]{display:none}
+input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none; appearance:none; display:none}
 .lpress{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
 select:not([multiple]){pointer-events:none}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
@@ -85,7 +90,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 4:20 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 4:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -457,7 +462,16 @@ function grEdit(id){
   openDlg(d);
 }
 /* ---------- render ---------- */
+function clearable(inp){
+  var w=mk('div','clr'), x=document.createElement('button'); x.type='button'; x.className='clrx'; x.setAttribute('aria-label','Clear search'); x.title='Clear';
+  x.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>';
+  function sync(){ x.hidden=!inp.value; }
+  inp.addEventListener('input',sync); x.addEventListener('mousedown',function(e){ e.preventDefault(); });
+  x.addEventListener('click',function(){ inp.value=''; sync(); inp.dispatchEvent(new Event('input',{bubbles:true})); try{ inp.focus(); }catch(e){} });
+  inp.parentNode&&inp.parentNode.insertBefore(w,inp); w.append(inp,x); sync(); return w;
+}
 function dateSync(){ var s=$('#dateShow'); if(s) s.textContent=fmtIso($('#logDate').value||logKey); }
+var pks=$('#pickSearch'); if(pks&&!pks.parentNode.classList.contains('clr')) clearable(pks);
 function render(){
   if(!started) return;
   modeSync(); $('#wipeAll').hidden=!isOwner;
@@ -579,7 +593,7 @@ function viewHome(body){
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
-      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
+      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(clearable(q));
   var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=ctDetAll; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show contact details'); swl.append(mk('span',null,'Show Contact Details'),swi,document.createElement('i')); body.append(swl);
   swi.addEventListener('change',function(){ ctDetAll=swi.checked; ctOpen={}; if(ctDetAll) ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); sig=''; try{ swi.blur(); }catch(e){} render(); });
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
@@ -598,7 +612,7 @@ function viewCt(body){
   if(isOwner){ var ad=mk('div','sline'); ad.append(btn('Add Contact',function(){ ctEdit(''); },'primary'),btn('Add Many',ctBulk),btn('New Group',function(){ grEdit(''); })); body.append(ad); }
   var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=callQ; q.autocomplete='off';
-  var gs=groupSel(callG,true); bar.append(q); if(isOwner||grList().length>1) bar.append(gs); body.append(bar);
+  var gs=groupSel(callG,true); bar.append(clearable(q)); if(isOwner||grList().length>1) bar.append(gs); body.append(bar);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=callQ.trim().toLowerCase(), all=ctAll().filter(function(it){
@@ -1051,7 +1065,7 @@ function openPick(sel,title){
     var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
     b.addEventListener('click',function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
   });
-  var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6;
+  var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6; if(ps.parentNode.classList.contains('clr')){ ps.parentNode.hidden=ps.hidden; var cx=ps.parentNode.querySelector('.clrx'); if(cx) cx.hidden=true; }
   ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.dataset.full.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); var nm=box.querySelector('.pnone'); if(!n&&!nm) box.append(mk('p','pmeta pnone','No match.')); else if(n&&nm) nm.remove(); };
   var d=$('#dlgPick'); if(!d.open) d.showModal();
 }
