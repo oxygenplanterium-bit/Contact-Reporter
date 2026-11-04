@@ -75,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -982,7 +982,7 @@ function setMode(m){
 }
 $('#modeOwner').addEventListener('click',function(){ if(mode!=='owner') setMode('owner'); });
 $('#modeSu').addEventListener('click',function(){ if(mode!=='su') setMode('su'); });
-$('#modeSup').addEventListener('click',function(){ if(mode!=='user') setMode('user'); });
+$('#modeSup').addEventListener('click',function(){ try{ localStorage.setItem('crMode','owner'); }catch(e){} if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
 /* ---------- dark and light mode ---------- */
 function themeNow(){ return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; }
 function themeSync(){ $('#themeBtn').textContent=themeNow()==='dark'?'Light Mode':'Dark Mode'; var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',themeNow()==='dark'?'#0F1713':'#EDF2EC'); }
