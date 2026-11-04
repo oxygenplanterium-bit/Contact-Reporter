@@ -46,6 +46,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
+.fab{position:fixed; right:max(16px, env(safe-area-inset-right, 0px)); bottom:calc(18px + env(safe-area-inset-bottom, 0px)); width:54px; height:54px; border-radius:50%; border:0; background:var(--accent); color:var(--accent-ink); font-size:2rem !important; line-height:1; padding:0 0 3px; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:40; cursor:pointer}
+.fab[hidden]{display:none !important}
 .bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 </style></head><body>
 <div class="wrap">
@@ -54,7 +56,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <label class="f card" id="dateCard" hidden><span>Date of call log</span><input type="date" id="logDate" aria-label="Choose date"></label>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 9:40 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:05 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -259,6 +261,8 @@ function render(){
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
+  var fb=$('#fab'); if(!fb){ fb=mk('button','fab','+'); fb.id='fab'; fb.type='button'; fb.setAttribute('aria-label','Add new contact'); fb.addEventListener('click',function(){ ctEdit(''); }); document.body.append(fb); }
+  fb.hidden=!(isOwner&&sub==='home'&&approved()&&groupsLoaded);
   var seg=$('#seg'), body=$('#body'); seg.textContent=''; body.textContent='';
   if(!approved()){
     seg.hidden=true; $('#dateCard').hidden=true;
@@ -297,7 +301,7 @@ function viewHome(body){
     var cur='', chunk=[], off=0;
     function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;margin-top:4px'; lst.append(h); rows(lst,chunk,false,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
-    flush();
+    flush(); var sp=mk('div'); sp.style.height='64px'; lst.append(sp);
   }
   q.addEventListener('input',function(){ homeQ=q.value; fill(); });
   fill();
