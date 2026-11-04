@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 12:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 12:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -393,8 +393,9 @@ function render(){
   }
   if(!accountOwner&&settingsLoaded&&!subOk()){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; body.append(payCard(true)); return; }
   seg.hidden=false;
-  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'); });
-  if(isOwner&&(sub==='ct'||sub==='gr')) sub='home'; if(!isOwner&&(sub==='cs'||sub==='gr'||sub==='home')) sub='ct';
+  var tabs=[['home','Home'],['ct','Contacts'],['gr','Groups'],['lg','Call Log'],['cs','Users'+(pend?' ('+pend+')':'')],['pay','Payments'+(Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length?' ('+Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length+')':'')]].filter(function(t){ return isOwner?(t[0]!=='ct'&&t[0]!=='gr'):(t[0]==='ct'||t[0]==='lg'||(accountOwner&&t[0]==='cs')); })
+  if(!isOwner&&accountOwner) tabs.forEach(function(t){ if(t[0]==='cs') t[1]=isSuMode()?'SuperUsers':'Users'; });;
+  if(isOwner&&(sub==='ct'||sub==='gr')) sub='home'; if(!isOwner&&(sub==='gr'||sub==='home'||sub==='pay'||(sub==='cs'&&!accountOwner))) sub='ct';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
@@ -406,7 +407,7 @@ function render(){
     vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
     body.append(fld('Viewing contacts of',vs));
   }
-  if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
+  if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
 var usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
@@ -562,15 +563,15 @@ function viewPay(body){
   body.append(p);
   if(st.upi){ var q=mk('div','card'); q.style.cssText='display:flex;flex-direction:column;gap:8px'; q.append(mk('b',null,'What people see'),mk('p','pmeta','Check this QR code with your own UPI app.'),qrBox(200)); body.append(q); }
 }
-function viewCs(body){
-  body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
+function viewCs(body,only){
+  if(!only) body.append(mk('p','pmeta','People create their own account with a phone number and password. Approve them here. Make a person a SuperUser to let them see and share the reports of ordinary users. Assign contacts from Home with Select.'));
   var l=userList().sort(function(a,b){ var x=a[1].st==='ok'?1:0, y=b[1].st==='ok'?1:0; return x-y || byName(a,b); });
   if(!l.length){ body.append(mk('p','pmeta','Nobody has created an account yet.')); return; }
-  var fr=mk('div','aseg'); fr.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+  var fr=mk('div','aseg'); fr.style.gridTemplateColumns='repeat(2,minmax(0,1fr))'; fr.hidden=!!only;
   [['su','Show SuperUsers'],['us','Show Users']].forEach(function(t){ var fb2=mk('button','btn',t[1]); fb2.type='button'; fb2.setAttribute('aria-pressed',usShow===t[0]); fb2.addEventListener('click',function(){ usShow=usShow===t[0]?'':t[0]; sig=''; render(); }); fr.append(fb2); });
   body.append(fr);
-  if(usShow) l=l.filter(function(it){ return (it[1].rl==='su')===(usShow==='su'); });
-  if(!l.length){ body.append(mk('p','pmeta',usShow==='su'?'No SuperUsers yet. Tap Make SuperUser on an approved person.':'No ordinary users.')); return; }
+  if(only) l=l.filter(function(it){ return it[1].st==='ok'&&(it[1].rl==='su')===(only==='su'); }); else if(usShow) l=l.filter(function(it){ return (it[1].rl==='su')===(usShow==='su'); });
+  if(!l.length){ body.append(mk('p','pmeta',(only||usShow)==='su'?'No approved SuperUsers yet. Make an approved person a SuperUser in Owner Mode, Users.':'No approved users yet.')); return; }
   l.forEach(function(it,ix){
     var id=it[0], u=it[1], el=mk('div','card'), ac=mk('div','sline'), ok=u.st==='ok';
     el.style.cssText='display:flex;flex-direction:column;gap:6px;padding:10px 12px'; tint(el,ix);
