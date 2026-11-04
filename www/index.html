@@ -58,9 +58,10 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .dbody{padding:16px; display:flex; flex-direction:column; gap:10px; max-height:86vh; overflow:auto}
 #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:10px 14px; border-radius:12px; max-width:calc(100vw - 32px); z-index:50}
 #toast[hidden]{display:none}
-.modes{display:flex; flex-direction:column; gap:6px; padding:4px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+.modes{display:flex; flex-direction:row; gap:6px; padding:4px; border:1.5px solid var(--accent); border-radius:18px; background:color-mix(in srgb,var(--accent) 12%,var(--card))}
 #modes2{display:grid; grid-template-columns:1fr 1fr; gap:6px}
 #modes2.one{grid-template-columns:1fr}
+.modes>.btn,.modes>#modes2{flex:1 1 0; min-width:0}
 .modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
@@ -74,7 +75,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:50 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -958,8 +959,8 @@ function modeSync(){
   var mo=$('#modeOwner'), mu=$('#modeSu'), ms=$('#modeSup'), m2=$('#modes2');
   var em=(accountOwner&&mode==='owner')?'owner':'user';
   isOwner=em==='owner';
-  $('#modes').hidden=!canSu();
-  mo.hidden=!accountOwner; mu.hidden=true; ms.hidden=!canSu(); m2.className='one';
+  $('#modes').hidden=!accountOwner;
+  mo.hidden=!accountOwner; mu.hidden=true; ms.hidden=!accountOwner; m2.className='one';
   mo.setAttribute('aria-pressed',em==='owner'); mu.setAttribute('aria-pressed',em==='su'); ms.setAttribute('aria-pressed',em==='user');
 }
 function setMode(m){
