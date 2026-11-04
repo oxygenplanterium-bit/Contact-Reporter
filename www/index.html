@@ -73,7 +73,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 1:00 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 1:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -526,6 +526,17 @@ function viewGr(body){
     gd.append(ac); body.append(el);
   });
 }
+function spDlg(id){
+  var u=users[id]; if(!u) return; var r=dlg('dlgSp'), d=r[0], b=r[1];
+  b.append(mk('h2',null,'SuperUser for '+u.n));
+  var sel=document.createElement('select'), o0=mk('option',null,'No SuperUser'); o0.value=''; sel.append(o0);
+  okUsers().filter(function(it){ return it[1].rl==='su'; }).forEach(function(it){ var o=mk('option',null,it[1].n+' \u00b7 '+fmtPhone(it[1].ph)); o.value=it[0]; sel.append(o); }); sel.value=u.sp||''; if(sel.value!==(u.sp||'')) sel.value='';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(fld('SuperUser',sel),mk('p','pmeta','This SuperUser will see this user, the user\'s contacts and the user\'s reports.'),row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){ if(await putDoc('cr/users/'+id,{sp:sel.value||null})){ d.close(); toast(sel.value?'Assigned to the SuperUser':'No SuperUser'); } });
+  openDlg(d);
+}
 function extendUser(id,days){ var u=users[id]||{}; var base=Math.max(Date.now(),Number(u.ex)||0); return putDoc('cr/users/'+id,{ex:base+days*DAY}); }
 function viewPay(body){
   var st=settings||{}, c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px';
@@ -587,6 +598,14 @@ function viewCs(body,only,ro){
       var tg=mk('button','btn small',(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'); tg.type='button'; tg.disabled=!mine.length; tg.style.alignSelf='flex-start';
       tg.addEventListener('click',function(){ usOpen[id]=!usOpen[id]; cl.hidden=!usOpen[id]; tg.textContent=(usOpen[id]?'Hide':'Show')+' Contacts ('+mine.length+')'; });
       el.append(mk('div','pmeta',mine.length?mine.length+' contact'+(mine.length===1?'':'s')+' assigned':'No contacts assigned'),tg,cl);
+      if(u.rl==='su'){
+        var under=userList().filter(function(x){ return x[1].st==='ok'&&x[1].sp===id; });
+        var ul=mk('div'); ul.style.cssText='display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden'; ul.hidden=!usOpen['u'+id];
+        under.forEach(function(x,i){ var r=mk('div'); r.style.cssText='display:flex;justify-content:space-between;gap:8px;padding:6px 10px;'+(i?'border-top:1px solid var(--line)':''); r.append(mk('span',null,x[1].n),mk('span','pmeta',fmtPhone(x[1].ph))); ul.append(r); });
+        var ut=mk('button','btn small',(usOpen['u'+id]?'Hide':'Show')+' Users ('+under.length+')'); ut.type='button'; ut.disabled=!under.length; ut.style.alignSelf='flex-start';
+        ut.addEventListener('click',function(){ usOpen['u'+id]=!usOpen['u'+id]; ul.hidden=!usOpen['u'+id]; ut.textContent=(usOpen['u'+id]?'Hide':'Show')+' Users ('+under.length+')'; });
+        el.append(mk('div','pmeta',under.length?under.length+' user'+(under.length===1?'':'s')+' under this SuperUser':'No users under this SuperUser'),ut,ul);
+      } else if(!ro){ var sp=u.sp&&users[u.sp]; el.append(mk('div','pmeta','SuperUser: '+(sp?sp.n:'None'))); ac.append(btn('Assign SuperUser',function(){ spDlg(id); },'')); }
     }
     if(ok&&subsOn()&&!ro){ var vt=mk('div','pmeta',u.ex?(Number(u.ex)>Date.now()?'Valid till ':'Ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'); if(!(Number(u.ex)>Date.now())) vt.style.cssText='color:var(--warn);font-weight:600'; el.append(vt); }
     if(ro){} else if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary')); }

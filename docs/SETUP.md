@@ -21,7 +21,7 @@ Contact Reporter has its own Supabase project, separate from Nursery Manager. Cr
 
 ## SuperUsers (added later)
 
-Run `supabase.sql` again in the SQL Editor (it is safe to run more than once). This switches on SuperUser reports. In the app, open Owner Mode, then Users, and tap **Make SuperUser** on an approved person. A SuperUser can see and share the reports of ordinary users and their own reports. Nobody except the owner and that SuperUser can see a SuperUser's reports.
+Run `supabase.sql` again in the SQL Editor (it is safe to run more than once). This switches on SuperUser reports. In the app, open Owner Mode, then Users, and tap **Make SuperUser** on an approved person. A SuperUser sees and shares their own reports and those of the ordinary users you assign to them (Users tab, **Assign SuperUser** on a user's card). Nobody except the owner and that SuperUser can see a SuperUser's reports.
 
 ## Subscriptions with UPI payment (added later)
 

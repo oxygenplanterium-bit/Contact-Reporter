@@ -25,24 +25,19 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
--- A SuperUser is an approved person the owner has marked with rl = 'su'. SuperUsers can read the call reports of ordinary users, never of other SuperUsers.
+-- A SuperUser is an approved person the owner has marked with rl = 'su'. SuperUsers can read the reports of the ordinary users assigned to them, never of other SuperUsers.
 create or replace function public.is_su() returns boolean
 language sql stable security definer set search_path = public as $$
   select public.is_ok() and exists (select 1 from public.docs where path = 'cr/users/' || auth.uid()::text and data ->> 'rl' = 'su')
 $$;
-create or replace function public.is_su_uid(u text) returns boolean
+-- A SuperUser sees only the ordinary users the owner has assigned to them (cr/users/<id> has sp = the SuperUser's id).
+create or replace function public.is_my_user(u text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'rl' = 'su')
+  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'st' = 'ok' and data ->> 'sp' = auth.uid()::text)
 $$;
-
--- Helpers that let a SuperUser see the approved ordinary users and the groups assigned to them.
-create or replace function public.is_plain_uid(u text) returns boolean
+create or replace function public.group_has_mine(j jsonb) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.docs where path = 'cr/users/' || u and data ->> 'st' = 'ok' and coalesce(data ->> 'rl', '') <> 'su')
-$$;
-create or replace function public.group_has_plain(j jsonb) returns boolean
-language sql stable security definer set search_path = public as $$
-  select coalesce(jsonb_typeof(j), '') = 'array' and exists (select 1 from jsonb_array_elements_text(j) e where public.is_plain_uid(e))
+  select coalesce(jsonb_typeof(j), '') = 'array' and exists (select 1 from jsonb_array_elements_text(j) e where public.is_my_user(e))
 $$;
 
 alter table public.docs enable row level security;
@@ -60,17 +55,17 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/users/' || auth.uid()::text
   or path = 'cr/settings'
   or path = 'cr/pay/' || auth.uid()::text
-  or (public.is_su() and path like 'cr/users/%' and data ->> 'st' = 'ok' and coalesce(data ->> 'rl', '') <> 'su')
-  or (public.is_su() and path like 'cr/g/%' and public.group_has_plain(data -> 'to'))
+  or (public.is_su() and path like 'cr/users/%' and data ->> 'st' = 'ok' and data ->> 'sp' = auth.uid()::text)
+  or (public.is_su() and path like 'cr/g/%' and public.group_has_mine(data -> 'to'))
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
      or (path like 'cr/log/%' and (split_part(path, '/', 4) = auth.uid()::text
-          or (public.is_su() and not public.is_su_uid(split_part(path, '/', 4)))))))
+          or (public.is_su() and public.is_my_user(split_part(path, '/', 4)))))))
 );
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
   public.is_owner()
-  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl') and not (data ? 'ex'))
+  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'rl') and not (data ? 'ex') and not (data ? 'sp'))
   or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
 );
