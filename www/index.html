@@ -62,7 +62,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 3:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 3:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -96,11 +96,12 @@ function callId(){ return 'k'+Date.now().toString(36)+Math.random().toString(36)
 function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
 function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
-function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{}; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
+    if(accountOwner&&!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
-function grWho(g){ if(g.all) return 'All approved users'; var to=(g.to||[]).filter(function(id){ return users[id]&&users[id].n; }); return to.length ? to.map(function(id){ return users[id].n; }).join(', ') : 'Nobody yet'; }
+function grWho(g){ if(g.all) return 'All approved users'; var to=(g.to||[]).filter(function(id){ return (accountOwner&&id===uid)||(users[id]&&users[id].n); }); return to.length ? to.map(function(id){ return id===uid&&accountOwner?'Owner':users[id].n; }).join(', ') : 'Nobody yet'; }
 function callerName(){ return accountOwner?'Owner':((me&&me.n)||myName||'User'); }
 function clGroup(e){ if(e.gn) return e.gn; var c=ctGet(e.c); return c&&c.g&&groups[c.g]?groups[c.g].n:''; }
 function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(s/60); return m<60 ? m+' min '+(s%60)+' sec' : Math.floor(m/60)+' hr '+(m%60)+' min'; }
@@ -244,6 +245,7 @@ function grEdit(id){
   var sel={}, wrap=mk('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px';
   function row1(c,text){ var l=mk('label'); c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; l.append(c,mk('span',null,text)); wrap.append(l); }
   row1(all,'All approved users');
+  if(accountOwner&&uid){ var oc=document.createElement('input'); oc.type='checkbox'; oc.checked=(g.to||[]).indexOf(uid)>=0; sel[uid]=oc; row1(oc,'Owner (me, for User Mode)'); }
   okUsers().forEach(function(it){ var c=document.createElement('input'); c.type='checkbox'; c.checked=(g.to||[]).indexOf(it[0])>=0; sel[it[0]]=c; row1(c,it[1].n+' · '+fmtPhone(it[1].ph)); });
   if(!okUsers().length) wrap.append(mk('p','pmeta','No approved users yet. Approve people in the Users tab.'));
   b.append(wrap,er);
