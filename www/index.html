@@ -62,7 +62,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 4:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 4:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -97,7 +97,7 @@ function byName(a,b){ return String(a[1].n).localeCompare(String(b[1].n)); }
 function approved(){ return accountOwner || (me&&me.st==='ok'); }
 function grList(){ return Object.keys(groups).filter(function(k){ return k!=='none'&&groups[k]&&groups[k].n; }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
-    if(accountOwner&&!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+    if(accountOwner&&!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(viewAs||uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
@@ -145,6 +145,7 @@ function pendSet(o){ try{ if(o) localStorage.setItem(CALL_KEY,JSON.stringify(o))
 function callStart(cid){
   var c=ctGet(cid); if(!c) return;
   if(!approved()){ toast('Your account is waiting for approval.'); return; }
+  if(accountOwner&&viewAs&&viewAs!==uid){ toast('This is only a preview of that user. Choose Owner (me) to call.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
   pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:uid});
   var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
@@ -286,9 +287,15 @@ function render(){
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
+  if(accountOwner&&!isOwner&&sub==='ct'){
+    var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
+    okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); vs.value=viewAs;
+    vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
+    body.append(fld('Viewing contacts of',vs));
+  }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body); else viewLg(body);
 }
-var ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var viewAs='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
