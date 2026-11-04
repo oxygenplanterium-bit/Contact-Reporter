@@ -64,7 +64,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 9:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 10:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -357,19 +357,22 @@ function viewHome(body){
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
       gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); am.append(btn('Add Many',ctBulk),sb,gb); body.append(am);
-      if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; var us=document.createElement('select'), u0=mk('option',null,'Choose user'); u0.value=''; us.append(u0); var un=mk('option',null,'No one (remove assignment)'); un.value='-'; us.append(un);
-        if(accountOwner&&uid){ var uo=mk('option',null,'Owner (me)'); uo.value=uid; us.append(uo); }
-        okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; us.append(o); });
+      if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
+          list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
+        var supL=[]; if(accountOwner&&uid) supL.push(['Owner (me)',uid]); okUsers().filter(function(it){ return it[1].rl==='su'; }).forEach(function(it){ supL.push([it[1].n+' · '+fmtPhone(it[1].ph),it[0]]); });
+        var usrL=okUsers().filter(function(it){ return it[1].rl!=='su'; }).map(function(it){ return [it[1].n+' · '+fmtPhone(it[1].ph),it[0]]; });
+        var us=mkSel('Choose',supL), uu=mkSel('Choose',usrL);
+        [us,uu].forEach(function(x,i){ x.addEventListener('change',function(){ selUser=x.value; sig=''; try{ x.blur(); }catch(e2){} render(); }); });
         var inf=mk('p','pmeta','Tick the contacts, then choose the user.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
         selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Tick the contacts, then choose the user.'; }; selCnt();
         cl.addEventListener('click',function(){ selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
-        go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!us.value){ toast('Choose a user.'); return; }
-          if(await assignContacts(us.value,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(us.value==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
-        us.value=selUser; us.addEventListener('change',function(){ selUser=us.value; sig=''; try{ us.blur(); }catch(x){} render(); });
+        go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!selUser){ toast('Choose a SuperUser or a user.'); return; }
+          if(await assignContacts(selUser,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(selUser==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
         var ua=btn('Unassign Everyone',function(){ arm(ua,'unall','Unassign Everyone',async function(){ var n=await unassignAll(); if(n<0) return; toast(n?(n+' contact'+(n===1?'':'s')+' unassigned'):'No contacts were assigned'); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); }); },'danger');
         var uv=btn('Show Unassigned',function(){ selUn=!selUn; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); uv.setAttribute('aria-pressed',selUn); if(selUn) uv.className+=' primary';
         var urow=mk('div','sline'); urow.append(uv,ua);
-        ab.append(fld('Assign to',us),inf,ar,urow); body.append(ab); }
+        var sr2=mk('div'); sr2.style.cssText='display:flex;gap:8px'; var f1=fld('Assign To SuperUsers',us), f2=fld('Assign To Users',uu); f1.style.cssText+=';flex:1 1 0;min-width:0'; f2.style.cssText+=';flex:1 1 0;min-width:0'; sr2.append(f1,f2);
+        ab.append(sr2,inf,ar,urow); body.append(ab); }
       viewGr(gp); body.append(gp); } var q=document.createElement('input'); q.type='search'; q.placeholder='Search contacts'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(q);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
