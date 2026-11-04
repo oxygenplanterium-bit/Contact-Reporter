@@ -24,6 +24,11 @@ button,a,label{touch-action:manipulation}
 .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px}
 input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:8px 12px; min-width:0}
 textarea{resize:vertical}
+#dateCard{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; padding:10px 12px}
+#dateCard label{min-width:0; overflow:hidden}
+#dateCard input{display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:40px; padding-top:0; padding-bottom:0; -webkit-appearance:none; appearance:none; text-align:left}
+#dateCard input::-webkit-date-and-time-value{text-align:left; min-height:1.2em}
+#addLog{white-space:nowrap; height:40px; padding:0 12px}
 .f{display:flex; flex-direction:column; gap:4px; margin:0}
 .f>span{color:var(--muted); font-size:.9rem}
 .btn{background:var(--field); border:1px solid var(--line); border-radius:10px; padding:6px 12px; min-height:38px; font-size:.9rem !important; font-weight:600; cursor:pointer}
@@ -55,9 +60,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></nav>
   <div class="aseg" id="seg"></div>
-  <div class="card" id="dateCard" hidden style="display:flex;gap:8px;align-items:flex-end"><label class="f" style="flex:1 1 auto;min-width:0"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary" id="addLog" type="button" style="flex:0 0 auto">Add Log Entry</button></div>
+  <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 2:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 2:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
