@@ -62,7 +62,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><input type="date" id="logDate" aria-label="Choose date"></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 3:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 4 Nov 2026, 4:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
@@ -166,7 +166,7 @@ window.addEventListener('pageshow',function(){ callBack(0); });
 function repOpen(id,e,k){
   var r=dlg('dlgRep'), d=r[0], b=r[1];
   b.append(mk('h2',null,'Call Report'));
-  b.append(mk('p','pmeta',e.n+' · '+e.p+(clGroup(e)?' · '+clGroup(e):'')+(e.d?' · About '+callDur(e.d):'')));
+  b.append(mk('p','pmeta',e.n+' · '+e.p+((isOwner&&clGroup(e))?' · '+clGroup(e):'')+(e.d?' · About '+callDur(e.d):'')));
   var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
   CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=e.o||'';
   var tx=document.createElement('textarea'); tx.rows=5; tx.maxLength=600; tx.value=e.r||''; tx.placeholder='Short summary of the conversation';
@@ -413,7 +413,7 @@ function logEdit(id,e){
     cs=document.createElement('select'); var p0=mk('option',null,'Choose contact'); p0.value=''; cs.append(p0);
     ctAll().forEach(function(it){ var o=mk('option',null,it[1].n+(it[1].p?' · '+it[1].p:'')); o.value=it[0]; cs.append(o); });
     b.append(fld('Contact',cs));
-  }else b.append(mk('p','pmeta',e.n+' · '+e.p+(clGroup(e)?' · '+clGroup(e):'')+' · By '+(e.by||'Unknown')));
+  }else b.append(mk('p','pmeta',e.n+' · '+e.p+((isOwner&&clGroup(e))?' · '+clGroup(e):'')+' · By '+(e.by||'Unknown')));
   var dt=document.createElement('input'); dt.type='date'; dt.value=k0;
   var os=document.createElement('select'), ph=mk('option',null,'Choose what happened'); ph.value=''; os.append(ph);
   CALL_OUT.forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; os.append(o); }); os.value=(e&&e.o)||'';
@@ -458,7 +458,7 @@ var lgOpen={};
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   if(!isOwner) all=all.filter(function(it){ return it[1].sid===uid; });
-  var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; body.append(frow);
+  var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(isOwner) body.append(frow);
   if(isOwner){
     var by={}; all.forEach(function(it){ if(it[1].by) by[it[1].by]=1; });
     var fs=document.createElement('select'), a=mk('option',null,'All users'); a.value=''; fs.append(a);
@@ -470,8 +470,8 @@ function viewLg(body){
   var gf=document.createElement('select'), ga=mk('option',null,'All groups'); ga.value=''; gf.append(ga);
   Object.keys(gset).sort().forEach(function(n){ var o=mk('option',null,n); o.value=n; gf.append(o); });
   var g0=mk('option',null,'No group'); g0.value='-'; gf.append(g0); gf.value=callLg;
-  gf.addEventListener('change',function(){ callLg=gf.value; sig=''; render(); }); gf.setAttribute('aria-label','Show group'); frow.append(gf); Array.prototype.forEach.call(frow.children,function(x){ x.style.flex='1 1 0'; x.style.minWidth='0'; });
-  if(callLg) all=all.filter(function(it){ var g=clGroup(it[1]); return callLg==='-'?!g:g===callLg; });
+  gf.addEventListener('change',function(){ callLg=gf.value; sig=''; render(); }); gf.setAttribute('aria-label','Show group'); if(isOwner) frow.append(gf); Array.prototype.forEach.call(frow.children,function(x){ x.style.flex='1 1 0'; x.style.minWidth='0'; });
+  if(callLg&&isOwner) all=all.filter(function(it){ var g=clGroup(it[1]); return callLg==='-'?!g:g===callLg; });
   all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
   var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
   body.append(mk('p','pmeta',fmtIso(logKey)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' report'+(pd===1?'':'s')+' pending'));
@@ -481,7 +481,7 @@ function viewLg(body){
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; h.setAttribute('role','button'); h.setAttribute('aria-expanded',!!lgOpen[id]); h.append(mk('b',null,e.n),mk('span','pmeta',fmtTime(e.at))); el.append(h);
     var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:600'+(e.o?'':';color:var(--warn)'); el.append(sm);
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
-    dt.append(mk('div','pmeta',[e.p,clGroup(e)?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
+    dt.append(mk('div','pmeta',[e.p,(isOwner&&clGroup(e))?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ if(e.r) dt.append(mk('div',null,e.r)); if(e.nx) dt.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
     else if(e.sid===uid) dt.append(btn('Write Report',function(){ repOpen(id,e,logKey); }));
     if(isOwner||e.sid===uid){ var la=mk('div','sline'); la.append(btn('Edit',function(){ logEdit(id,e); })); if(isOwner){ var ld=btn('Delete',function(){},'danger'); ld.addEventListener('click',function(){ arm(ld,'lgd'+id,'Delete',function(){ logDel(id,e); }); }); la.append(ld); } dt.append(la); }
