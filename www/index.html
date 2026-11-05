@@ -133,11 +133,12 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
   <div class="aseg" id="seg"></div>
+  <div class="card" id="vwCard" hidden style="padding:10px 12px"></div>
   <div class="card" id="rngRow" hidden></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:55 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -583,13 +584,13 @@ function render(){
   fb.hidden=true; fl.hidden=true; $('#fabRow').hidden=true;
   var seg=$('#seg'), body=$('#body'); ACC.hold.append(ACC.ref,ACC.out,ACC.ver); seg.textContent=''; body.textContent='';
   if(!approved()){
-    seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true;
+    seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true; $('#vwCard').hidden=true;
     var w=mk('div','card'); w.style.cssText='display:flex;flex-direction:column;gap:8px';
     w.append(mk('b',null,meLoaded?'Waiting for approval':'Loading...'));
     if(meLoaded) w.append(mk('p','pmeta','Your account has been created. The owner needs to approve it before you can see your contacts. Open this app again after you have been approved.'));
     body.append(w); acctCard(body); return;
   }
-  if(isSuMode()){ seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true; fb.hidden=true; return; }
+  if(isSuMode()){ seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true; $('#vwCard').hidden=true; fb.hidden=true; return; }
   seg.hidden=false;
   var tabs=[['home','Contacts'],['lg','Call Log']]; tabs.push(['set','Settings']);
   if(sub!=='lg'&&sub!=='set') sub='home';
@@ -597,7 +598,7 @@ function render(){
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]);
     if(t[0]==='home'&&isOwner){ b.setAttribute('aria-expanded',actOpen); var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='display:inline-block;margin-left:5px;vertical-align:middle;line-height:0;transition:transform .15s;'+(actOpen?'transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; b.append(ar); }
     b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} if(t[0]==='home'&&isOwner){ actOpen=(sub==='home')?!actOpen:true; if(!actOpen){ if(selMode) homeQ=''; asgShown=false; selMode=false; selSet={}; selUser=''; selUn=false; actMode=''; } } sub=t[0]; sig=''; render(); }); seg.append(b); });
-  $('#dateCard').hidden=sub!=='set'; $('#rngRow').hidden=sub!=='set'; rngSync();
+  $('#dateCard').hidden=sub!=='set'; $('#rngRow').hidden=sub!=='set'; $('#vwCard').hidden=true; rngSync();
   $('#addLog').hidden=!!capSel;
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
@@ -605,7 +606,7 @@ function render(){
     var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
     okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
     vs.addEventListener('change',function(){ viewAs=vs.value; capSel=''; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
-    body.append(fld('Viewing as',vs));
+    var vc=$('#vwCard'); vc.textContent=''; if(sub==='set'){ vc.append(fld('Viewing as',vs)); vc.hidden=false; }
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else if(sub==='set') viewSet(body); else viewLg(body);
 }
