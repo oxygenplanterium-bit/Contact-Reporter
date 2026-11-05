@@ -125,7 +125,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 3:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 3:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -560,7 +560,7 @@ function render(){
   if(accountOwner&&!isOwner){
     var vs=document.createElement('select'), v0=mk('option',null,'Owner (me)'); v0.value=''; vs.append(v0);
     okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' · '+fmtPhone(it[1].ph)); o.value=it[0]; vs.append(o); }); if(!Array.prototype.some.call(vs.options,function(o){ return o.value===viewAs; })) viewAs=''; vs.value=viewAs;
-    vs.addEventListener('change',function(){ viewAs=vs.value; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
+    vs.addEventListener('change',function(){ viewAs=vs.value; capSel=''; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
     body.append(fld('Viewing as',vs));
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else if(sub==='set') viewSet(body); else viewLg(body);
@@ -922,7 +922,8 @@ function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var incl=isOwner||(isSuMode()&&lgInc);
   if(!incl) all=all.filter(function(it){ return it[1].sid===(capSel||(accountOwner&&!isOwner?(viewAs||uid):uid)); });
-  if(!accountOwner){ var cs=document.createElement('select'), c0=mk('option',null,'Me'); c0.value=''; cs.append(c0); capList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; cs.append(o); }); cs.value=capSel; cs.addEventListener('change',function(){ capSel=cs.value; lgUser={}; sig=''; try{ cs.blur(); }catch(e){} logSub(); render(); }); body.append(fld('Captains',cs)); }
+  if(capSel&&!capList().some(function(it){ return it[0]===capSel; })){ capSel=''; logSub(); }
+  if(!isOwner){ var cs=document.createElement('select'), c0=mk('option',null,'Me'); c0.value=''; cs.append(c0); capList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; cs.append(o); }); cs.value=capSel; cs.addEventListener('change',function(){ capSel=cs.value; lgUser={}; sig=''; try{ cs.blur(); }catch(e){} logSub(); render(); }); body.append(fld('Captains',cs)); }
   if(isSuMode()){ var ic=document.createElement('input'); ic.type='checkbox'; ic.checked=lgInc; ic.style.cssText='width:20px;height:20px;margin:0;flex:none'; var il=mk('label'); il.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; il.append(ic,mk('span',null,"Include users' reports")); ic.addEventListener('change',function(){ lgInc=ic.checked; sig=''; try{ ic.blur(); }catch(x){} render(); }); body.append(il); }
   var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(incl) body.append(frow);
   if(incl&&!isOwner){
@@ -967,7 +968,7 @@ function viewLg(body){
   var byU={}, order=[], names={}, isOpen=function(s){ return lgUser[s]===undefined?!isOwner:lgUser[s]; };
   if(isOwner){ okUsers().forEach(function(it){ byU[it[0]]=[]; order.push(it[0]); names[it[0]]=it[1].n; });
     all.forEach(function(it){ var s=it[1].sid||('n:'+(it[1].by||'Unknown')); if(!byU[s]){ byU[s]=[]; order.push(s); names[s]=it[1].by||'Unknown'; } byU[s].push(it); }); }
-  else { var s0=capSel||(accountOwner?(viewAs||uid):uid); byU[s0]=all; order=[s0]; names[s0]=capSel?((capUsers[capSel]&&capUsers[capSel].n)||'Captain'):((users[s0]&&users[s0].n)||callerName()); }
+  else { var s0=capSel||(accountOwner?(viewAs||uid):uid); byU[s0]=all; order=[s0]; names[s0]=capSel?((capSrc()[capSel]&&capSrc()[capSel].n)||'Captain'):((users[s0]&&users[s0].n)||callerName()); }
   order.sort(function(a,b){ return (byU[b].length?1:0)-(byU[a].length?1:0) || String(names[a]).localeCompare(String(names[b])); });
   order.forEach(function(s,ui){
     var list=byU[s], uc=mk('div'); uc.style.cssText='border:1px solid var(--line);border-radius:10px;margin-bottom:5px;overflow:hidden'; tint(uc,ui);
@@ -1185,10 +1186,10 @@ document.addEventListener('click',function(e){
 },true);
 /* ---------- start ---------- */
 function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); }); }
+function capSrc(){ return accountOwner?users:capUsers; }
 function capList(){
-  if(accountOwner) return [];
-  var mine={}; ctAll().forEach(function(it){ var d=phone10(it[1].p); if(d.length===10) mine[d]=1; });
-  return Object.keys(capUsers).filter(function(id){ var u=capUsers[id]; return id!==uid&&u&&u.st==='ok'&&mine[phone10(u.ph)]; }).map(function(id){ return [id,capUsers[id]]; }).sort(function(a,b){ return String(a[1].n||'').localeCompare(String(b[1].n||'')); });
+  var src=capSrc(), me=accountOwner?(viewAs||uid):uid, mine={}; ctAll().forEach(function(it){ var d=phone10(it[1].p); if(d.length===10) mine[d]=1; });
+  return Object.keys(src).filter(function(id){ var u=src[id]; return id!==me&&u&&u.st==='ok'&&mine[phone10(u.ph)]; }).map(function(id){ return [id,src[id]]; }).sort(function(a,b){ return String(a[1].n||'').localeCompare(String(b[1].n||'')); });
 }
 function watchCaptains(){ if(watchCaptains.done||accountOwner) return; watchCaptains.done=true; watchPrefix('cr/users/',function(list){ capUsers=listToMap(list,'cr/users/'); if(capSel&&!capList().some(function(it){ return it[0]===capSel; })){ capSel=''; logSub(); } sig=''; render(); }); }
 function startData(){
