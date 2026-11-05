@@ -25,6 +25,24 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
+
+-- A "Captain" is an approved person whose phone number is in one of the contact lists the caller can see.
+-- Callers may read the account record and call logs of their Captains, and nobody else's.
+create or replace function public.is_captain(target text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_ok() and target <> auth.uid()::text and exists (
+    select 1
+    from public.docs me, public.docs g, lateral jsonb_each(g.data -> 'ct') c
+    where me.path = 'cr/users/' || target and me.data ->> 'st' = 'ok'
+      and g.path like 'cr/g/%' and jsonb_typeof(g.data -> 'ct') = 'object'
+      and (g.data ->> 'all' = 'true' or (g.data -> 'to') ? auth.uid()::text)
+      and length(regexp_replace(coalesce(me.data ->> 'ph', ''), '\D', '', 'g')) >= 10
+      and right(regexp_replace(coalesce(c.value ->> 'p', ''), '\D', '', 'g'), 10)
+        = right(regexp_replace(me.data ->> 'ph', '\D', '', 'g'), 10)
+  )
+$$;
+grant execute on function public.is_captain(text) to authenticated;
+
 alter table public.docs enable row level security;
 drop policy if exists docs_select on public.docs;
 drop policy if exists docs_insert on public.docs;
@@ -48,7 +66,9 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
-     or (path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)))
+     or (path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
+     or (path like 'cr/users/%' and public.is_captain(split_part(path, '/', 3)))
+     or (path like 'cr/log/%' and public.is_captain(split_part(path, '/', 4)))))
 );
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
