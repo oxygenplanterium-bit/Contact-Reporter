@@ -123,7 +123,7 @@ button.btn.usersbtn{justify-content:space-between !important; padding:6px 18px !
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -344,12 +344,18 @@ function callStart(cid){
   if(!approved()){ toast('Your account is waiting for approval.'); return; }
   if(accountOwner&&viewAs&&viewAs!==uid){ toast('This is only a preview of that user. Choose Owner (me) to call.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
-  pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:uid});
+  callFresh=false; pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:uid});
   var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
 }
 function callHidden(){ var p=pendGet(); if(p&&!p.hid){ p.hid=Date.now(); pendSet(p); } }
+function callBlur(){ var p=pendGet(); if(p&&!p.hid&&!p.bl&&Date.now()-p.at<20000){ p.bl=Date.now(); pendSet(p); } }
+var callFresh=true;
 async function callBack(tries){
   var p=pendGet(); if(!p) return;
+  var fresh=callFresh;
+  if(!p.hid&&p.bl&&Date.now()-p.bl>3500){ p.hid=p.bl; pendSet(p); }
+  else if(!p.hid&&p.bl){ p.bl=0; pendSet(p); return; }
+  if(!p.hid&&fresh&&Date.now()-p.at>8000){ p.hid=p.at+3000; pendSet(p); }
   if(!p.hid){ if(Date.now()-p.at>600000) pendSet(null); return; }
   if(!db||!started||!uid){ if((tries||0)<30) setTimeout(function(){ callBack((tries||0)+1); },700); return; }
   if(p.sid&&p.sid!==uid){ pendSet(null); return; }
@@ -361,6 +367,9 @@ async function callBack(tries){
 document.addEventListener('visibilitychange',function(){ if(document.hidden) callHidden(); else callBack(0); });
 window.addEventListener('pagehide',callHidden);
 window.addEventListener('pageshow',function(){ callBack(0); });
+window.addEventListener('blur',callBlur);
+window.addEventListener('focus',function(){ callBack(0); });
+document.addEventListener('resume',function(){ callBack(0); });
 function repOpen(id,e,k){
   var r=dlg('dlgRep'), d=r[0], b=r[1];
   b.append(mk('h2',null,'Call Report'));
