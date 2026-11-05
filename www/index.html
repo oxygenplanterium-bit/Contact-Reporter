@@ -92,7 +92,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 4:05 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 4:20 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -514,7 +514,7 @@ function render(){
   }
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else viewLg(body);
 }
-var usrShow=false, ctDetAll=false, usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+var usrShow=false, ctDetAll=false, ctHide=false, usOpen={}, selUn=false, usShow='', viewAs='', selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -607,12 +607,18 @@ function viewHome(body){
         ab.append(sr2,inf,g4); body.append(ab); }
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(clearable(q));
   var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.8rem;margin:2px 4px 4px'; body.append(rowCnt);
-  var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=ctDetAll; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show contact details'); swl.append(mk('span',null,'Show Contact Details'),swi,document.createElement('i')); body.append(swl);
-  swi.addEventListener('change',function(){ ctDetAll=swi.checked; ctOpen={}; if(ctDetAll) ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); sig=''; try{ swi.blur(); }catch(e){} render(); });
+  var swl=mk('div'); swl.style.cssText='display:flex;flex-direction:column;gap:4px;margin:2px 0 6px'; swl.append(mk('span','pmeta','Contact Details'));
+  var seg3=mk('div'); seg3.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden'; seg3.setAttribute('role','radiogroup'); seg3.setAttribute('aria-label','Contact details view');
+  [['full','Full'],['col','Collapsed'],['hide','Hidden']].forEach(function(o,ix){
+    var on=(o[0]==='hide')?ctHide:(o[0]==='full'?(ctDetAll&&!ctHide):(!ctDetAll&&!ctHide)), bt=mk('button',null,o[1]); bt.type='button'; bt.setAttribute('role','radio'); bt.setAttribute('aria-checked',on?'true':'false');
+    bt.style.cssText='border:0;border-radius:0;margin:0;min-height:40px;padding:6px 4px;font-size:.88rem;font-weight:700;cursor:pointer;'+(ix?'border-left:1px solid var(--line);':'')+(on?'background:var(--accent);color:var(--accent-ink)':'background:transparent;color:inherit');
+    bt.addEventListener('click',function(){ ctHide=o[0]==='hide'; ctDetAll=o[0]==='full'; ctOpen={}; if(ctDetAll) ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); sig=''; render(); });
+    seg3.append(bt); });
+  swl.append(seg3); body.append(swl);
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } return !qq||ctText(it[1]).indexOf(qq)>=0; });
-    rowCnt.textContent='Total Number Of Rows: '+all.length; if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?'Every contact is assigned to someone.':(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap the + button to add one.':'No contacts are assigned to you yet. The owner assigns contacts to users.'))); return; }
+    rowCnt.textContent='Total Number Of Rows: '+all.length; if(ctHide){ lst.append(mk('p','pmeta','Contacts are hidden. Choose Full or Collapsed to show them.')); return; } if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?'Every contact is assigned to someone.':(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap the + button to add one.':'No contacts are assigned to you yet. The owner assigns contacts to users.'))); return; }
     var cur='', chunk=[], off=0;
     function flush(){ if(!chunk.length) return; var h=mk('div','pmeta',cur); h.style.cssText='font-weight:700;padding:2px 4px;margin:4px 0 4px'; lst.append(h); rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
