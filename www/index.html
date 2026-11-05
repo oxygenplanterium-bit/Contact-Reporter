@@ -131,7 +131,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="rngRow" hidden></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:55 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -936,16 +936,38 @@ function repText(title,list,withBy){
   return L.join('\n').trim();
 }
 function shareDlg(title,list,withBy){
-  var r=dlg('dlgShare'), d=r[0], b=r[1], txt=repText(title,list.slice().sort(function(a,c){ return (a[1].at||0)-(c[1].at||0); }),withBy);
-  b.append(mk('h2',null,'Share Report'));
-  var ta=document.createElement('textarea'); ta.rows=12; ta.value=txt; ta.style.textTransform='none'; b.append(ta);
-  var row=mk('div','two'), wa=mk('button','btn primary','WhatsApp'), sh=mk('button','btn','Other Apps'), cp=mk('button','btn','Copy'), cl=mk('button','btn','Close');
-  [wa,sh,cp,cl].forEach(function(x){ x.type='button'; });
-  wa.addEventListener('click',function(){ var a=document.createElement('a'); a.href='https://wa.me/?text='+encodeURIComponent(ta.value); a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); });
-  sh.addEventListener('click',function(){ if(navigator.share){ navigator.share({title:title,text:ta.value}).catch(function(){}); } else toast('Sharing is not available here. Use WhatsApp or Copy.'); });
-  cp.addEventListener('click',function(){ try{ navigator.clipboard.writeText(ta.value).then(function(){ toast('Report copied'); },function(){ ta.select(); toast('Select and copy the text'); }); }catch(e){ ta.select(); toast('Select and copy the text'); } });
+  var r=dlg('dlgShare'), d=r[0], bx=r[1], items=list.slice().sort(function(a,c){ return (a[1].at||0)-(c[1].at||0); });
+  var build=function(){
+    var doc=new PDF.Doc(), sp=items.filter(function(it){ return it[1].o==='spoke'; }).length, pd=items.filter(function(it){ return !it[1].o; }).length;
+    doc.text('Contact Reporter - Call Report',{size:16,bold:true,after:4});
+    doc.text(title,{size:10,bold:true});
+    doc.text('Prepared by '+(accountOwner?'Owner':callerName())+' on '+fmtIso(todayKey())+' at '+fmtTime(Date.now()),{size:9});
+    doc.text(items.length+' call'+(items.length===1?'':'s')+' - '+sp+' spoke - '+pd+' pending',{size:9});
+    doc.rule();
+    items.forEach(function(it,i){ var e=it[1];
+      doc.text((i+1)+'. '+e.n+(e.p?' ('+e.p+')':''),{size:10,bold:true,before:5});
+      doc.text('Date: '+fmtIso(dayKey(e.at))+(e.at?', '+fmtTime(e.at):'')+'   Duration: '+(e.d?callDur(e.d):'not recorded')+'   Result: '+(e.o?callOutName(e.o):'Report pending'),{size:9,indent:12});
+      if(withBy&&e.by) doc.text('Called by: '+e.by,{size:9,indent:12});
+      doc.text('Notes: '+(e.r||'None'),{size:9,indent:12}); if(e.nx) doc.text('Next call: '+fmtIso(e.nx),{size:9,indent:12});
+    });
+    return doc.build('Contact Reporter - Call Report');
+  };
+  var nm='Call-Report-'+String(title).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.pdf';
+  bx.append(mk('h2',null,'Share Report'));
+  bx.append(mk('p','pmeta',title+' · '+items.length+' call'+(items.length===1?'':'s')+' · PDF'));
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var sh=mk('button','btn primary','Share PDF'), dl=mk('button','btn','Download PDF'), cl=mk('button','btn','Close');
+  [sh,dl,cl].forEach(function(x){ x.type='button'; });
+  sh.addEventListener('click',async function(){
+    try{
+      var bytes=build(), f=null; try{ f=new File([bytes],nm,{type:'application/pdf'}); }catch(x){}
+      if(f&&navigator.canShare&&navigator.canShare({files:[f]})){ try{ await navigator.share({files:[f],title:title}); return; }catch(x){ if(x&&x.name==='AbortError') return; } }
+      await savePdf(bytes,nm,true);
+    }catch(x){ er.textContent='Could not make the PDF.'; }
+  });
+  dl.addEventListener('click',async function(){ try{ await savePdf(build(),nm,false); }catch(x){ er.textContent='Could not make the PDF.'; } });
   cl.addEventListener('click',function(){ d.close(); });
-  row.append(wa,sh); var row2=mk('div','two'); row2.append(cp,cl); b.append(row,row2); openDlg(d);
+  var row=mk('div','two'); row.append(sh,dl); var row2=mk('div','two'); row2.append(cl); bx.append(er,row,row2); openDlg(d);
 }
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
