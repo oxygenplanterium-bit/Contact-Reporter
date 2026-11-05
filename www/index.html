@@ -80,8 +80,10 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
-.fab{position:fixed; right:max(12px, env(safe-area-inset-right, 0px)); bottom:calc(10px + env(safe-area-inset-bottom, 0px) * .3); width:54px; height:54px; border-radius:50%; border:0; background:var(--accent); color:var(--accent-ink); font-size:2rem !important; line-height:1; padding:0 0 3px; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:40; cursor:pointer; top:auto !important; left:auto !important; margin:0; transform:translate3d(0,0,0); -webkit-transform:translate3d(0,0,0); will-change:transform; -webkit-backface-visibility:hidden}
+.fab{position:fixed; right:max(12px, env(safe-area-inset-right, 0px)); bottom:calc(30px + env(safe-area-inset-bottom, 0px) * .3); width:54px; height:54px; border-radius:50%; border:0; background:#c2185b; color:#fff; font-size:2rem !important; line-height:1; padding:0 0 3px; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:40; cursor:pointer; top:auto !important; left:auto !important; margin:0; transform:translate3d(0,0,0); -webkit-transform:translate3d(0,0,0); will-change:transform; -webkit-backface-visibility:hidden}
 .fab[hidden]{display:none !important}
+.fablbl{position:fixed; right:max(8px, env(safe-area-inset-right, 0px)); bottom:calc(10px + env(safe-area-inset-bottom, 0px) * .3); width:62px; text-align:center; font-size:.68rem; line-height:1.1; font-weight:700; color:#c2185b; z-index:40; pointer-events:none}
+.fablbl[hidden]{display:none !important}
 .bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 </style></head><body>
 <div class="wrap">
@@ -90,7 +92,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 3:50 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -485,7 +487,8 @@ function render(){
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
   var fb=$('#fab'); if(!fb){ fb=mk('button','fab','+'); fb.id='fab'; fb.type='button'; fb.setAttribute('aria-label','Add new contact'); fb.addEventListener('click',function(){ ctEdit(''); }); document.documentElement.append(fb); }
-  fb.hidden=!(isOwner&&sub==='home'&&approved()&&groupsLoaded);
+  var fl=$('#fabLbl'); if(!fl){ fl=mk('div','fablbl','Add Contact'); fl.id='fabLbl'; document.documentElement.append(fl); }
+  fb.hidden=!(isOwner&&sub==='home'&&approved()&&groupsLoaded); fl.hidden=fb.hidden;
   var seg=$('#seg'), body=$('#body'); seg.textContent=''; body.textContent='';
   if(!approved()){
     seg.hidden=true; $('#dateCard').hidden=true;
