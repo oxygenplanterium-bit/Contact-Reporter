@@ -122,7 +122,7 @@ button.btn.bigbtn{min-height:46px !important; font-size:.98rem !important; paddi
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 10:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 11:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -388,6 +388,18 @@ function groupSel(cur,withAll){
   grList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; s.append(o); });
   s.value=cur||''; return s;
 }
+function userDelDlg(id,u){
+  var r=dlg('dlgUD'), d=r[0], b=r[1]; b.append(mk('h2',null,'Delete User'));
+  b.append(mk('p',null,'Delete '+u.n+' ('+fmtPhone(u.ph)+')?'),mk('p','pmeta','This user is removed from the app and from every contact group they were assigned to. Their old call logs stay. If they open the app again they will need your approval again.'));
+  var row=mk('div','two'), ok=mk('button','btn danger','Delete'), cn=mk('button','btn','Cancel'); ok.type=cn.type='button'; row.append(ok,cn); b.append(row);
+  cn.addEventListener('click',function(){ d.close(); });
+  ok.addEventListener('click',async function(){
+    ok.disabled=true; var good=await delDoc('cr/users/'+id); if(good) await delDoc('cr/pay/'+id);
+    if(good){ var gl=grList(); for(var i=0;i<gl.length;i++){ var to=gl[i][1].to||[]; if(to.indexOf(id)>=0) await putDoc('cr/g/'+gl[i][0],{to:to.filter(function(x){ return x!==id; })}); } }
+    ok.disabled=false; if(good){ d.close(); toast(u.n+' deleted'); }
+  });
+  openDlg(d);
+}
 function userNameDlg(id,u){
   var r=dlg('dlgUN'), d=r[0], b=r[1]; b.append(mk('h2',null,'Edit User Name'));
   var nm=mkIn('text','Name',u.n); nm.maxLength=60; var er=mk('p','pmeta'); er.style.color='var(--warn)';
@@ -605,7 +617,7 @@ function usersCard(body){
   var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(usrShow){ var uc=mk('div','card'); uc.style.cssText='display:flex;flex-direction:column;gap:0;padding:4px 10px;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
-    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px;'+(i?'border-top:1px solid var(--line)':''); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); r.append(t,iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); })); uc.append(r); });
+    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px;'+(i?'border-top:1px solid var(--line)':''); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),iconBtn('Delete user',IC_DEL,function(){ userDelDlg(id,u); },'var(--loss)')); r.append(t,ic); uc.append(r); });
     body.append(uc); }
 }
 function viewSetOwner(body){
