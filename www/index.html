@@ -83,7 +83,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .fab{flex:none; width:44px; height:44px; border-radius:50%; border:0; background:var(--accent); color:var(--accent-ink); font-size:1.8rem !important; line-height:1; padding:0 0 3px; margin:0; cursor:pointer}
 .fab[hidden]{display:none !important}
 .fablbl{flex:none; min-height:44px; border:0; border-radius:10px; padding:0 18px; margin:0; background:var(--accent); color:var(--accent-ink); font-size:.95rem; font-weight:700; cursor:pointer}
-.addrow{display:flex; align-items:center; justify-content:flex-start; gap:10px}
+.addrow{display:flex; align-items:center; justify-content:flex-end; gap:10px}
 .addrow[hidden]{display:none !important}
 .fablbl[hidden]{display:none !important}
 .bot{position:fixed; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:760px; box-sizing:border-box; display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); background:var(--bg); border-top:1px solid var(--line); z-index:50}
@@ -99,7 +99,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 5:00 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 5:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
