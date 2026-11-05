@@ -121,7 +121,7 @@ button.btn.small{min-height:26px !important; padding:2px 8px !important; font-si
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -519,7 +519,7 @@ function render(){
   var bs0=$('#botSearch'); if(!bs0){ bs0=mk('div'); bs0.id='botSearch'; var bt1=document.querySelector('.bot'); bt1.insertBefore(bs0,bt1.firstChild); } bs0.textContent=''; bs0.hidden=true;
   var fb=$('#fab'); if(!fb){ fb=mk('button','fab','+'); fb.id='fab'; fb.type='button'; fb.setAttribute('aria-label','Add new contact'); fb.addEventListener('click',function(){ ctEdit(''); }); var ar=$('#fabRow'); if(!ar){ ar=mk('div','addrow'); ar.id='fabRow'; var bt0=document.querySelector('.bot'); bt0.insertBefore(ar,bt0.firstChild); ar.append(fb); } }
   var fl=$('#fabLbl'); if(!fl){ fl=mk('button','fablbl','Add Contact'); fl.id='fabLbl'; fl.type='button'; fl.addEventListener('click',function(){ ctEdit(''); }); $('#fabRow').append(fl); }
-  fb.hidden=!(isOwner&&sub==='home'&&approved()&&groupsLoaded); fl.hidden=fb.hidden; $('#fabRow').hidden=fb.hidden;
+  fb.hidden=true; fl.hidden=true; $('#fabRow').hidden=true;
   var seg=$('#seg'), body=$('#body'); ACC.hold.append(ACC.ref,ACC.out,ACC.ver); seg.textContent=''; body.textContent='';
   if(!approved()){
     seg.hidden=true; $('#dateCard').hidden=true;
@@ -622,7 +622,7 @@ function viewHome(body){
   }
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
-      gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; am.append(sb); body.append(am);
+      gb.setAttribute('aria-pressed',grShow); var sb=btn('Select',function(){ selMode=!selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px'; am.append(sb); var adb=btn('Add Contact',function(){ ctEdit(''); },'primary'); adb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; am.append(adb); body.append(am);
       var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.setAttribute('aria-pressed',usrShow); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; am.append(ub);
       if(usrShow){ var uc=mk('div','card'); uc.style.cssText='display:flex;flex-direction:column;gap:0;padding:4px 10px;margin-top:6px';
         if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
@@ -644,7 +644,7 @@ function viewHome(body){
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
-      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); var bsr=$('#botSearch'); bsr.hidden=false; bsr.append(clearable(q));
+      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(clearable(q));
   var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.8rem;margin:2px 4px 4px'; body.append(rowCnt);
   var swl=mk('div'); swl.style.cssText='display:flex;flex-direction:column;gap:4px;margin:2px 0 6px'; swl.append(mk('span','pmeta','Contact Details'));
   var seg3=mk('div'); seg3.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden'; seg3.setAttribute('role','radiogroup'); seg3.setAttribute('aria-label','Contact details view');
