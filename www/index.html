@@ -85,16 +85,19 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .fablbl{flex:none; min-height:44px; border:0; border-radius:10px; padding:0 18px; margin:0; background:var(--accent); color:var(--accent-ink); font-size:.95rem; font-weight:700; cursor:pointer}
 .addrow{display:contents}
 .addrow[hidden]{display:none !important}
+#botSearch{grid-row:1; grid-column:1 / -1; margin-bottom:2px}
+#botSearch[hidden]{display:none !important}
+#botSearch input{margin:0}
 .fablbl[hidden]{display:none !important}
 .bot{position:fixed; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:760px; box-sizing:border-box; display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:6px; padding:6px 16px max(3px, calc(env(safe-area-inset-bottom, 0px) * .4)); background:var(--bg); border-top:1px solid var(--line); z-index:50}
 .bot .sline{display:contents}
 .bot .sline button{width:auto; margin:0; min-height:38px; box-sizing:border-box; white-space:nowrap}
-.bot #refreshApp{grid-row:1; grid-column:1; justify-self:start}
-.bot #fab{grid-row:1 / 3; grid-column:4; justify-self:center; align-self:end}
-#fabLbl{grid-row:3; grid-column:4; justify-self:end}
-#appVer{grid-row:3; grid-column:1 / 4}
-.bot #signOut{grid-row:2; grid-column:2; justify-self:start}
-.bot #wipeAll{grid-row:2; grid-column:1; justify-self:start}
+.bot #refreshApp{grid-row:2; grid-column:1; justify-self:start}
+.bot #fab{grid-row:2 / 4; grid-column:4; justify-self:center; align-self:end}
+#fabLbl{grid-row:4; grid-column:4; justify-self:end}
+#appVer{grid-row:4; grid-column:1 / 4}
+.bot #signOut{grid-row:3; grid-column:2; justify-self:start}
+.bot #wipeAll{grid-row:3; grid-column:1; justify-self:start}
 .bot .sline button[hidden]{display:none !important}
 .wrap{padding-bottom:calc(var(--botH, 120px) + 16px)}
 /* compact buttons */
@@ -120,7 +123,7 @@ button.btn:not(.danger), .bot button, [role=radio]{border-color:var(--accent) !i
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 6:55 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -510,11 +513,12 @@ function render(){
   if(!started) return;
   modeSync(); $('#wipeAll').hidden=!isOwner;
   var ae=document.activeElement, body=$('#body');
-  if(ae&&body.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+  var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
+  var bs0=$('#botSearch'); if(!bs0){ bs0=mk('div'); bs0.id='botSearch'; var bt1=document.querySelector('.bot'); bt1.insertBefore(bs0,bt1.firstChild); } bs0.textContent=''; bs0.hidden=true;
   var fb=$('#fab'); if(!fb){ fb=mk('button','fab','+'); fb.id='fab'; fb.type='button'; fb.setAttribute('aria-label','Add new contact'); fb.addEventListener('click',function(){ ctEdit(''); }); var ar=$('#fabRow'); if(!ar){ ar=mk('div','addrow'); ar.id='fabRow'; var bt0=document.querySelector('.bot'); bt0.insertBefore(ar,bt0.firstChild); ar.append(fb); } }
   var fl=$('#fabLbl'); if(!fl){ fl=mk('button','fablbl','Add Contact'); fl.id='fabLbl'; fl.type='button'; fl.addEventListener('click',function(){ ctEdit(''); }); $('#fabRow').append(fl); }
   fb.hidden=!(isOwner&&sub==='home'&&approved()&&groupsLoaded); fl.hidden=fb.hidden; $('#fabRow').hidden=fb.hidden;
@@ -531,7 +535,7 @@ function render(){
   var tabs=[['home','Home'],['lg','Call Log']]; if(isOwner) tabs.push(['set','Settings']);
   if(sub!=='lg'&&!(sub==='set'&&isOwner)) sub='home';
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
-  tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ sub=t[0]; sig=''; render(); }); seg.append(b); });
+  tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]); b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
@@ -637,7 +641,7 @@ function viewHome(body){
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
-      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(clearable(q));
+      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); var bsr=$('#botSearch'); bsr.hidden=false; bsr.append(clearable(q));
   var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.8rem;margin:2px 4px 4px'; body.append(rowCnt);
   var swl=mk('div'); swl.style.cssText='display:flex;flex-direction:column;gap:4px;margin:2px 0 6px'; swl.append(mk('span','pmeta','Contact Details'));
   var seg3=mk('div'); seg3.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden'; seg3.setAttribute('role','radiogroup'); seg3.setAttribute('aria-label','Contact details view');
