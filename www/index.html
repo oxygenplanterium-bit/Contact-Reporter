@@ -123,7 +123,7 @@ button.btn.usersbtn{justify-content:space-between !important; padding:6px 18px !
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -550,7 +550,7 @@ function render(){
   seg.style.gridTemplateColumns='repeat('+tabs.length+',minmax(0,1fr))';
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]);
     if(t[0]==='home'&&isOwner){ b.setAttribute('aria-expanded',actOpen); var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='display:inline-block;margin-left:5px;vertical-align:middle;line-height:0;transition:transform .15s;'+(actOpen?'transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; b.append(ar); }
-    b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} if(t[0]==='home'&&isOwner){ actOpen=(sub==='home')?!actOpen:true; if(!actOpen) asgShown=false; } sub=t[0]; sig=''; render(); }); seg.append(b); });
+    b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} if(t[0]==='home'&&isOwner){ actOpen=(sub==='home')?!actOpen:true; if(!actOpen){ asgShown=false; selMode=false; selSet={}; selUser=''; selUn=false; actMode=''; } } sub=t[0]; sig=''; render(); }); seg.append(b); });
   $('#dateCard').hidden=sub!=='lg';
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
