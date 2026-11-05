@@ -90,7 +90,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 11:50 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -580,6 +580,12 @@ function viewHome(body){
         if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
         ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px;'+(i?'border-top:1px solid var(--line)':''); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); r.append(t,iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); })); uc.append(r); });
         body.append(uc); }
+      var sbl=mk('label','sw'), sbi=document.createElement('input'); sbi.type='checkbox'; sbi.checked=subsOn(); sbi.setAttribute('role','switch'); sbi.setAttribute('aria-label','App subscription'); sbl.style.marginTop='8px'; sbl.append(mk('span',null,'App Subscription'),sbi,document.createElement('i'));
+      var npay=Object.keys(claims).filter(function(k){ return claims[k]&&claims[k].st==='pending'; }).length, sset=btn('Subscription Settings'+(npay?' ('+npay+')':''),subDlg,''); sset.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box';
+      sbi.addEventListener('change',async function(){ var on=sbi.checked, st=settings||{}; try{ sbi.blur(); }catch(e){}
+        if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
+        if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
+      body.append(sbl,sset);
       if(selMode){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
           list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
                 var usrL=okUsers().map(function(it){ return [it[1].n+' · '+fmtPhone(it[1].ph),it[0]]; });
@@ -660,6 +666,10 @@ function spDlg(id){
   openDlg(d);
 }
 function extendUser(id,days){ var u=users[id]||{}; var base=Math.max(Date.now(),Number(u.ex)||0); return putDoc('cr/users/'+id,{ex:base+days*DAY}); }
+function subDlg(){
+  var r=dlg('dlgSub'), d=r[0], b=r[1]; b.append(mk('h2',null,'Subscription')); var inner=mk('div'); inner.style.cssText='display:flex;flex-direction:column;gap:10px'; b.append(inner); viewPay(inner);
+  var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x); openDlg(d);
+}
 function viewPay(body){
   var st=settings||{}, c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px';
   c.append(mk('b',null,'Subscription settings'));
