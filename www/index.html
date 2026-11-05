@@ -93,10 +93,10 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .bot .sline{display:contents}
 .bot .sline button{width:auto; margin:0; min-height:38px; box-sizing:border-box; white-space:nowrap}
 .bot #refreshApp{grid-row:2; grid-column:1; justify-self:start}
-.bot #fab{grid-row:2 / 4; grid-column:4; justify-self:center; align-self:end}
-#fabLbl{grid-row:4; grid-column:4; justify-self:end}
-#appVer{grid-row:4; grid-column:1 / 4}
-.bot #signOut{grid-row:3; grid-column:1; justify-self:start}
+.bot #fab{grid-row:2; grid-column:4; justify-self:center; align-self:end}
+#fabLbl{grid-row:3; grid-column:4; justify-self:end}
+#appVer{grid-row:3; grid-column:1 / 4}
+.bot #signOut{grid-row:2; grid-column:2; justify-self:start}
 .bot .sline button[hidden]{display:none !important}
 .wrap{padding-bottom:calc(var(--botH, 120px) + 16px)}
 /* compact buttons */
@@ -117,7 +117,7 @@ button.btn.small{min-height:26px !important; padding:2px 8px !important; font-si
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:35 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:45 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
