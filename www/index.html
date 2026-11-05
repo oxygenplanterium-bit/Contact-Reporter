@@ -94,7 +94,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .bot .sline button{width:auto; margin:0; min-height:38px; box-sizing:border-box; white-space:nowrap}
 .bot #refreshApp{grid-row:2; grid-column:1; justify-self:start}
 .bot #fab{grid-row:2; grid-column:4; justify-self:center; align-self:end}
-#fabLbl{grid-row:3; grid-column:4; justify-self:end}
+#fabLbl{grid-row:3; grid-column:4; justify-self:center}
 #appVer{grid-row:3; grid-column:1 / 4}
 .bot #signOut{grid-row:2; grid-column:2; justify-self:start}
 .bot .sline button[hidden]{display:none !important}
@@ -111,7 +111,7 @@ button.btn.small{min-height:26px !important; padding:2px 8px !important; font-si
 .bot{gap:2px 6px !important; padding-top:4px !important}
 #appVer{line-height:1.1 !important; margin:0; padding:0}
 .bot #refreshApp,.bot #signOut{min-height:26px !important; margin:0; align-self:end}
-.fablbl{min-height:28px !important; padding:0 10px !important; font-size:.76rem !important; border-radius:7px !important}
+.fablbl{background:transparent !important; border:0 !important; min-height:0 !important; padding:0 !important; margin:0 !important; color:var(--ink) !important; font-size:.72rem !important; font-weight:800 !important; line-height:1.1 !important; border-radius:0 !important}
 .bot:not(:has(#botSearch:not([hidden]))):not(:has(#fabRow:not([hidden]))){display:none}
 </style></head><body>
 <div class="wrap">
@@ -121,7 +121,7 @@ button.btn.small{min-height:26px !important; padding:2px 8px !important; font-si
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:35 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 8:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
