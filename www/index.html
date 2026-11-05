@@ -137,7 +137,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -622,7 +622,10 @@ function rows(box,list,own,off){
     [['Phone',isOwner?c.p:''],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Place',c.pl],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; if(chBtn) chBtn.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; if(accountOwner&&!isOwner&&viewAs) cb.style.display='none'; cb.style.padding='2px 12px'; cb.style.minHeight='24px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]; sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); });
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; if(accountOwner&&!isOwner&&viewAs) cb.style.display='none'; cb.style.padding='2px 12px'; cb.style.minHeight='24px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
+      if(!selUser) return; var want=sc.checked, tgt=selUser, nm0=(tgt==='-')?'':((users[tgt]&&users[tgt].n)||'user'); sc.disabled=true;
+      var ok=false; if(want){ ok=await assignContacts(tgt,[id]); if(ok) toast(c.n+(tgt==='-'?' unassigned':' assigned to '+nm0)); } else if(tgt!=='-'&&c.g==='u'+tgt){ ok=await assignContacts('-',[id]); if(ok) toast(c.n+' unassigned'); } else ok=true;
+      sc.disabled=false; if(!ok){ sc.checked=!want; if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); } sig=''; render(); });
       top.addEventListener('click',function(){ sc.checked=!sc.checked; sc.dispatchEvent(new Event('change')); }); hd.append(sc,top); }
     else if(own&&sub==='ct') hd.append(top); else if(own){ var ics=mk('div'); ics.style.cssText='display:flex;flex-direction:column;align-items:center;gap:0;flex:0 0 auto';
       var SV='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
@@ -717,7 +720,7 @@ function viewHome(body){
                 var usrL=okUsers().map(function(it){ return [it[1].n+' · '+fmtPhone(it[1].ph),it[0]]; });
         var uu=mkSel('Choose',usrL);
         [uu].forEach(function(x,i){ x.addEventListener('change',function(){ selUser=x.value; sig=''; try{ x.blur(); }catch(e2){} render(); }); });
-        var inf=mk('p','pmeta','Choose the user, then tick the contacts below and press Apply.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
+        var inf=mk('p','pmeta','Choose the user, then tick the contacts below. Each tick assigns right away.'); var ar=mk('div','two'), go=mk('button','btn primary','Apply'), cl=mk('button','btn','Cancel'); go.type=cl.type='button'; ar.append(go,cl);
         selCnt=function(){ var n=Object.keys(selSet).length; inf.textContent=n?n+' contact'+(n===1?'':'s')+' selected.':'Choose the user, then tick the contacts below.'; }; selCnt();
         cl.addEventListener('click',function(){ selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); });
         go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!selUser){ toast('Choose a user.'); return; }
