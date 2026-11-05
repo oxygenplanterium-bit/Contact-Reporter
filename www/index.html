@@ -138,7 +138,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:35 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1270,11 +1270,11 @@ function dropScroll(e){ var d=document.getElementById('pickDrop'); if(d&&!d.cont
 function openPick(sel,title){
   if(dropShut.sel===sel&&Date.now()-dropShut.at<700){ dropShut={sel:null,at:0}; return; }
   var was=document.getElementById('pickDrop'); if(was){ var same=was._sel===sel; closeDrop(); if(same) return; }
-  var r=sel.getBoundingClientRect(), vh=window.innerHeight, below=vh-r.bottom-10, above=r.top-10, up=below<200&&above>below, room=Math.max(120,up?above:below);
+  var r=sel.getBoundingClientRect(), vh=window.innerHeight, below=vh-r.bottom-10, above=r.top-10, need=Math.min(sel.options.length,10)*42+16+(sel.options.length>10?48:0), up=below<need&&above>below, room=Math.max(120,up?above:below);
   var d=mk('div'); d.id='pickDrop'; d._sel=sel; d.className='pdrop'; d.setAttribute('role','listbox');
-  d.style.cssText='position:fixed;z-index:3000;left:10px;width:'+(window.innerWidth-20)+'px;max-height:'+Math.min(room,Math.round(vh*0.7))+'px;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden;box-sizing:border-box;'+(up?'bottom:'+(vh-r.top+4)+'px':'top:'+(r.bottom+4)+'px');
+  d.style.cssText='position:fixed;z-index:3000;left:10px;width:'+(window.innerWidth-20)+'px;max-height:'+Math.min(room,need,Math.round(vh*0.85))+'px;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden;box-sizing:border-box;'+(up?'bottom:'+(vh-r.top+4)+'px':'top:'+(r.bottom+4)+'px');
   var box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px;overflow-y:auto;min-height:0;flex:1 1 auto';
-  var sr=null; if(sel.options.length>6){ sr=document.createElement('input'); sr.type='search'; sr.placeholder='Search'; sr.setAttribute('aria-label','Search'); sr.autocomplete='off'; sr.style.cssText='margin:6px 6px 0;width:calc(100% - 12px);flex:none'; d.append(sr); }
+  var sr=null; if(sel.options.length>10){ sr=document.createElement('input'); sr.type='search'; sr.placeholder='Search'; sr.setAttribute('aria-label','Search'); sr.autocomplete='off'; sr.style.cssText='margin:6px 6px 0;width:calc(100% - 12px);flex:none'; d.append(sr); }
   Array.prototype.forEach.call(sel.options,function(o){
     var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; b.style.minHeight='38px'; b.style.padding='8px 12px'; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
     b.addEventListener('click',function(){ sel.value=o.value; closeDrop(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
