@@ -96,8 +96,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .bot #fab{grid-row:2 / 4; grid-column:4; justify-self:center; align-self:end}
 #fabLbl{grid-row:4; grid-column:4; justify-self:end}
 #appVer{grid-row:4; grid-column:1 / 4}
-.bot #signOut{grid-row:3; grid-column:2; justify-self:start}
-.bot #wipeAll{grid-row:3; grid-column:1; justify-self:start}
+.bot #signOut{grid-row:3; grid-column:1; justify-self:start}
 .bot .sline button[hidden]{display:none !important}
 .wrap{padding-bottom:calc(var(--botH, 120px) + 16px)}
 /* compact buttons */
@@ -123,7 +122,7 @@ button.btn:not(.danger), .bot button, [role=radio]{border-color:var(--accent) !i
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:10 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 7:25 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -511,7 +510,7 @@ function dateSync(){ var s=$('#dateShow'); if(s) s.textContent=fmtIso($('#logDat
 var pks=$('#pickSearch'); if(pks&&!pks.parentNode.classList.contains('clr')) clearable(pks);
 function render(){
   if(!started) return;
-  modeSync(); $('#wipeAll').hidden=!isOwner;
+  modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   var s=JSON.stringify([sub,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
@@ -604,6 +603,7 @@ function viewSet(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
+  var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-start'; dz.append(wb); body.append(dz);
 }
 function viewHome(body){
   if(isOwner){
@@ -1113,7 +1113,7 @@ async function appRefresh(){
   location.replace(location.pathname+'?r='+Date.now());
 }
 $('#refreshApp').addEventListener('click',function(){ toast('Refreshing the app...',2000); appRefresh(); });
-$('#wipeAll').addEventListener('click',function(){ wipeDlg(); });
+
 $('#signOut').addEventListener('click',function(){ if(window.claude&&window.claude.signOut) window.claude.signOut(); else location.reload(); });
 $('#addLog').addEventListener('click',function(){ logEdit('',null); });
 $('#logDate').value=logKey; dateSync();
