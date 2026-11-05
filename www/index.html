@@ -138,7 +138,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:55 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1263,20 +1263,29 @@ $('#logDate').addEventListener('change',function(){ if(!this.value) return; logK
   $('#logDate').addEventListener('change',function(){ rngSync(); });
 })();
 /* ---------- full-size picker for every drop-down menu ---------- */
+function closeDrop(){ var d=document.getElementById('pickDrop'); if(d) d.remove(); document.removeEventListener('pointerdown',dropOut,true); window.removeEventListener('resize',closeDrop); window.removeEventListener('scroll',dropScroll,true); }
+function dropOut(e){ var d=document.getElementById('pickDrop'); if(d&&!d.contains(e.target)) closeDrop(); }
+function dropScroll(e){ var d=document.getElementById('pickDrop'); if(d&&!d.contains(e.target)) closeDrop(); }
 function openPick(sel,title){
-  var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title||'Choose';
+  var was=document.getElementById('pickDrop'); if(was){ var same=was._sel===sel; closeDrop(); if(same) return; }
+  var r=sel.getBoundingClientRect(), vh=window.innerHeight, below=vh-r.bottom-10, above=r.top-10, up=below<200&&above>below, room=Math.max(120,up?above:below);
+  var d=mk('div'); d.id='pickDrop'; d._sel=sel; d.className='pdrop'; d.setAttribute('role','listbox');
+  d.style.cssText='position:fixed;z-index:3000;left:'+r.left+'px;width:'+r.width+'px;max-height:'+Math.min(room,Math.round(vh*0.7))+'px;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden;box-sizing:border-box;'+(up?'bottom:'+(vh-r.top+4)+'px':'top:'+(r.bottom+4)+'px');
+  var box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:4px;padding:6px;overflow-y:auto;min-height:0;flex:1 1 auto';
+  var sr=null; if(sel.options.length>6){ sr=document.createElement('input'); sr.type='search'; sr.placeholder='Search'; sr.setAttribute('aria-label','Search'); sr.autocomplete='off'; sr.style.cssText='margin:6px 6px 0;width:calc(100% - 12px);flex:none'; d.append(sr); }
   Array.prototype.forEach.call(sel.options,function(o){
-    var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
-    b.addEventListener('click',function(){ sel.value=o.value; $('#dlgPick').close(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
+    var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; b.style.minHeight='38px'; b.style.padding='8px 12px'; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
+    b.addEventListener('click',function(){ sel.value=o.value; closeDrop(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
   });
-  var ps=$('#pickSearch'); ps.value=''; ps.hidden=sel.options.length<=6; if(ps.parentNode.classList.contains('clr')){ ps.parentNode.hidden=ps.hidden; var cx=ps.parentNode.querySelector('.clrx'); if(cx) cx.hidden=true; }
-  ps.oninput=function(){ var q=ps.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.dataset.full.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok){ if(!b.getAttribute('aria-pressed')) b.style.background=(n%2)?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; n++; } }); var nm=box.querySelector('.pnone'); if(!n&&!nm) box.append(mk('p','pmeta pnone','No match.')); else if(n&&nm) nm.remove(); };
-  var d=$('#dlgPick'); if(!d.open) d.showModal();
+  if(sr) sr.addEventListener('input',function(){ var q=sr.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.dataset.full.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok) n++; }); var nm=box.querySelector('.pnone'); if(!n&&!nm) box.append(mk('p','pmeta pnone','No match.')); else if(n&&nm) nm.remove(); });
+  d.append(box); (sel.closest('dialog')||document.body).append(d);
+  var cur=box.querySelector('[aria-pressed="true"]'); if(cur) box.scrollTop=Math.max(0,cur.offsetTop-box.offsetTop-40);
+  document.addEventListener('pointerdown',dropOut,true); window.addEventListener('resize',closeDrop); window.addEventListener('scroll',dropScroll,true);
 }
 $('#pickCancel').addEventListener('click',function(){ $('#dlgPick').close(); });
 $('#dlgPick').addEventListener('click',function(e){ if(e.target===this) this.close(); });
 document.addEventListener('click',function(e){
-  if(e.target&&e.target.closest&&e.target.closest('#dlgPick')) return;
+  if(e.target&&e.target.closest&&e.target.closest('#dlgPick,#pickDrop')) return;
   var all=document.querySelectorAll('select'), sel=null, i, r;
   if(e.target&&e.target.tagName==='SELECT') sel=e.target;
   for(i=0;i<all.length&&!sel;i++){ r=all[i].getBoundingClientRect(); if(r.width>0&&r.height>0&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom&&all[i].parentElement&&all[i].parentElement.contains(e.target)) sel=all[i]; }
