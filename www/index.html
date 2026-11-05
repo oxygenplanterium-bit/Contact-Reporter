@@ -123,7 +123,7 @@ button.btn.usersbtn{justify-content:space-between !important; padding:6px 18px !
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:00 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -247,7 +247,7 @@ var PDF=(function(){
 /* ---------- state ---------- */
 var db=null, user=null, isOwner=false, accountOwner=false, mode='user', lgInc=true, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
 var settings={}, settingsLoaded=false, claim=null, claims={}, lastSubOk=true, groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
-var sub='home', lgUser={}, actOpen=false, asgShown=false, homeQ='', callQ='', callG='', callLs='', callLg='', sig='';
+var sub='home', lgUser={}, actOpen=false, asgShown=false, actMode='', homeQ='', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
 function telNum(p){ return String(p||'').replace(/[^\d+]/g,''); }
@@ -527,7 +527,7 @@ function render(){
   modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  var s=JSON.stringify([sub,actOpen,asgShown,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
+  var s=JSON.stringify([sub,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -647,7 +647,7 @@ function viewHome(body){
   }
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
-      gb.setAttribute('aria-pressed',grShow); var sb=btn('Assign',function(){ if(selMode&&!asgShown){ asgShown=true; sig=''; render(); return; } selMode=!selMode; asgShown=selMode; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; var adb=btn('Add Contact',function(){ ctEdit(''); },'primary'); adb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; am.append(adb,sb); if(actOpen) body.append(am);
+      gb.setAttribute('aria-pressed',grShow); var sb=btn('Assign',function(){ if(selMode&&(!asgShown||actMode==='add')){ asgShown=true; actMode='asg'; sig=''; render(); return; } selMode=!selMode; asgShown=selMode; actMode=selMode?'asg':''; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; var adb=btn('Add Contact',function(){ actMode='add'; sig=''; render(); ctEdit(''); },actMode==='add'?'primary':''); if(selMode&&asgShown&&actMode!=='add') sb.classList.add('primary'); adb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; am.append(adb,sb); if(actOpen) body.append(am);
       var ul=okUsers();
       if(selMode&&actOpen&&asgShown){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
           list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
