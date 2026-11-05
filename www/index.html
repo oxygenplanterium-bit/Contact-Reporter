@@ -80,11 +80,16 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .modes .btn{min-height:38px; font-size:.9rem !important; border-radius:10px; white-space:nowrap; padding-left:6px; padding-right:6px}
 .modes .btn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); cursor:default}
 .modes .btn:not([aria-pressed="true"]){background:transparent; border-color:transparent}
-.fab{position:fixed; right:max(34px, env(safe-area-inset-right, 0px)); bottom:calc(58px + env(safe-area-inset-bottom, 0px) * .3); width:54px; height:54px; border-radius:50%; border:0; background:#c2185b; color:#fff; font-size:2rem !important; line-height:1; padding:0 0 3px; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:40; cursor:pointer; top:auto !important; left:auto !important; margin:0; transform:translate3d(0,0,0); -webkit-transform:translate3d(0,0,0); will-change:transform; -webkit-backface-visibility:hidden}
+.fab{position:fixed; right:max(34px, env(safe-area-inset-right, 0px)); bottom:calc(var(--botH, 120px) + 36px); width:54px; height:54px; border-radius:50%; border:0; background:#c2185b; color:#fff; font-size:2rem !important; line-height:1; padding:0 0 3px; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:40; cursor:pointer; top:auto !important; left:auto !important; margin:0; transform:translate3d(0,0,0); -webkit-transform:translate3d(0,0,0); will-change:transform; -webkit-backface-visibility:hidden}
 .fab[hidden]{display:none !important}
-.fablbl{position:fixed; right:max(24px, env(safe-area-inset-right, 0px)); bottom:calc(32px + env(safe-area-inset-bottom, 0px) * .3); width:74px; box-sizing:border-box; padding:3px 4px; border-radius:6px; background:#c2185b; text-align:center; font-size:.68rem; line-height:1.15; font-weight:700; color:#fff; z-index:40; pointer-events:none}
+.fablbl{position:fixed; right:max(24px, env(safe-area-inset-right, 0px)); bottom:calc(var(--botH, 120px) + 10px); width:74px; box-sizing:border-box; padding:3px 4px; border-radius:6px; background:#c2185b; text-align:center; font-size:.68rem; line-height:1.15; font-weight:700; color:#fff; z-index:40; pointer-events:none}
 .fablbl[hidden]{display:none !important}
-.bot{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+.bot{position:fixed; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:760px; box-sizing:border-box; display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); background:var(--bg); border-top:1px solid var(--line); z-index:50}
+.bot .sline{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.bot .sline button{width:100%; margin:0; min-height:38px; box-sizing:border-box}
+.bot .sline button[hidden]{display:none !important}
+#wipeAll{grid-column:1}
+.wrap{padding-bottom:calc(var(--botH, 120px) + 16px)}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
@@ -92,12 +97,13 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 4:30 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 4:45 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
 <script>var APP_BUILD='__BUILD__';</script>
+<script>(function(){ function fit(){ var b=document.querySelector('.bot'); if(b) document.documentElement.style.setProperty('--botH',b.offsetHeight+'px'); } window.addEventListener('load',function(){ fit(); var b=document.querySelector('.bot'); if(b&&window.ResizeObserver) new ResizeObserver(fit).observe(b); window.addEventListener('resize',fit); }); })();</script>
 <script src="platform.js?v=__BUILD__"></script>
 <script>
 (function(){
