@@ -117,15 +117,21 @@ button.btn.bigbtn{min-height:46px !important; font-size:.98rem !important; paddi
 button.btn.usersbtn{justify-content:space-between !important; padding:6px 18px !important}
 html,body{max-width:100%; overflow-x:hidden}
 .modes .btn,#modes2>.btn,#modes2{min-width:0; overflow:hidden; text-overflow:ellipsis}
+#rngRow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; align-items:end; padding:10px 12px}
+#rngRow label{min-width:0; overflow:hidden}
+#rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
+#rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:600; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+#rngRow .dw input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
+  <div class="card" id="rngRow" hidden></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:05 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -248,7 +254,7 @@ var PDF=(function(){
 
 /* ---------- state ---------- */
 var db=null, user=null, isOwner=false, accountOwner=false, mode='user', lgInc=true, uid='', myName='', myPhone='', me=null, meLoaded=false, started=false;
-var settings={}, settingsLoaded=false, claim=null, claims={}, lastSubOk=true, groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[];
+var settings={}, settingsLoaded=false, claim=null, claims={}, lastSubOk=true, groups={}, groupsLoaded=false, users={}, logRows={}, logKey=todayKey(), logStops=[], logPer='day', logTo='', logDays={}, logGen=0;
 var sub='home', capSel='', capUsers={}, lgUser={}, actOpen=false, asgShown=false, actMode='', homeQ='', callQ='', callG='', callLs='', callLg='', sig='';
 var CALL_OUT=[['spoke','Spoke'],['noans','No answer'],['busy','Busy'],['wrong','Wrong number'],['off','Switched off'],['cb','Call back later']];
 function callOutName(k){ var o=CALL_OUT.filter(function(x){ return x[0]===k; })[0]; return o?o[1]:''; }
@@ -326,9 +332,31 @@ function watchPrefix(prefix,cb){
   return function(){ dead=true; clearInterval(t); };
 }
 function listToMap(list,prefix){ var m={}; (list||[]).forEach(function(x){ m[x.path.slice(prefix.length)]=x.data||{}; }); return m; }
+function pDate(k){ var q=String(k).split('-'); return new Date(+q[0],+q[1]-1,+q[2]); }
+function logRange(){
+  var a=pDate(logKey), b=a;
+  if(logPer==='week'){ var wd=(a.getDay()+6)%7; a=new Date(a.getFullYear(),a.getMonth(),a.getDate()-wd); b=new Date(a.getFullYear(),a.getMonth(),a.getDate()+6); }
+  else if(logPer==='month'){ b=new Date(a.getFullYear(),a.getMonth()+1,0); a=new Date(a.getFullYear(),a.getMonth(),1); }
+  else if(logPer==='custom'){ b=pDate(logTo||logKey); if(b<a){ var t=a; a=b; b=t; } }
+  return [dayKey(a.getTime()),dayKey(b.getTime())];
+}
+function logDayList(){ var r=logRange(), o=[], d=pDate(r[0]), e=pDate(r[1]); while(d<=e&&o.length<93){ o.push(dayKey(d.getTime())); d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1); } return o; }
+function logLabel(){ var r=logRange(); return r[0]===r[1]?fmtIso(r[0]):fmtIso(r[0])+' to '+fmtIso(r[1]); }
+function dayOf(id){ return logDays[id]||logKey; }
 function logSub(){
-  logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={};
+  logStops.forEach(function(f){ try{ f(); }catch(e){} }); logStops=[]; var k=logKey; logRows={}; logDays={}; var gen=++logGen;
   if(!approved()){ return; }
+  if(logPer!=='day'){
+    var dead=false, run=async function(){
+      var out={}, dys={}, add=function(day,d){ var cl=(d&&d.cl)||{}; Object.keys(cl).forEach(function(id){ if(cl[id]){ out[id]=cl[id]; dys[id]=day; } }); };
+      await Promise.all(logDayList().map(async function(day){ try{
+        if(accountOwner){ var l=await db.list('cr/log/'+day+'/'); (l||[]).forEach(function(x){ add(day,x.data); }); }
+        else{ var sn=await db.doc('cr/log/'+day+'/'+(capSel||uid)).get(); if(sn&&sn.exists&&sn.data()) add(day,sn.data()); }
+      }catch(e){} }));
+      if(dead||gen!==logGen) return; logRows=out; logDays=dys; sig=''; render();
+    };
+    run(); var t=setInterval(run,12000); logStops.push(function(){ dead=true; clearInterval(t); }); return;
+  }
   if(accountOwner){
     logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
   }else{
@@ -529,7 +557,7 @@ function render(){
   modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  var s=JSON.stringify([sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,groupsLoaded]);
+  var s=JSON.stringify([sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -539,13 +567,13 @@ function render(){
   fb.hidden=true; fl.hidden=true; $('#fabRow').hidden=true;
   var seg=$('#seg'), body=$('#body'); ACC.hold.append(ACC.ref,ACC.out,ACC.ver); seg.textContent=''; body.textContent='';
   if(!approved()){
-    seg.hidden=true; $('#dateCard').hidden=true;
+    seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true;
     var w=mk('div','card'); w.style.cssText='display:flex;flex-direction:column;gap:8px';
     w.append(mk('b',null,meLoaded?'Waiting for approval':'Loading...'));
     if(meLoaded) w.append(mk('p','pmeta','Your account has been created. The owner needs to approve it before you can see your contacts. Open this app again after you have been approved.'));
     body.append(w); acctCard(body); return;
   }
-  if(isSuMode()){ seg.hidden=true; $('#dateCard').hidden=true; fb.hidden=true; return; }
+  if(isSuMode()){ seg.hidden=true; $('#dateCard').hidden=true; $('#rngRow').hidden=true; fb.hidden=true; return; }
   seg.hidden=false;
   var tabs=[['home','Contacts'],['lg','Call Log']]; tabs.push(['set','Settings']);
   if(sub!=='lg'&&sub!=='set') sub='home';
@@ -553,7 +581,7 @@ function render(){
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]);
     if(t[0]==='home'&&isOwner){ b.setAttribute('aria-expanded',actOpen); var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='display:inline-block;margin-left:5px;vertical-align:middle;line-height:0;transition:transform .15s;'+(actOpen?'transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; b.append(ar); }
     b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} if(t[0]==='home'&&isOwner){ actOpen=(sub==='home')?!actOpen:true; if(!actOpen){ if(selMode) homeQ=''; asgShown=false; selMode=false; selSet={}; selUser=''; selUn=false; actMode=''; } } sub=t[0]; sig=''; render(); }); seg.append(b); });
-  $('#dateCard').hidden=sub!=='lg';
+  $('#dateCard').hidden=sub!=='lg'; $('#rngRow').hidden=sub!=='lg'; rngSync();
   $('#addLog').hidden=!!capSel;
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
@@ -841,7 +869,7 @@ function viewCs(body,only,ro){
   });
   }
 function logEdit(id,e){
-  var isNew=!e, r=dlg('dlgLog'), d=r[0], b=r[1], k0=isNew?logKey:logKey;
+  var isNew=!e, r=dlg('dlgLog'), d=r[0], b=r[1], k0=isNew?logKey:dayOf(id);
   b.append(mk('h2',null,isNew?'Add Log Entry':'Edit Log Entry'));
   var cs=null;
   if(isNew){
@@ -879,7 +907,8 @@ function logEdit(id,e){
     if(!(await putDoc('cr/log/'+day+'/'+sid,{cl:p}))) return;
     if(!isNew&&day!==k0){ var z={}; z[id]=null; if(!(await putDoc('cr/log/'+k0+'/'+sid,{cl:z}))) return; }
     d.close(); toast('Log saved');
-    if(day!==logKey){ logKey=day; $('#logDate').value=day; dateSync(); logSub(); }
+    if(logPer!=='day'){ logSub(); }
+    else if(day!==logKey){ logKey=day; $('#logDate').value=day; dateSync(); logSub(); }
     else if(!isNew||true){ logRows[nid]=ent; }
     sig=''; render();
   });
@@ -887,7 +916,7 @@ function logEdit(id,e){
 }
 function logDel(id,e){
   var z={}; z[id]=null;
-  putDoc('cr/log/'+logKey+'/'+(e.sid||uid),{cl:z}).then(function(ok){ if(ok){ delete logRows[id]; toast('Log deleted'); sig=''; render(); } });
+  putDoc('cr/log/'+dayOf(id)+'/'+(e.sid||uid),{cl:z}).then(function(ok){ if(ok){ delete logRows[id]; toast('Log deleted'); sig=''; render(); } });
 }
 function iconBtn(lbl,svg,fn,color){ var x=document.createElement('button'); x.type='button'; x.setAttribute('aria-label',lbl); x.title=lbl; x.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+svg+'</svg>'; x.style.cssText='width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none'+(color?';color:'+color:''); x.addEventListener('click',function(ev){ ev.stopPropagation(); fn(x); }); return x; }
 var IC_SHARE='<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>', IC_EDIT='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', IC_DEL='<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>';
@@ -942,10 +971,10 @@ function viewLg(body){
   all.sort(function(a,b){ return (b[1].at||0)-(a[1].at||0); });
   var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
   var sr=mk('div'); sr.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
-  sr.append(mk('p','pmeta',fmtIso(logKey)+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' pending'));
-  if(all.length) sr.append(btn('Share Report',function(){ shareDlg('Call report '+fmtIso(logKey),all,incl); },'primary'));
+  sr.append(mk('p','pmeta',logLabel()+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' pending'));
+  if(all.length) sr.append(btn('Share Report',function(){ shareDlg('Call report '+logLabel(),all,incl); },'primary'));
   body.append(sr);
-  if(!all.length){ body.append(mk('p','pmeta','No calls on this day.')); return; }
+  if(!all.length){ body.append(mk('p','pmeta','No calls in this period.')); return; }
   var addCall=function(it,ix,box,plain){
     var id=it[0], e=it[1], el=mk('div','card'); el.style.cssText='display:flex;flex-direction:column;gap:3px;padding:10px 12px'; if(plain) el.style.background='var(--card)'; else tint(el,ix);
     var h=mk('div'); h.style.cssText='display:flex;justify-content:space-between;gap:8px;cursor:pointer'; h.setAttribute('role','button'); h.setAttribute('aria-expanded',!!lgOpen[id]); var can=isOwner||e.sid===uid, hl=mk('div'); hl.style.cssText='display:flex;align-items:center;gap:2px;min-width:0';
@@ -953,13 +982,13 @@ function viewLg(body){
     if(can) hl.append(iconBtn('Edit',IC_EDIT,function(){ logEdit(id,e); }));
     if(canDel){
       hl.append(iconBtn('Delete',IC_DEL,function(x){ if(!armed['lgd'+id]){ armed['lgd'+id]=true; x.style.background='var(--loss)'; x.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['lgd'+id]=false; x.style.background='transparent'; x.style.color='var(--loss)'; },4000); return; } armed['lgd'+id]=false; logDel(id,e); },'var(--loss)')); }
-    hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,logKey); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtIso(dayKey(e.at)))); h.append(hl,hr); el.append(h);
+    hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,dayOf(id)); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtIso(dayKey(e.at)))); h.append(hl,hr); el.append(h);
     var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:700;flex:0 0 auto;color:'+(e.o?'#f57c00':'var(--warn)'); var smr=mk('div'); smr.style.cssText='display:flex;align-items:baseline;gap:10px'; smr.append(sm); if(e.r){ var nt=mk('div',null,'Notes: '+e.r); nt.style.cssText='font-size:.9rem;white-space:pre-wrap;flex:1 1 auto;min-width:0;overflow-wrap:anywhere'; smr.append(nt); } var tm=mk('span','pmeta',fmtTime(e.at)); tm.style.cssText='margin-left:auto;flex:none;white-space:nowrap'; smr.append(tm); el.append(smr);
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
     dt.append(mk('div','pmeta','Called on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at)));
     dt.append(mk('div','pmeta',[e.p,(isOwner&&clGroup(e))?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
     if(e.o){ if(e.nx) dt.append(mk('div','pmeta','Follow up on '+fmtIso(e.nx))); }
-    else if(e.sid===uid) dt.append(btn('Write Report',function(){ repOpen(id,e,logKey); }));
+    else if(e.sid===uid) dt.append(btn('Write Report',function(){ repOpen(id,e,dayOf(id)); }));
     el.append(dt);
     h.addEventListener('click',function(){ lgOpen[id]=!lgOpen[id]; dt.hidden=!lgOpen[id]; h.setAttribute('aria-expanded',!!lgOpen[id]); });
     box.append(el);
@@ -974,7 +1003,7 @@ function viewLg(body){
     var list=byU[s], uc=mk('div'); uc.style.cssText='border:1px solid var(--line);border-radius:10px;margin-bottom:5px;overflow:hidden'; tint(uc,ui);
     var hd=mk('div'); hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;cursor:pointer'; hd.setAttribute('role','button');
     var sp2=list.filter(function(it){ return it[1].o==='spoke'; }).length, pd2=list.filter(function(it){ return !it[1].o; }).length;
-    var tl=mk('div'); tl.style.cssText='min-width:0'; tl.append(mk('b',null,names[s]),mk('div','pmeta',list.length?list.length+' call'+(list.length===1?'':'s')+' · '+sp2+' spoke · '+pd2+' pending':'No calls on this day'));
+    var tl=mk('div'); tl.style.cssText='min-width:0'; tl.append(mk('b',null,names[s]),mk('div','pmeta',list.length?list.length+' call'+(list.length===1?'':'s')+' · '+sp2+' spoke · '+pd2+' pending':'No calls in this period'));
     var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='line-height:0;flex:none;transition:transform .15s'+(isOpen(s)?';transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; if(!list.length) ar.style.visibility='hidden';
     hd.append(tl,ar); hd.setAttribute('aria-expanded',!!isOpen(s)); uc.append(hd); body.append(uc);
     var cb=mk('div'); cb.style.cssText='display:flex;flex-direction:column;gap:6px;padding:4px 8px 8px 24px'; cb.hidden=!isOpen(s)||!list.length; list.forEach(function(it,ix){ addCall(it,ix,cb,true); }); uc.append(cb);
@@ -1161,6 +1190,17 @@ $('#signOut').addEventListener('click',function(){ if(window.claude&&window.clau
 $('#addLog').addEventListener('click',function(){ logEdit('',null); });
 $('#logDate').value=logKey; dateSync();
 $('#logDate').addEventListener('change',function(){ if(!this.value) return; logKey=this.value; dateSync(); sig=''; logSub(); render(); });
+(function(){
+  var row=$('#rngRow'), ps=document.createElement('select'); ps.setAttribute('aria-label','Report period');
+  [['day','Day'],['week','Week'],['month','Month'],['custom','From Date To Date']].forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; ps.append(o); });
+  var l1=mk('label','f'); l1.append(mk('span',null,'Report For'),ps);
+  var tw=mk('span','dw'), ts=mk('span'), ti=document.createElement('input'); ti.type='date'; ti.setAttribute('aria-label','To date'); tw.append(ts,ti);
+  var l2=mk('label','f'); l2.append(mk('span',null,'To'),tw); l2.id='rngTo'; l2.hidden=true; row.append(l1,l2);
+  window.rngSync=function(){ ps.value=logPer; l2.hidden=logPer!=='custom'; ti.value=logTo||logKey; ts.textContent=fmtIso(ti.value); var lb=document.querySelector('#dateCard label.f > span'); if(lb) lb.textContent=logPer==='custom'?'From':logPer==='day'?'Date of call':'Any Date In The '+(logPer==='week'?'Week':'Month'); };
+  ps.addEventListener('change',function(){ logPer=ps.value; if(logPer==='custom'&&!logTo) logTo=logKey; try{ ps.blur(); }catch(e){} rngSync(); sig=''; logSub(); render(); });
+  ti.addEventListener('change',function(){ if(!ti.value) return; logTo=ti.value; rngSync(); sig=''; logSub(); render(); });
+  $('#logDate').addEventListener('change',function(){ rngSync(); });
+})();
 /* ---------- full-size picker for every drop-down menu ---------- */
 function openPick(sel,title){
   var box=$('#pickList'); box.textContent=''; $('#pickHead').textContent=title||'Choose';
