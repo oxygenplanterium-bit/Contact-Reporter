@@ -121,7 +121,7 @@ button.btn.small{min-height:26px !important; padding:2px 8px !important; font-si
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 5 Nov 2026, 9:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -650,8 +650,8 @@ function viewHome(body){
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
-      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); body.append(clearable(q));
-  var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.8rem;margin:2px 4px 4px'; body.append(rowCnt);
+      } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); var srow=mk('div'); srow.style.cssText='display:flex;align-items:center;gap:8px'; var qw=clearable(q); qw.style.cssText+=';flex:1 1 auto;min-width:0'; srow.append(qw); body.append(srow);
+  var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.72rem;line-height:1.15;text-align:right;flex:0 0 auto;width:84px;margin:0'; srow.append(rowCnt);
   var cr=mk('div'); cr.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 6px';
   var shb=btn(ctHide?'Show Contacts':'Hide Contacts',function(){ ctHide=!ctHide; try{ localStorage.setItem('crCtHide',ctHide?'1':'0'); }catch(e){} sig=''; render(); },'primary'); shb.style.cssText+=';min-height:34px;font-weight:700;flex:0 0 auto';
   var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=ctDetAll; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show full contact details'); swl.style.cssText+=';flex:1 1 auto;justify-content:flex-end;margin:0;gap:8px'; swl.append(mk('span',null,'Full Details'),swi,document.createElement('i'));
