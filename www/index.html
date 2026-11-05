@@ -92,6 +92,16 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
 .bot .sline button[hidden]{display:none !important}
 #wipeAll{grid-column:1}
 .wrap{padding-bottom:calc(var(--botH, 120px) + 16px)}
+/* compact buttons */
+button.btn{min-height:30px !important; padding:3px 10px !important; font-size:.82rem !important; border-radius:8px}
+button.btn.small{min-height:26px !important; padding:2px 8px !important; font-size:.76rem !important; border-radius:7px}
+.aseg .btn{min-height:30px !important; font-size:.74rem !important; border-radius:0 !important}
+.modes .btn{min-height:32px !important; font-size:.82rem !important}
+[role=radio]{min-height:30px !important; font-size:.8rem !important}
+.fab{width:36px !important; height:36px !important; font-size:1.5rem !important; padding:0 0 2px !important}
+.fablbl{min-height:36px !important; padding:0 14px !important; font-size:.82rem !important; border-radius:8px !important}
+.bot .sline button{min-height:28px !important}
+.bot{gap:4px !important; padding-top:6px !important}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
@@ -99,7 +109,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 5:25 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 5 Nov 2026, 5:40 PM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
