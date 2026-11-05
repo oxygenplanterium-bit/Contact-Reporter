@@ -117,8 +117,12 @@ button.btn.bigbtn{min-height:46px !important; font-size:.98rem !important; paddi
 button.btn.usersbtn{justify-content:space-between !important; padding:6px 18px !important}
 html,body{max-width:100%; overflow-x:hidden}
 .modes .btn,#modes2>.btn,#modes2{min-width:0; overflow:hidden; text-overflow:ellipsis}
-#rngRow{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; align-items:end; padding:10px 12px}
-#rngRow label{min-width:0; overflow:hidden}
+#rngRow{display:flex; flex-direction:column; gap:10px; padding:10px 12px}
+#rngRow .rp{display:flex; align-items:center; gap:10px}
+#rngRow .rp>span{flex:none; font-weight:600}
+#rngRow .rp select{flex:1 1 auto; min-width:0; width:100%}
+#rngRow .rc{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; align-items:end}
+#rngRow .rc label{min-width:0; overflow:hidden}
 #rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
 #rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:600; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
 #rngRow .dw input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
@@ -127,11 +131,11 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
   <div class="aseg" id="seg"></div>
-  <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div class="card" id="rngRow" hidden></div>
+  <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 9:05 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 9:20 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1215,12 +1219,14 @@ $('#logDate').addEventListener('change',function(){ if(!this.value) return; logK
 (function(){
   var row=$('#rngRow'), ps=document.createElement('select'); ps.setAttribute('aria-label','Report period');
   [['day','Day'],['week','Week'],['month','Month'],['custom','From Date To Date']].forEach(function(x){ var o=mk('option',null,x[1]); o.value=x[0]; ps.append(o); });
-  var l1=mk('label','f'); l1.append(mk('span',null,'Report For'),ps);
-  var tw=mk('span','dw'), ts=mk('span'), ti=document.createElement('input'); ti.type='date'; ti.setAttribute('aria-label','To date'); tw.append(ts,ti);
-  var l2=mk('label','f'); l2.append(mk('span',null,'To'),tw); l2.id='rngTo'; l2.hidden=true; row.append(l1,l2);
-  window.rngSync=function(){ ps.value=logPer; l2.hidden=logPer!=='custom'; ti.value=logTo||logKey; ts.textContent=fmtIso(ti.value); var lb=document.querySelector('#dateCard label.f > span'); if(lb) lb.textContent=logPer==='custom'?'From':logPer==='day'?'Date of call':'Any Date In The '+(logPer==='week'?'Week':'Month'); };
+  var rp=mk('div','rp'); rp.append(mk('span',null,'Report For'),ps);
+  var mkDate=function(lbl,lab){ var w=mk('span','dw'), sp=mk('span'), inp=document.createElement('input'); inp.type='date'; inp.setAttribute('aria-label',lab); w.append(sp,inp); var l=mk('label','f'); l.append(mk('span',null,lbl),w); return {l:l,sp:sp,inp:inp}; };
+  var fr=mkDate('From','From date'), to=mkDate('To','To date'), rc=mk('div','rc'); rc.hidden=true; rc.append(fr.l,to.l); row.append(rp,rc);
+  window.rngSync=function(){ ps.value=logPer; rc.hidden=logPer!=='custom'; fr.inp.value=logKey; fr.sp.textContent=fmtIso(logKey); to.inp.value=logTo||logKey; to.sp.textContent=fmtIso(to.inp.value);
+    var dl=document.querySelector('#dateCard label.f'); if(dl){ dl.hidden=logPer==='custom'; var lb=dl.querySelector('span'); if(lb) lb.textContent=logPer==='day'?'Date of call':'Any Date In The '+(logPer==='week'?'Week':'Month'); } };
   ps.addEventListener('change',function(){ logPer=ps.value; if(logPer==='custom'&&!logTo) logTo=logKey; try{ ps.blur(); }catch(e){} rngSync(); sig=''; logSub(); render(); });
-  ti.addEventListener('change',function(){ if(!ti.value) return; logTo=ti.value; rngSync(); sig=''; logSub(); render(); });
+  fr.inp.addEventListener('change',function(){ if(!fr.inp.value) return; logKey=fr.inp.value; $('#logDate').value=logKey; dateSync(); rngSync(); sig=''; logSub(); render(); });
+  to.inp.addEventListener('change',function(){ if(!to.inp.value) return; logTo=to.inp.value; rngSync(); sig=''; logSub(); render(); });
   $('#logDate').addEventListener('change',function(){ rngSync(); });
 })();
 /* ---------- full-size picker for every drop-down menu ---------- */
