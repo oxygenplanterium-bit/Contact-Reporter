@@ -137,7 +137,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:25 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -726,7 +726,7 @@ function viewHome(body){
         go.addEventListener('click',async function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } if(!selUser){ toast('Choose a user.'); return; }
           if(await assignContacts(selUser,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(selUser==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
         var ua=btn('Unassign Everyone',function(){ arm(ua,'unall','Unassign Everyone',async function(){ var n=await unassignAll(); if(n<0) return; toast(n?(n+' contact'+(n===1?'':'s')+' unassigned'):'No contacts were assigned'); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); }); },'danger');
-        var uv=btn('Show Unassigned',function(){ selUn=!selUn; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); uv.setAttribute('aria-pressed',selUn); if(selUn) uv.className+=' primary';
+        var uv=btn('Show Assigned',function(){ selUn=(selUn==='a')?true:'a'; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); uv.setAttribute('aria-pressed',selUn==='a'); if(selUn==='a') uv.className+=' primary';
         var urow=mk('div','sline'); urow.append(uv,ua);
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
         var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
@@ -741,8 +741,8 @@ function viewHome(body){
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     if(ctDetAll&&!ctInit&&ctAll().length){ ctInit=true; ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); }
-    lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g]; if(g0&&(g0.all||(g0.to||[]).length)) return false; } return !qq||ctText(it[1]).indexOf(qq)>=0; });
-    rowCnt.textContent='Total Number Of Rows: '+all.length; if(ctHide){ lst.append(mk('p','pmeta','Contacts are hidden. Press Show Contacts to see them.')); return; } if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?'Every contact is assigned to someone.':(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap the + button to add one.':'No contacts are assigned to you yet. The owner assigns contacts to users.'))); return; }
+    lst.textContent=''; lst.style.border='0'; var qq=homeQ.trim().toLowerCase(), all=ctAll().filter(function(it){ if(selMode&&selUn){ var g0=it[1].g&&groups[it[1].g], as0=!!(g0&&(g0.all||(g0.to||[]).length)); if(selUn==='a'?!as0:as0) return false; } return !qq||ctText(it[1]).indexOf(qq)>=0; });
+    rowCnt.textContent='Total Number Of Rows: '+all.length; if(ctHide){ lst.append(mk('p','pmeta','Contacts are hidden. Press Show Contacts to see them.')); return; } if(!all.length){ lst.append(mk('p','pmeta',(selMode&&selUn)?(selUn==='a'?'No contacts are assigned to anyone yet.':'Every contact is assigned to someone.'):(selMode&&selUser&&selUser!=='-')?'No contacts are assigned to this person yet.':ctAll().length?'No contacts match.':(isOwner?'No contacts yet. Tap the + button to add one.':'No contacts are assigned to you yet. The owner assigns contacts to users.'))); return; }
     var cur='', chunk=[], off=0;
     function flush(){ if(!chunk.length) return; rows(lst,chunk,isOwner,off); off+=chunk.length; chunk=[]; }
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
