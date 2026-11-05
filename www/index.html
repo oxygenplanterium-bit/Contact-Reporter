@@ -138,7 +138,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:25 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 2:35 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1264,9 +1264,11 @@ $('#logDate').addEventListener('change',function(){ if(!this.value) return; logK
 })();
 /* ---------- full-size picker for every drop-down menu ---------- */
 function closeDrop(){ var d=document.getElementById('pickDrop'); if(d) d.remove(); document.removeEventListener('pointerdown',dropOut,true); window.removeEventListener('resize',closeDrop); window.removeEventListener('scroll',dropScroll,true); }
-function dropOut(e){ var d=document.getElementById('pickDrop'); if(d&&!d.contains(e.target)) closeDrop(); }
+var dropShut={sel:null,at:0};
+function dropOut(e){ var d=document.getElementById('pickDrop'); if(d&&!d.contains(e.target)){ var sl=d._sel, rr=sl.getBoundingClientRect(); if(e.target===sl||(e.clientX>=rr.left&&e.clientX<=rr.right&&e.clientY>=rr.top&&e.clientY<=rr.bottom)) dropShut={sel:sl,at:Date.now()}; closeDrop(); } }
 function dropScroll(e){ var d=document.getElementById('pickDrop'); if(d&&!d.contains(e.target)) closeDrop(); }
 function openPick(sel,title){
+  if(dropShut.sel===sel&&Date.now()-dropShut.at<700){ dropShut={sel:null,at:0}; return; }
   var was=document.getElementById('pickDrop'); if(was){ var same=was._sel===sel; closeDrop(); if(same) return; }
   var r=sel.getBoundingClientRect(), vh=window.innerHeight, below=vh-r.bottom-10, above=r.top-10, up=below<200&&above>below, room=Math.max(120,up?above:below);
   var d=mk('div'); d.id='pickDrop'; d._sel=sel; d.className='pdrop'; d.setAttribute('role','listbox');
