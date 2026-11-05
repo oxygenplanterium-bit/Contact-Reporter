@@ -90,7 +90,7 @@ dialog.pickdlg .dbody{max-height:none; overflow:visible}
   <div class="aseg" id="seg"></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
-  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 10:10 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
+  <div class="bot"><span class="pmeta" id="appVer">App version 6 Nov 2026, 10:30 AM</span><span class="sline"><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button><button class="btn small" id="wipeAll" type="button" hidden>Delete Everything</button></span></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -258,7 +258,7 @@ function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
     if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',pl:c[id].pl||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
-function ctText(c){ var t=[c.n,c.p,c.nt,c.bc,c.bk,c.pl]; Object.keys(c.cf||{}).forEach(function(k){ t.push(c.cf[k].l,c.cf[k].v); }); return t.filter(Boolean).join(' ').toLowerCase(); }
+function ctText(c){ var t=[c.n,c.p,c.nt,c.bc,c.bk,c.pl]; if(isOwner){ var wn=whoNames(c.g&&groups[c.g]); t.push(wn.length?wn.join(' '):'nobody unassigned'); } Object.keys(c.cf||{}).forEach(function(k){ t.push(c.cf[k].l,c.cf[k].v); }); return t.filter(Boolean).join(' ').toLowerCase(); }
 function ctCopy(c){ var o={n:c.n,p:c.p,nt:c.nt||'',bc:c.bc||'',bk:c.bk||'',pl:c.pl||''}; if(c.cf&&Object.keys(c.cf).length) o.cf=c.cf; return o; }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
