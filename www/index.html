@@ -125,7 +125,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:05 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -953,8 +953,8 @@ function viewLg(body){
     if(can) hl.append(iconBtn('Edit',IC_EDIT,function(){ logEdit(id,e); }));
     if(canDel){
       hl.append(iconBtn('Delete',IC_DEL,function(x){ if(!armed['lgd'+id]){ armed['lgd'+id]=true; x.style.background='var(--loss)'; x.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['lgd'+id]=false; x.style.background='transparent'; x.style.color='var(--loss)'; },4000); return; } armed['lgd'+id]=false; logDel(id,e); },'var(--loss)')); }
-    hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,logKey); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtIso(dayKey(e.at))+' · '+fmtTime(e.at))); h.append(hl,hr); el.append(h);
-    var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:700;flex:0 0 auto;color:'+(e.o?'#f57c00':'var(--warn)'); var smr=mk('div'); smr.style.cssText='display:flex;align-items:baseline;gap:10px'; smr.append(sm); if(e.r){ var nt=mk('div',null,'Notes: '+e.r); nt.style.cssText='font-size:.9rem;white-space:pre-wrap;flex:1 1 auto;min-width:0;overflow-wrap:anywhere'; smr.append(nt); } el.append(smr);
+    hl.append(mk('b',null,e.n)); longPress(h,function(){ infoCall(id,e,logKey); }); var hr=mk('div'); hr.style.cssText='display:flex;align-items:center;gap:2px;flex:none'; hr.append(iconBtn('Share',IC_SHARE,function(){ shareDlg(e.n+' · call report',[[id,e]],incl); }),mk('span','pmeta',fmtIso(dayKey(e.at)))); h.append(hl,hr); el.append(h);
+    var sm=mk('div',null,e.o?callOutName(e.o):'Report pending'); sm.style.cssText='font-weight:700;flex:0 0 auto;color:'+(e.o?'#f57c00':'var(--warn)'); var smr=mk('div'); smr.style.cssText='display:flex;align-items:baseline;gap:10px'; smr.append(sm); if(e.r){ var nt=mk('div',null,'Notes: '+e.r); nt.style.cssText='font-size:.9rem;white-space:pre-wrap;flex:1 1 auto;min-width:0;overflow-wrap:anywhere'; smr.append(nt); } var tm=mk('span','pmeta',fmtTime(e.at)); tm.style.cssText='margin-left:auto;flex:none;white-space:nowrap'; smr.append(tm); el.append(smr);
     var dt=mk('div'); dt.style.cssText='display:flex;flex-direction:column;gap:3px'; dt.hidden=!lgOpen[id];
     dt.append(mk('div','pmeta','Called on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at)));
     dt.append(mk('div','pmeta',[e.p,(isOwner&&clGroup(e))?'Group: '+clGroup(e):'','By '+(e.by||'Unknown'),e.d?'About '+callDur(e.d):''].filter(Boolean).join(' · ')));
