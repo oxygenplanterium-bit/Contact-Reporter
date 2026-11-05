@@ -10,16 +10,17 @@
 :root[data-theme="light"]{ --bg:#EDF2EC; --card:#FFFFFF; --line:#D2DDD4; --field:#F3F7F2; --ink:#14241A; --muted:#56695D; --accent:#2A7F3E; --accent-ink:#FFFFFF; --loss:#B0301F; --warn:#8F5B00; color-scheme:light; }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
-body{background:var(--bg); color:var(--ink); font-family:var(--f); font-size:16px; line-height:1.4; margin:0;
+body{background:var(--bg); color:var(--ink); font-family:var(--f); font-size:1rem; line-height:1.35; margin:0;
   padding-block:max(28px, calc(env(safe-area-inset-top, 0px) + 14px)) 90px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); text-transform:capitalize}
 input,textarea{text-transform:none} 
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%; font-size:14px}
 .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px}
 .brand{display:flex; align-items:center; gap:12px}
 .brand img{width:44px; height:44px; border-radius:12px}
 h1{margin:0; font-size:1.25rem; line-height:1.15; white-space:nowrap}
 h2{margin:0 0 8px; font-size:1.15rem}
-button,input,select,textarea{font:inherit; font-size:16px !important; color:inherit}
+button,input,select,textarea{font:inherit; font-size:1rem !important; color:inherit}
+@supports (-webkit-touch-callout:none){ input,select,textarea{font-size:16px !important} }
 button,a,label{touch-action:manipulation}
 .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px}
 input,select,textarea{width:100%; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:8px 12px; min-width:0}
@@ -27,7 +28,7 @@ textarea{resize:vertical}
 #dateCard{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; padding:10px 12px}
 #dateCard label{min-width:0; overflow:hidden}
 #dateWrap{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
-#dateShow{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; justify-content:flex-start; font-size:1rem; font-weight:600; letter-spacing:.02em; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+#dateShow{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; justify-content:flex-start; font-size:1rem; font-weight:500; letter-spacing:0; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
 #dateWrap input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
 #dateCard input.old{display:block; box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:40px; padding-top:0; padding-bottom:0; -webkit-appearance:none; appearance:none; text-align:left}
 #dateCard input::-webkit-date-and-time-value{text-align:left; min-height:1.2em}
@@ -124,7 +125,7 @@ html,body{max-width:100%; overflow-x:hidden}
 #rngRow .rc{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; align-items:end}
 #rngRow .rc label{min-width:0; overflow:hidden}
 #rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
-#rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:600; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+#rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:500; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
 #rngRow .dw input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
 </style></head><body>
 <div class="wrap">
@@ -135,7 +136,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 10:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 11:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
