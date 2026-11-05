@@ -65,6 +65,10 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 select:not([multiple]){pointer-events:none}
 dialog.pickdlg{width:100%; max-width:100%; margin:0; top:auto; bottom:0; border-radius:16px 16px 0 0; max-height:85vh; max-height:min(85dvh, calc(100dvh - max(env(safe-area-inset-top,0px),24px))); padding-bottom:env(safe-area-inset-bottom,0px); box-sizing:border-box}
 dialog.pickdlg .dbody{max-height:none; overflow:visible}
+dialog.pickdlg{height:min(85vh,calc(100vh - 24px)); height:min(85dvh,calc(100dvh - max(env(safe-area-inset-top,0px),24px)))}
+dialog.pickdlg[open]{display:flex; flex-direction:column}
+dialog.pickdlg .dbody{display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:100%; box-sizing:border-box}
+dialog.pickdlg #pickList{flex:1 1 auto; max-height:none; min-height:0; align-content:flex-start}
 #pickList{display:flex; flex-direction:column; gap:8px; margin:8px 0; overflow-y:auto; max-height:56vh}
 .pickopt{flex:0 0 auto; min-height:48px; line-height:1.3; display:block; width:100%; text-align:left; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:inherit; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer}
 .pickopt[hidden]{display:none !important}
@@ -136,7 +140,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 12:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
