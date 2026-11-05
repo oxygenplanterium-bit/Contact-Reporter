@@ -65,7 +65,8 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/settings'
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
-        (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text))
+        (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text
+           or (jsonb_typeof(data -> 'to') = 'array' and exists (select 1 from jsonb_array_elements_text(data -> 'to') t where public.is_captain(t)))))
      or (path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
      or (path like 'cr/users/%' and public.is_captain(split_part(path, '/', 3)))
      or (path like 'cr/log/%' and public.is_captain(split_part(path, '/', 4)))))
