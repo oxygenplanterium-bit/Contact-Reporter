@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 6:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -321,9 +321,10 @@ function isSuMode(){ return false; }
 function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
 function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
-    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',pl:c[id].pl||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
-function ctText(c){ var t=[c.n,c.p,c.nt,c.bc,c.bk,c.pl]; if(isOwner){ var wn=whoNames(c.g&&groups[c.g]); t.push(wn.length?wn.join(' '):'nobody unassigned'); } Object.keys(c.cf||{}).forEach(function(k){ t.push(c.cf[k].l,c.cf[k].v); }); return t.filter(Boolean).join(' ').toLowerCase(); }
-function ctCopy(c){ var o={n:c.n,p:c.p,nt:c.nt||'',bc:c.bc||'',bk:c.bk||'',pl:c.pl||''}; if(c.cf&&Object.keys(c.cf).length) o.cf=c.cf; return o; }
+    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',pl:c[id].pl||'',tg:c[id].tg||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+function ctText(c){ var t=[c.n,c.p,c.nt,c.bc,c.bk,c.pl,c.tg]; if(isOwner){ var wn=whoNames(c.g&&groups[c.g]); t.push(wn.length?wn.join(' '):'nobody unassigned'); } Object.keys(c.cf||{}).forEach(function(k){ t.push(c.cf[k].l,c.cf[k].v); }); return t.filter(Boolean).join(' ').toLowerCase(); }
+function tagsClean(v){ var seen={}, o=[]; String(v||'').split(/[,;\n]+/).forEach(function(x){ x=cleanName(x); var k=x.toLowerCase(); if(x&&!seen[k]){ seen[k]=1; o.push(x); } }); return o.join(', ').slice(0,120); }
+function ctCopy(c){ var o={n:c.n,p:c.p,nt:c.nt||'',bc:c.bc||'',bk:c.bk||'',pl:c.pl||'',tg:c.tg||''}; if(c.cf&&Object.keys(c.cf).length) o.cf=c.cf; return o; }
 function ctGet(id){ var r=ctAll().filter(function(x){ return x[0]===id; })[0]; return r?r[1]:null; }
 function userList(){ return Object.keys(users).filter(function(k){ return users[k]&&users[k].n; }).map(function(k){ return [k,users[k]]; }).sort(byName); }
 function okUsers(){ return userList().filter(function(it){ return it[1].st==='ok'; }); }
@@ -483,10 +484,10 @@ function ctEdit(id){
   var c=id?ctGet(id):{n:'',p:'',g:'',nt:''}; if(id&&!c) return;
   var r=dlg('dlgCt'), d=r[0], b=r[1];
   b.append(mk('h2',null,id?'Edit Contact':'Add Contact'));
-  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), bc=mkIn('text','BNI chapter (optional)',c.bc||''), bk=mkIn('text','Category in BNI (optional)',c.bk||''), pl=mkIn('text','Place (optional)',c.pl||''), er=mk('p','pmeta');
-  bc.maxLength=60; bk.maxLength=60; pl.maxLength=60; nm.maxLength=60; ph.maxLength=16; ph.inputMode='numeric'; ph.addEventListener('input',function(){ var d=phone10(ph.value); if(d.length>10) d=d.slice(0,10); if(ph.value!==d) ph.value=d; }); nt.maxLength=120; er.style.color='var(--warn)';
+  var nm=mkIn('text','Name',c.n), ph=mkIn('tel','Phone number',c.p), gs=groupSel(c.g,false), nt=mkIn('text','Note (optional)',c.nt||''), bc=mkIn('text','BNI chapter (optional)',c.bc||''), bk=mkIn('text','Category in BNI (optional)',c.bk||''), pl=mkIn('text','Place (optional)',c.pl||''), tg=mkIn('text','Tags, separated by commas (optional)',c.tg||''), er=mk('p','pmeta');
+  bc.maxLength=60; bk.maxLength=60; pl.maxLength=60; tg.maxLength=120; nm.maxLength=60; ph.maxLength=16; ph.inputMode='numeric'; ph.addEventListener('input',function(){ var d=phone10(ph.value); if(d.length>10) d=d.slice(0,10); if(ph.value!==d) ph.value=d; }); nt.maxLength=120; er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
-  b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Place',pl),fld('Note',nt));
+  b.append(fld('Name',nm),fld('Phone number',ph),fld('BNI Chapter',bc),fld('Category In BNI',bk),fld('Place',pl),fld('Tags',tg),fld('Note',nt));
   var cfBox=mk('div'); cfBox.style.cssText='display:flex;flex-direction:column;gap:8px'; b.append(cfBox); var cfRows=[], cfGone={};
   function addCf(key,l,v){ var vi=mkIn('text','Enter '+(l||'value'),v||''); vi.maxLength=120; var fl=fld(l||'Field',vi); fl.style.flex='1 1 0'; fl.style.minWidth='0';
     var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:flex-end'; var o={key:key,l:l||'Field',vi:vi,rw:rw}; var rm=iconBtn('Remove field','<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',function(){ if(o.key) cfGone[o.key]=1; cfRows.splice(cfRows.indexOf(o),1); rw.remove(); },'var(--loss)'); rm.style.marginBottom='6px';
@@ -508,7 +509,7 @@ function ctEdit(id){
     p=phone10(p); if(p.length!==10){ er.textContent='The phone number must be exactly 10 digits.'; return; }
     var dp=ctAll().filter(function(it){ return it[0]!==id && phone10(it[1].p)===p; })[0]; if(dp){ er.textContent='This phone number is already saved for '+dp[1].n+'.'; return; }
     var dn=ctAll().filter(function(it){ return it[0]!==id && nameKey(it[1].n)===nameKey(n); })[0]; if(dn){ er.textContent='A contact named '+dn[1].n+' already exists. Use a different name.'; return; }
-    var k=id||callId(), ng=id?(c.g||'none'):'none', og=ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value),bc:cleanName(bc.value),bk:cleanName(bk.value),pl:cleanName(pl.value),cf:{}};
+    var k=id||callId(), ng=id?(c.g||'none'):'none', og=ng, pt={ct:{}}; pt.ct[k]={n:n,p:p,nt:cleanName(nt.value),bc:cleanName(bc.value),bk:cleanName(bk.value),pl:cleanName(pl.value),tg:tagsClean(tg.value),cf:{}};
     Object.keys(cfGone).forEach(function(x){ pt.ct[k].cf[x]=null; });
     cfRows.forEach(function(o){ var l=o.l, v=cleanName(o.vi.value); if(!v&&!o.key) return; var key=o.key||('f'+Math.random().toString(36).slice(2,8)); pt.ct[k].cf[key]={l:l,v:v}; });
     var ok=await grPut(ng,pt);
@@ -626,7 +627,7 @@ function rows(box,list,own,off){
     var chBtn=null, nb=mk('b',null,c.n); nb.style.cursor='pointer'; top.append(nb); if(isOwner){ var asg=whoNames(c.g&&groups[c.g]).join(', '); var ab2=mk('div'); ab2.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:0'; var at=mk('div','pmeta','Assigned to: '+(asg||'Nobody yet')); at.style.cssText='font-size:.82rem;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%'; var chb=mk('button','btn small',asg?'Unassign / Change':'Assign'); chb.type='button'; chb.style.cssText='padding:1px 8px;font-size:.75rem;min-height:0;flex:none';
       chb.addEventListener('click',function(ev){ ev.stopPropagation(); ctAssignDlg(id,c); }); ab2.append(at,chb); top.append(ab2); chb.hidden=!!asg&&!ctOpen[id]; chBtn=asg?chb:null; } else if(c.p){ var phl=mk('div','pmeta',c.p); phl.style.cssText='font-size:.85rem'; top.append(phl); } top.style.cursor='pointer'; top.setAttribute('role','button'); top.setAttribute('aria-expanded',!!ctOpen[id]);
     var gn=c.g&&groups[c.g]?groups[c.g].n:''; var mt=mk('div','pmeta'); mt.style.cssText='font-size:.82rem;display:flex;flex-direction:column;gap:1px;margin-top:2px';
-    [['Phone',isOwner?c.p:''],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Place',c.pl],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
+    [['Phone',isOwner?c.p:''],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Place',c.pl],['Tags',c.tg],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; if(chBtn) chBtn.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; if(accountOwner&&!isOwner&&viewAs) cb.style.display='none'; cb.style.padding='2px 12px'; cb.style.minHeight='24px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
@@ -1106,7 +1107,7 @@ function infoContact(id,c){
   var g=c.g&&groups[c.g]; var who=whoNames(g);
   infoOpen(c.n,function(body,logs){
     var mine=logs.filter(function(it){ return it.e.c===id; });
-    infoBlock(body,'Contact',['Phone: '+(c.p||'-'),c.bc?'BNI Chapter: '+c.bc:'',c.bk?'Category In BNI: '+c.bk:'',c.pl?'Place: '+c.pl:''].concat(Object.keys(c.cf||{}).map(function(k){ return c.cf[k].l+': '+c.cf[k].v; })).concat([c.nt?'Note: '+c.nt:'']));
+    infoBlock(body,'Contact',['Phone: '+(c.p||'-'),c.bc?'BNI Chapter: '+c.bc:'',c.bk?'Category In BNI: '+c.bk:'',c.pl?'Place: '+c.pl:'',c.tg?'Tags: '+c.tg:''].concat(Object.keys(c.cf||{}).map(function(k){ return c.cf[k].l+': '+c.cf[k].v; })).concat([c.nt?'Note: '+c.nt:'']));
     if(isOwner||accountOwner) infoBlock(body,'Assigned to ('+who.length+')',who.length?who:['Nobody yet']);
     infoBlock(body,'Call history',[mine.length?sumLine(sumOf(mine)):'No calls yet'].concat(callRows(mine,true).slice(0,40)));
   });
