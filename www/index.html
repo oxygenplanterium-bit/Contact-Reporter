@@ -143,12 +143,17 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 8:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 9:15 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname!=='localhost'){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v='+APP_BUILD).catch(function(){}); }); }</script>
 <script>var APP_BUILD='__BUILD__';</script>
+<script>/* Auto update: when a newer build is published, reload to it once nothing is being typed or edited */
+(function(){ if(location.protocol!=='https:'||location.hostname==='localhost'||APP_BUILD==='__BUILD__') return; var busy=false;
+  async function check(){ if(busy||document.hidden) return; busy=true; try{ var r=await fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}); var t=await r.text(), m=t.match(/APP_BUILD='([0-9a-f]{7})'/);
+      if(m&&m[1]!==APP_BUILD){ var a=document.activeElement, typing=a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), dlg=document.querySelector('dialog[open]'); if(!typing&&!dlg){ try{ var rg=await navigator.serviceWorker.getRegistrations(); await Promise.all(rg.map(function(x){ return x.update(); })); }catch(e){} location.reload(); } } }catch(e){} busy=false; }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) setTimeout(check,800); }); window.addEventListener('load',function(){ setTimeout(check,4000); }); setInterval(check,300000); })();</script>
 <script>(function(){ function fit(){ var b=document.querySelector('.bot'); if(b) document.documentElement.style.setProperty('--botH',b.offsetHeight+'px'); } window.addEventListener('load',function(){ fit(); var b=document.querySelector('.bot'); if(b&&window.ResizeObserver) new ResizeObserver(fit).observe(b); window.addEventListener('resize',fit); }); })();</script>
 <script src="platform.js?v=__BUILD__"></script>
 <script>
