@@ -26,7 +26,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 
--- A "Captain" is an approved person whose phone number is in a contact tagged Captains, in a list the caller can see.
+-- A "Captain" is an approved person whose phone number is in a contact, in a list the caller can see, that carries a tag equal to the caller's own name.
 -- Callers may read the account record and call logs of their Captains, and nobody else's.
 create or replace function public.is_captain(target text) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -35,7 +35,10 @@ language sql stable security definer set search_path = public as $$
     from public.docs me, public.docs g, lateral jsonb_each(g.data -> 'ct') c
     where me.path = 'cr/users/' || target and me.data ->> 'st' = 'ok'
       and g.path like 'cr/g/%' and jsonb_typeof(g.data -> 'ct') = 'object'
-      and exists (select 1 from unnest(string_to_array(lower(coalesce(c.value ->> 'tg', '')), ',')) t where btrim(t) in ('captain', 'captains'))
+      and exists (select 1 from unnest(string_to_array(lower(coalesce(c.value ->> 'tg', '')), ',')) t, public.docs cu
+                  where cu.path = 'cr/users/' || auth.uid()::text
+                    and regexp_replace(btrim(t), '\s+', ' ', 'g') = regexp_replace(btrim(lower(coalesce(cu.data ->> 'n', ''))), '\s+', ' ', 'g')
+                    and btrim(t) <> '')
       and (g.data ->> 'all' = 'true' or (g.data -> 'to') ? auth.uid()::text)
       and length(regexp_replace(coalesce(me.data ->> 'ph', ''), '\D', '', 'g')) >= 10
       and right(regexp_replace(coalesce(c.value ->> 'p', ''), '\D', '', 'g'), 10)
