@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 1:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 6 Nov 2026, 6:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -334,7 +334,7 @@ function callDur(s){ s=Number(s)||0; if(s<60) return s+' sec'; var m=Math.floor(
 function fld(t,el){ var l=mk('label','f'); l.append(mk('span',null,t),el); return l; }
 function tint(el,i){ el.style.background=i%2?'color-mix(in srgb,var(--accent) 14%,var(--card))':'color-mix(in srgb,var(--loss) 16%,var(--card))'; }
 function btn(label,fn,cls){ var b=mk('button','btn small'+(cls?' '+cls:''),label); b.type='button'; b.addEventListener('click',fn); return b; }
-function dlg(id){ var d=$('#'+id); if(!d){ d=document.createElement('dialog'); d.id=id; document.body.append(d); d.addEventListener('click',function(e){ if(!e.target.closest('.dbody')) d.close(); }); } d.textContent=''; var b=mk('div','dbody'); d.append(b); return [d,b]; }
+function dlg(id){ var d=$('#'+id); if(!d){ d=document.createElement('dialog'); d.id=id; document.body.append(d); d.addEventListener('click',function(e){ if(!e.target.isConnected||e.target.closest('#pickDrop')) return; if(!e.target.closest('.dbody')) d.close(); }); } d.textContent=''; var b=mk('div','dbody'); d.append(b); return [d,b]; }
 function openDlg(d){ if(!d.open) d.showModal(); setTimeout(function(){ var a=document.activeElement; if(a&&d.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur(); },0); }
 function writeErr(e){ toast(e&&e.code==='revoked'?'You are not allowed to do that.':'Could not save. Check your connection and try again.'); return false; }
 /* ---------- storage ---------- */
@@ -432,13 +432,14 @@ function repOpen(id,e,k){
   var nx=document.createElement('input'); nx.type='date'; nx.value=e.nx||'';
   var er=mk('p','pmeta'); er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Submit Report'), lt=mk('button','btn','Later'); sv.type=lt.type='button'; row.append(sv,lt);
-  b.append(fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date (optional)',nx),er,row);
+  b.append(fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date',nx),er,row);
   lt.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
     var o=os.value, t=cleanName(tx.value);
     if(!o){ er.textContent='Choose what happened.'; return; }
-    if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
-    var p={}; p[id]={o:o,r:t.slice(0,600),nx:nx.value||null,ra:Date.now()};
+    if(!t){ er.textContent='Write a short report of the conversation.'; return; }
+    if(!nx.value){ er.textContent='Choose the follow-up date.'; return; }
+    var p={}; p[id]={o:o,r:t.slice(0,600),nx:nx.value,ra:Date.now()};
     if(await putDoc('cr/log/'+(k||todayKey())+'/'+(e.sid||uid),{cl:p})){ d.close(); toast('Report submitted'); }
   });
   openDlg(d);
@@ -925,15 +926,15 @@ function logEdit(id,e){
   var nx=document.createElement('input'); nx.type='date'; nx.value=(e&&e.nx)||'';
   var er=mk('p','pmeta'); er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
-  b.append(fld('Date',dt),fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date (optional)',nx),er,row);
+  b.append(fld('Date',dt),fld('Outcome',os),fld('Conversation report',tx),fld('Follow-up date',nx),er,row);
   cn.addEventListener('click',function(){ d.close(); });
   sv.addEventListener('click',async function(){
     var o=os.value, t=cleanName(tx.value), day=dt.value;
     if(!day){ er.textContent='Choose a date.'; return; }
-    var future=day>todayKey();
     if(isNew&&!cs.value){ er.textContent='Choose a contact.'; return; }
-    if(!o&&!future){ er.textContent='Choose what happened.'; return; }
-    if((o==='spoke'||o==='cb')&&!t){ er.textContent='Write a short report of the conversation.'; return; }
+    if(!o){ er.textContent='Choose what happened.'; return; }
+    if(!t){ er.textContent='Write a short report of the conversation.'; return; }
+    if(!nx.value){ er.textContent='Choose the follow-up date.'; return; }
     var sid=isNew?uid:(e.sid||uid), ent, nid=id;
     if(isNew){
       var c=ctGet(cs.value); if(!c){ er.textContent='Contact not found.'; return; }
@@ -1282,7 +1283,7 @@ function openPick(sel,title){
   var sr=null; if(sel.options.length>10){ sr=document.createElement('input'); sr.type='search'; sr.placeholder='Search'; sr.setAttribute('aria-label','Search'); sr.autocomplete='off'; sr.style.cssText='margin:6px 6px 0;width:calc(100% - 12px);flex:none'; d.append(sr); }
   Array.prototype.forEach.call(sel.options,function(o){
     var b=mk('button','pickopt',o.textContent); b.type='button'; b.dataset.full=o.textContent; b.style.minHeight='38px'; b.style.padding='8px 12px'; if(o.value===sel.value) b.setAttribute('aria-pressed','true');
-    b.addEventListener('click',function(){ sel.value=o.value; closeDrop(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
+    b.addEventListener('click',function(ev){ ev.stopPropagation(); sel.value=o.value; closeDrop(); sel.dispatchEvent(new Event('change',{bubbles:true})); }); box.append(b);
   });
   if(sr) sr.addEventListener('input',function(){ var q=sr.value.trim().toLowerCase(), n=0; Array.prototype.forEach.call(box.querySelectorAll('.pickopt'),function(b){ var ok=!q||b.dataset.full.toLowerCase().indexOf(q)>=0; b.hidden=!ok; if(ok) n++; }); var nm=box.querySelector('.pnone'); if(!n&&!nm) box.append(mk('p','pmeta pnone','No match.')); else if(n&&nm) nm.remove(); });
   d.append(box); (sel.closest('dialog')||document.body).append(d);
