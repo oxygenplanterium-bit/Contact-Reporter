@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 3:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 11:20 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1405,6 +1405,23 @@ document.addEventListener('click',function(e){
   if(!t&&lb){ var sp=lb.querySelector('span'); t=sp?sp.textContent:''; }
   e.preventDefault(); e.stopPropagation(); openPick(sel,t||'Choose');
 },true);
+/* ---------- keyboard: forms fit above it and scroll; the page behind can scroll past it ---------- */
+(function(){
+  var vv=window.visualViewport; if(!vv) return;
+  function fit(){
+    var kb=Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop)), up=kb>80;
+    document.querySelectorAll('dialog[open]').forEach(function(d){
+      var bd=d.querySelector('.dbody');
+      if(!up){ d.style.top=''; d.style.bottom=''; d.style.margin=''; d.style.maxHeight=''; if(bd) bd.style.maxHeight=''; return; }
+      var h=Math.max(200,Math.round(vv.height-16));
+      d.style.top=Math.round(vv.offsetTop+8)+'px'; d.style.bottom='auto'; d.style.margin='0 auto'; d.style.maxHeight=h+'px'; if(bd) bd.style.maxHeight=h+'px';
+    });
+    document.body.style.paddingBottom=up?(kb+90)+'px':'';
+  }
+  vv.addEventListener('resize',fit); vv.addEventListener('scroll',fit);
+  document.addEventListener('focusin',function(e){ var t=e.target; if(!t||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return; setTimeout(function(){ fit(); try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(x){} },320); });
+  document.addEventListener('focusout',function(){ setTimeout(fit,200); });
+})();
 /* ---------- start ---------- */
 function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); }); }
 function normName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
