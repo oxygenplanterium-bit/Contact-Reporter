@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 3:15 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 3:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -787,7 +787,7 @@ async function saveFile(bytes,name,mime){
 function exportDlg(){
   var r=dlg('dlgExp'), d=r[0], b=r[1], day=todayKey(), full=expTable(); b.append(mk('h2',null,'Download All Contacts'));
   b.append(mk('p','pmeta',full.rows.length+' contact'+(full.rows.length===1?'':'s')+'. Tick the fields to include, then choose a file type.'));
-  var off={'Group':1,'Assigned To':1,'Tags':1}, ticks=[], box=mk('div'); box.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;max-height:34vh;overflow-y:auto';
+  var off={}, ticks=[], box=mk('div'); box.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;max-height:34vh;overflow-y:auto';
   full.head.forEach(function(h,i){ var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;padding:6px 2px;cursor:pointer;min-width:0'; var c=document.createElement('input'); c.type='checkbox'; c.checked=!off[h]; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; var sp=mk('span',null,h); sp.style.cssText='min-width:0;overflow-wrap:anywhere'; l.append(c,sp); box.append(l); ticks.push(c); });
   b.append(box);
   var all=btn('Tick All',function(){ ticks.forEach(function(c){ c.checked=true; }); },''), none=btn('Clear All',function(){ ticks.forEach(function(c){ c.checked=false; }); },''); var tr=mk('div','two'); tr.append(all,none); b.append(tr);
