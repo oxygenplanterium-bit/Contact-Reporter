@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 2:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 2:55 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -784,11 +784,14 @@ async function saveFile(bytes,name,mime){
   var blob=new Blob([bytes],{type:mime}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
 }
 function exportDlg(){
-  var r=dlg('dlgExp'), d=r[0], b=r[1], t=expTable(), day=todayKey(); b.append(mk('h2',null,'Download All Contacts'));
-  b.append(mk('p','pmeta',t.rows.length+' contact'+(t.rows.length===1?'':'s')+'. Choose a file type.'));
+  var r=dlg('dlgExp'), d=r[0], b=r[1], day=todayKey(), full=expTable(); b.append(mk('h2',null,'Download All Contacts'));
+  b.append(mk('p','pmeta',full.rows.length+' contact'+(full.rows.length===1?'':'s')+'. Tick what to include, then choose a file type.'));
+  var opts=['Group','Assigned To','Tags'], ticks={};
+  opts.forEach(function(o){ var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:10px;margin:0;padding:6px 2px;cursor:pointer'; var c=document.createElement('input'); c.type='checkbox'; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.append(c,mk('span',null,o)); b.append(l); ticks[o]=c; });
   var er=mk('p','pmeta'); er.style.color='var(--warn)';
-  var go=function(label,fn,name,mime){ var x=btn(label,async function(){ try{ if(!t.rows.length){ er.textContent='There are no contacts to download.'; return; } if(await saveFile(fn(t),name,mime)){ toast(label+' ready'); d.close(); } }catch(e){ er.textContent='Could not make the file.'; } },'primary'); x.style.minHeight='42px'; return x; };
-  var cl=btn('Close',function(){ d.close(); },''); 
+  var table=function(){ var drop=opts.filter(function(o){ return !ticks[o].checked; }), keep=full.head.map(function(h,i){ return drop.indexOf(h)<0?i:-1; }).filter(function(i){ return i>=0; }); return {head:keep.map(function(i){ return full.head[i]; }),rows:full.rows.map(function(r){ return keep.map(function(i){ return r[i]; }); })}; };
+  var go=function(label,fn,name,mime){ var x=btn(label,async function(){ try{ if(!full.rows.length){ er.textContent='There are no contacts to download.'; return; } if(await saveFile(fn(table()),name,mime)){ toast(label+' ready'); d.close(); } }catch(e){ er.textContent='Could not make the file.'; } },'primary'); x.style.minHeight='42px'; return x; };
+  var cl=btn('Close',function(){ d.close(); },'');
   b.append(go('Download Excel File',expXlsx,'Contacts-'+day+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),go('Download CSV File',expCsv,'Contacts-'+day+'.csv','text/csv'),go('Download PDF File',expPdf,'Contacts-'+day+'.pdf','application/pdf'),er,cl);
   openDlg(d);
 }
