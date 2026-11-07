@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 2:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 2:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -731,6 +731,67 @@ function usersCard(body){
     var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
     body.append(uc); }
 }
+/* ---------- download all contacts: CSV, Excel, PDF ---------- */
+function expTable(){
+  var all=ctAll(), labels=[]; all.forEach(function(it){ Object.keys(it[1].cf||{}).forEach(function(k){ var l=it[1].cf[k].l; if(l&&labels.indexOf(l)<0) labels.push(l); }); });
+  var head=['Name','Phone','Group','Assigned To','Tags','BNI Chapter','Category In BNI','Place','Note'].concat(labels), rows=all.map(function(it){ var c=it[1], g=c.g&&groups[c.g], cf={}; Object.keys(c.cf||{}).forEach(function(k){ cf[c.cf[k].l]=c.cf[k].v; });
+    return [c.n,phone10(c.p)||c.p,(g&&g.n)||'',whoNames(g).join(', '),c.tg||'',c.bc||'',c.bk||'',c.pl||'',c.nt||''].concat(labels.map(function(l){ return cf[l]||''; })); });
+  return {head:head,rows:rows};
+}
+function expCsv(t){ var q=function(v){ v=String(v==null?'':v); return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }; var txt='﻿'+[t.head].concat(t.rows).map(function(r){ return r.map(q).join(','); }).join('\r\n')+'\r\n'; return new TextEncoder().encode(txt); }
+var CRC_T=(function(){ var t=[],n,k,c; for(n=0;n<256;n++){ c=n; for(k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u){ var c=0xFFFFFFFF; for(var i=0;i<u.length;i++) c=CRC_T[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipStore(files){
+  var enc=new TextEncoder(), parts=[], cen=[], off=0, u16=function(v){ return [v&255,(v>>8)&255]; }, u32=function(v){ return [v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255]; };
+  files.forEach(function(f){ var nm=enc.encode(f[0]), d=enc.encode(f[1]), crc=crc32(d);
+    var lh=[].concat([0x50,0x4b,3,4],u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(d.length),u32(d.length),u16(nm.length),u16(0));
+    parts.push(new Uint8Array(lh),nm,d);
+    cen.push([].concat([0x50,0x4b,1,2],u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(d.length),u32(d.length),u16(nm.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off)),Array.prototype.slice.call(nm));
+    off+=lh.length+nm.length+d.length; });
+  var cs=0; cen.forEach(function(c){ parts.push(new Uint8Array(c)); cs+=c.length; });
+  parts.push(new Uint8Array([].concat([0x50,0x4b,5,6],u16(0),u16(0),u16(files.length),u16(files.length),u32(cs),u32(off),u16(0))));
+  var n=0; parts.forEach(function(x){ n+=x.length; }); var out=new Uint8Array(n), o=0; parts.forEach(function(x){ out.set(x,o); o+=x.length; }); return out;
+}
+function expXlsx(t){
+  var esc=function(v){ return String(v==null?'':v).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,''); };
+  var col=function(i){ var s2=''; i++; while(i>0){ var m=(i-1)%26; s2=String.fromCharCode(65+m)+s2; i=Math.floor((i-1)/26); } return s2; };
+  var rowX=function(r,ri,hd){ return '<row r="'+(ri+1)+'">'+r.map(function(v,ci){ return '<c r="'+col(ci)+(ri+1)+'" t="inlineStr"'+(hd?' s="1"':'')+'><is><t xml:space="preserve">'+esc(v)+'</t></is></c>'; }).join('')+'</row>'; };
+  var widths=t.head.map(function(h,ci){ var w=h.length; t.rows.forEach(function(r){ w=Math.max(w,String(r[ci]||'').length); }); return Math.min(40,Math.max(10,w+2)); });
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+widths.map(function(w,i){ return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'; }).join('')+'</cols><sheetData>'+rowX(t.head,0,true)+t.rows.map(function(r,i){ return rowX(r,i+1,false); }).join('')+'</sheetData></worksheet>';
+  var X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  return zipStore([
+    ['[Content_Types].xml',X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ['_rels/.rels',X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml',X+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Contacts" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels',X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['xl/styles.xml',X+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
+    ['xl/worksheets/sheet1.xml',sheet]]);
+}
+function expPdf(t){
+  var doc=new PDF.Doc(), n=t.rows.length;
+  doc.text('Contact Reporter - All Contacts',{size:16,bold:true,after:4,color:'0 0.4 0.15'});
+  doc.text('Prepared on '+fmtIso(todayKey())+' at '+fmtTime(Date.now())+' - '+n+' contact'+(n===1?'':'s'),{size:9}); doc.rule();
+  t.rows.forEach(function(r,i){
+    doc.text((i+1)+'. '+r[0]+(r[1]?' ('+r[1]+')':''),{size:10,bold:true,before:5});
+    var parts=[]; for(var k=2;k<t.head.length;k++){ if(r[k]) parts.push(t.head[k]+': '+r[k]); }
+    if(parts.length) doc.text(parts.join('  |  '),{size:9,indent:12});
+  });
+  return doc.build('Contact Reporter - All Contacts');
+}
+async function saveFile(bytes,name,mime){
+  var native=false; try{ native=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
+  if(native){ try{ var dn=await window.claude.use('downloads'); await dn.save({filename:name,data:bytes.buffer}); return true; }catch(e){ if(e&&e.code==='declined') return false; } }
+  var blob=new Blob([bytes],{type:mime}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
+}
+function exportDlg(){
+  var r=dlg('dlgExp'), d=r[0], b=r[1], t=expTable(), day=todayKey(); b.append(mk('h2',null,'Download All Contacts'));
+  b.append(mk('p','pmeta',t.rows.length+' contact'+(t.rows.length===1?'':'s')+'. Choose a file type.'));
+  var er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var go=function(label,fn,name,mime){ var x=btn(label,async function(){ try{ if(!t.rows.length){ er.textContent='There are no contacts to download.'; return; } if(await saveFile(fn(t),name,mime)){ toast(label+' ready'); d.close(); } }catch(e){ er.textContent='Could not make the file.'; } },'primary'); x.style.minHeight='42px'; return x; };
+  var cl=btn('Close',function(){ d.close(); },''); 
+  b.append(go('Download Excel File',expXlsx,'Contacts-'+day+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),go('Download CSV File',expCsv,'Contacts-'+day+'.csv','text/csv'),go('Download PDF File',expPdf,'Contacts-'+day+'.pdf','application/pdf'),er,cl);
+  openDlg(d);
+}
 function viewSetOwner(body){
   usersCard(body);
   var sbl=mk('label','sw'), sbi=document.createElement('input'); sbi.type='checkbox'; sbi.checked=subsOn(); sbi.setAttribute('role','switch'); sbi.setAttribute('aria-label','App subscription'); sbl.style.marginTop='8px'; sbl.append(mk('h2',null,'Subscription'),sbi,document.createElement('i')); sbl.style.cssText+=';margin:8px 0 0;padding:0 2px 0 0'; sbl.firstChild.style.margin='0';
@@ -739,6 +800,7 @@ function viewSetOwner(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
+  var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
 function viewHome(body){
