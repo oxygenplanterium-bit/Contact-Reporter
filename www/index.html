@@ -143,7 +143,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 12:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 2:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -471,17 +471,41 @@ function userNameDlg(id,u){
     if(await putDoc('cr/users/'+id,{n:n})){ if(groups['u'+id]) await grPut('u'+id,{n:n}); d.close(); toast('Name changed'); } });
   openDlg(d); setTimeout(function(){ nm.focus(); nm.select(); },60);
 }
+async function assignMulti(uidsIn,ids){
+  var us=[]; uidsIn.forEach(function(x){ if(us.indexOf(x)<0) us.push(x); }); us.sort(); if(!us.length) return false; if(us.length===1) return assignContacts(us[0],ids);
+  var gid='m_'+us.join('_'), nm=us.map(function(x){ return personName(x)||'User'; }).join(' + '), ok=true;
+  if(!groups[gid]) ok=await grPut(gid,{n:nm,all:false,to:us}); else if(groups[gid].n!==nm||(groups[gid].to||[]).length!==us.length) ok=await grPut(gid,{n:nm,to:us});
+  if(!ok) return false;
+  var add={ct:{}}, rem={};
+  ids.forEach(function(id){ var c=ctGet(id); if(!c) return; var og=c.g||'none'; if(og===gid) return; add.ct[id]=ctCopy(c); (rem[og]=rem[og]||{ct:{}}).ct[id]=null; });
+  if(!Object.keys(add.ct).length) return true;
+  ok=await grPut(gid,add); if(!ok) return false;
+  var gs=Object.keys(rem); for(var i=0;i<gs.length;i++){ if(!(await grPut(gs[i],rem[gs[i]]))) return false; }
+  return true;
+}
+function usersChecklist(cur){
+  var box=mk('div'); box.style.cssText='display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow-y:auto'; var checks=[];
+  var list=[]; if(accountOwner&&uid) list.push([uid,'Owner (me)']); okUsers().forEach(function(it){ list.push([it[0],it[1].n+' \u00b7 '+fmtPhone(it[1].ph)]); });
+  list.forEach(function(it,i){ var l=mk('label'); l.style.cssText='display:flex;flex-direction:row;align-items:center;gap:10px;margin:0;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer'; tint(l,i); var c=document.createElement('input'); c.type='checkbox'; c.checked=cur.indexOf(it[0])>=0; c.style.cssText='width:20px;height:20px;margin:0;flex:none'; l.append(c,mk('span',null,it[1])); box.append(l); checks.push([it[0],c]); });
+  return {box:box,get:function(){ return checks.filter(function(x){ return x[1].checked; }).map(function(x){ return x[0]; }); }};
+}
+function multiAssignDlg(ids,title){
+  var r=dlg('dlgAsg'), d=r[0], b=r[1]; b.append(mk('h2',null,title||'Assign To Several Users'));
+  var ck=usersChecklist([]), er=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Save'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; row.append(sv,cn);
+  b.append(mk('p','pmeta','Tick every user who should get '+(ids.length===1?'this contact':'these '+ids.length+' contacts')+'.'),ck.box,er,row);
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){ var u=ck.get(); if(!u.length){ er.textContent='Tick at least one user.'; return; } if(await assignMulti(u,ids)){ d.close(); toast('Assigned'); selSet={}; sig=''; render(); } });
+  openDlg(d);
+}
 function ctAssignDlg(id,c){
   var r=dlg('dlgAsg'), d=r[0], b=r[1]; b.append(mk('h2',null,c.n));
-  var sel=document.createElement('select'), o0=mk('option',null,'Choose a user'); o0.value=''; sel.append(o0);
-  if(accountOwner&&uid){ var om=mk('option',null,'Owner (me)'); om.value=uid; sel.append(om); }
-  okUsers().forEach(function(it){ var o=mk('option',null,it[1].n+' \u00b7 '+fmtPhone(it[1].ph)); o.value=it[0]; sel.append(o); });
-  var g=c.g&&groups[c.g], cur=g&&(g.to||[]).filter(function(x){ return x===uid&&accountOwner||users[x]; })[0]; if(cur&&Array.prototype.some.call(sel.options,function(o){ return o.value===cur; })) sel.value=cur;
+  var g=c.g&&groups[c.g], cur=(g&&(g.to||[]))||[], ck=usersChecklist(cur);
   var er=mk('p','pmeta'); er.style.color='var(--warn)';
   var row=mk('div','two'), sv=mk('button','btn primary','Save'), ua=mk('button','btn danger','Unassign'), cn=mk('button','btn','Cancel'); sv.type=ua.type=cn.type='button'; row.append(sv,ua);
-  b.append(fld('Assign To',sel),er,row,cn);
+  b.append(mk('p','pmeta','Tick one or more users.'),ck.box,er,row,cn);
   cn.addEventListener('click',function(){ d.close(); });
-  sv.addEventListener('click',async function(){ if(!sel.value){ er.textContent='Choose a user.'; return; } if(await assignContacts(sel.value,[id])){ d.close(); toast('Assigned'); } });
+  sv.addEventListener('click',async function(){ var u=ck.get(); if(!u.length){ er.textContent='Tick at least one user.'; return; } if(await assignMulti(u,[id])){ d.close(); toast('Assigned'); } });
   ua.addEventListener('click',async function(){ if(await assignContacts('-',[id])){ d.close(); toast('Unassigned'); } });
   openDlg(d);
 }
@@ -745,9 +769,9 @@ function viewHome(body){
           if(await assignContacts(selUser,ids)){ toast(ids.length+' contact'+(ids.length===1?'':'s')+(selUser==='-'?' unassigned':' assigned')); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); } });
         var ua=btn('Unassign Everyone',function(){ arm(ua,'unall','Unassign Everyone',async function(){ var n=await unassignAll(); if(n<0) return; toast(n?(n+' contact'+(n===1?'':'s')+' unassigned'):'No contacts were assigned'); selMode=false; selSet={}; selUser=''; selUn=false; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); }); },'danger');
         var uv=btn('Show Assigned',function(){ selUn=(selUn==='a')?true:'a'; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); uv.setAttribute('aria-pressed',selUn==='a'); if(selUn==='a') uv.className+=' primary';
-        var urow=mk('div','sline'); urow.append(uv,ua);
+        var sev=btn('Several Users',function(){ var ids=Object.keys(selSet); if(!ids.length){ toast('Tick at least one contact.'); return; } multiAssignDlg(ids,'Assign To Several Users'); },''); var urow=mk('div','sline'); urow.append(uv,ua);
         var sr2=mk('div'); sr2.append(fld('Assign To',uu));
-        var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
+        var g4=mk('div'); g4.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; [go,cl,uv,ua,sev].forEach(function(x){ x.style.cssText+=';width:100%;min-width:0;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;margin:0;padding:6px 8px;font-size:.9rem;white-space:normal;text-align:center'; g4.append(x); });
         ab.append(sr2,inf,g4); body.append(ab); }
       } var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=homeQ; q.autocomplete='off'; q.setAttribute('aria-label','Search contacts'); var srow=mk('div'); srow.style.cssText='display:flex;flex-direction:column;align-items:stretch;gap:1px'; srow.append(clearable(q)); body.append(srow);
   var rowCnt=mk('div','pmeta'); rowCnt.style.cssText='font-size:.78rem;line-height:1.1;text-align:right;margin:7px 4px 4px 0;white-space:nowrap'; srow.append(rowCnt);
