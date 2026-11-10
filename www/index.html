@@ -133,6 +133,47 @@ html,body{max-width:100%; overflow-x:hidden}
 #rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
 #rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:500; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
 #rngRow .dw input{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; margin:0; padding:0; font-size:16px; cursor:pointer}
+
+/* ---------- Windows desktop layout (wide screens) ---------- */
+@media (min-width:1000px){
+  :root{--sw:250px}
+  html{font-size:15px; scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--muted) 45%,transparent) transparent}
+  ::-webkit-scrollbar{width:12px; height:12px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--muted) 40%,transparent); border-radius:8px; border:3px solid transparent; background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--muted) 65%,transparent); background-clip:padding-box}
+  body{font-family:'Segoe UI Variable','Segoe UI',system-ui,sans-serif; padding:0 32px 40px calc(var(--sw) + 32px)}
+  body::before{content:''; position:fixed; left:0; top:0; bottom:0; width:var(--sw); background:var(--card); border-right:1px solid var(--line); z-index:0}
+  .wrap{max-width:1000px; padding-top:28px; position:static}
+  .brand{position:fixed; left:0; top:0; width:var(--sw); z-index:2; padding:18px 16px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+  .brand>div{flex:1 1 auto; min-width:0}
+  .brand h1{font-size:1.1rem; white-space:normal}
+  .brand{flex-wrap:nowrap}
+  #themeBtn{position:fixed; left:12px; bottom:14px; width:calc(var(--sw) - 24px); z-index:3}
+  #modes{position:fixed; left:12px; width:calc(var(--sw) - 24px); top:88px; z-index:2; display:flex!important; flex-direction:column; gap:4px; border:0!important; background:none!important; padding:0!important}
+  #modes2{display:flex!important; flex-direction:column; gap:4px; overflow:visible!important}
+  #modes .btn{width:100%; justify-content:flex-start!important; padding:0 14px!important; text-overflow:clip!important; border:1px solid var(--line)!important}
+  #modes .btn[aria-pressed="true"]{background:var(--accent)!important; color:var(--accent-ink)!important; border-color:var(--accent)!important}
+  #seg{position:fixed; left:12px; width:calc(var(--sw) - 24px); top:182px; z-index:2; display:flex!important; flex-direction:column; border:0!important; background:transparent!important; gap:2px; overflow:visible}
+  #seg .btn{border:0!important; border-radius:8px!important; min-height:38px!important; justify-content:flex-start!important; text-align:left; padding:0 14px!important; font-size:.92rem!important; font-weight:500; background:transparent!important; white-space:nowrap}
+  #seg .btn:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)!important}
+  #seg .btn[aria-pressed="true"]{background:var(--accent-soft,color-mix(in srgb,var(--accent) 18%,var(--card)))!important; color:var(--ink)!important; font-weight:600; box-shadow:inset 3px 0 0 var(--accent)}
+  .card{border-radius:10px; padding:16px 18px; box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  button.btn{min-height:34px!important; padding:4px 14px!important; font-size:.88rem!important; border-radius:7px; transition:background .12s,border-color .12s}
+  button.btn:hover:not(:disabled){border-color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--field))}
+  button.btn.primary:hover:not(:disabled){background:color-mix(in srgb,#000 12%,var(--accent)); color:var(--accent-ink)}
+  button.btn.small{min-height:28px!important; padding:2px 11px!important; font-size:.82rem!important}
+  .modes .btn{min-height:36px!important; font-size:.88rem!important}
+  input,select,textarea{border-radius:7px; padding:8px 11px; font-size:.95rem!important}
+  input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 70%,transparent); outline-offset:-1px; border-color:var(--accent)}
+  #body{display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px!important; align-items:start}
+  #body>*{min-width:0}
+  #body>.card,#body>details,#body>form,#body>h2,#body>p,#body>div:not(.row):not(.ctrow){grid-column:1/-1}
+  dialog{width:min(600px,calc(100vw - 80px)); max-width:600px; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  .dbody{padding:22px}
+  .bot{left:calc(var(--sw) + (100vw - var(--sw))/2); max-width:1000px}
+  #toast,.toast{left:calc(50% + var(--sw)/2)}
+}
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
@@ -143,7 +184,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 7 Nov 2026, 11:20 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 10 Nov 2026, 9:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
