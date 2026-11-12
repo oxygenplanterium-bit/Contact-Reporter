@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 11 Nov 2026, 1:05 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 12 Nov 2026, 2:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -445,7 +445,6 @@ function callStart(cid){
   var c=ctGet(cid); if(!c) return;
   if(!subOk()){ toast('Your subscription has ended.'); return; }
   if(!approved()){ toast('Your account is waiting for approval.'); return; }
-  if(accountOwner&&viewAs&&viewAs!==uid){ toast('This is only a preview of that user. Choose Owner (me) to call.'); return; }
   var n=telNum(c.p); if(!n){ toast('This contact has no phone number.'); return; }
   callFresh=false; pendSet({id:callId(),c:cid,n:c.n,p:c.p,g:c.g||'',gn:(c.g&&groups[c.g]?groups[c.g].n:''),at:Date.now(),hid:0,by:callerName(),sid:uid});
   var a=document.createElement('a'); a.href='tel:'+n; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500);
@@ -707,7 +706,7 @@ function rows(box,list,own,off){
     [['Phone',isOwner?c.p:''],['BNI Chapter',c.bc],['Category In BNI',c.bk],['Place',c.pl],['Tags',c.tg],['Note',c.nt]].concat(Object.keys(c.cf||{}).map(function(k){ return [c.cf[k].l,c.cf[k].v]; })).forEach(function(r){ if(r[1]) mt.append(mk('span',null,r[0]+': '+r[1])); }); mt.hidden=!ctOpen[id]; top.append(mt);
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; if(chBtn) chBtn.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
-    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; if(accountOwner&&!isOwner&&viewAs) cb.style.display='none'; cb.style.padding='2px 12px'; cb.style.minHeight='24px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
+    var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='2px 12px'; cb.style.minHeight='24px'; if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
       if(!selUser) return; var want=sc.checked, tgt=selUser, nm0=(tgt==='-')?'':((users[tgt]&&users[tgt].n)||'user'); sc.disabled=true;
       var ok=false; if(want){ ok=await assignContacts(tgt,[id]); if(ok) toast(c.n+(tgt==='-'?' unassigned':' assigned to '+nm0)); } else if(tgt!=='-'&&c.g==='u'+tgt){ ok=await assignContacts('-',[id]); if(ok) toast(c.n+' unassigned'); } else ok=true;
       sc.disabled=false; if(!ok){ sc.checked=!want; if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); } sig=''; render(); });
