@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 12 Nov 2026, 2:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 13 Nov 2026, 12:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1164,7 +1164,8 @@ function shareDlg(title,list,withBy){
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
   var incl=isOwner||(isSuMode()&&lgInc);
-  if(!incl) all=all.filter(function(it){ return it[1].sid===(capSel||(accountOwner&&!isOwner?(viewAs||uid):uid)); });
+  var both=!capSel&&accountOwner&&!isOwner&&viewAs&&viewAs!==uid;
+  if(!incl) all=all.filter(function(it){ return both?(it[1].sid===viewAs||it[1].sid===uid):it[1].sid===(capSel||(accountOwner&&!isOwner?(viewAs||uid):uid)); });
   if(capSel&&!capList().some(function(it){ return it[0]===capSel; })){ capSel=''; logSub(); }
   if(!isOwner){ var cs=document.createElement('select'), c0=mk('option',null,'Me'); c0.value=''; cs.append(c0); capList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; cs.append(o); }); cs.value=capSel; cs.addEventListener('change',function(){ capSel=cs.value; lgUser={}; sig=''; try{ cs.blur(); }catch(e){} logSub(); render(); }); body.append(fld('Captains',cs)); }
   if(isSuMode()){ var ic=document.createElement('input'); ic.type='checkbox'; ic.checked=lgInc; ic.style.cssText='width:20px;height:20px;margin:0;flex:none'; var il=mk('label'); il.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; il.append(ic,mk('span',null,"Include users' reports")); ic.addEventListener('change',function(){ lgInc=ic.checked; sig=''; try{ ic.blur(); }catch(x){} render(); }); body.append(il); }
@@ -1211,6 +1212,7 @@ function viewLg(body){
   var byU={}, order=[], names={}, isOpen=function(s){ return lgUser[s]===undefined?!isOwner:lgUser[s]; };
   if(isOwner){ okUsers().forEach(function(it){ byU[it[0]]=[]; order.push(it[0]); names[it[0]]=it[1].n; });
     all.forEach(function(it){ var s=it[1].sid||('n:'+(it[1].by||'Unknown')); if(!byU[s]){ byU[s]=[]; order.push(s); names[s]=it[1].by||'Unknown'; } byU[s].push(it); }); }
+  else if(both){ byU[viewAs]=all.filter(function(it){ return it[1].sid===viewAs; }); byU[uid]=all.filter(function(it){ return it[1].sid===uid; }); order=[viewAs,uid]; names[viewAs]=(users[viewAs]&&users[viewAs].n)||'User'; names[uid]=callerName()+' (Me)'; }
   else { var s0=capSel||(accountOwner?(viewAs||uid):uid); byU[s0]=all; order=[s0]; names[s0]=capSel?((capSrc()[capSel]&&capSrc()[capSel].n)||'Captain'):((users[s0]&&users[s0].n)||callerName()); }
   order.sort(function(a,b){ return (byU[b].length?1:0)-(byU[a].length?1:0) || String(names[a]).localeCompare(String(names[b])); });
   order.forEach(function(s,ui){
