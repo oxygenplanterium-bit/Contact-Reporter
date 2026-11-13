@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 13 Nov 2026, 12:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 13 Nov 2026, 1:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -652,8 +652,50 @@ var pks=$('#pickSearch'); if(pks&&!pks.parentNode.classList.contains('clr')) cle
 var deskMq=window.matchMedia?matchMedia('(min-width:1000px)'):{matches:false};
 function isDesk(){ return deskMq.matches; }
 try{ (deskMq.addEventListener?deskMq.addEventListener('change',function(){ sig=''; if(started) render(); }):0); }catch(e){}
+
+/* ---------- user policy: shown once per phone before first use ---------- */
+var POLICY_V='1';
+var POLICY=[
+ ['1. About This Policy','This policy explains the rules for using the Contact Reporter app ("the App"), which is provided by Oxygen Planterium ("the Owner") for business calling. By tapping "I Agree And Continue" you confirm that you have read, understood and accepted it. If you do not agree, you must not use the App.'],
+ ['2. Purpose Of The App','The App lets the Owner share business contacts with you, lets you call them through your phone dialer, and lets you record a short report of each call. It is for the Owner’s business work only.'],
+ ['3. Contacts Given To You','The contacts shown to you belong to the Owner’s business and are confidential. Use them only for the work assigned to you. Do not copy, save to your own phone book, export, photograph, forward or share any contact, number, note or report with any other person, group or app, and do not use them for personal, commercial or other purposes.'],
+ ['3A. After You Leave','When your access is removed or you stop working with the Owner, you must stop using the App and delete any contact details you hold from it. The duty to keep the contacts confidential continues after that.'],
+ ['4. Information The App Records','The App records your name and phone number, which contacts you call, the date and time of each call, the outcome you select, the notes and reports you write, and which contacts are assigned to you. Calls are made through your phone’s own dialer. The App does not record the voice of any call.'],
+ ['5. Who Can See Your Information','The Owner, and any SuperUser or Captain the Owner appoints, can see your name, phone number, call log, call outcomes and reports. Your information is stored on the Owner’s secure online database and is used only to run, review and improve the Owner’s calling work. It is not sold to anyone.'],
+ ['6. Your Duty To Report Honestly','Record every call and write accurate, truthful reports. Do not enter false, misleading or made-up calls, outcomes or notes. Do not record anything abusive, discriminatory or unrelated to the work.'],
+ ['7. How You Must Behave On Calls','Be polite and professional. Do not harass, threaten, pressure or mislead anyone. Do not call people at unreasonable hours or after they ask you to stop. Follow the Owner’s instructions and all applicable laws, including laws on telemarketing and unsolicited calls.'],
+ ['8. Your Account And Phone','Your account belongs to you alone. Keep your password private and never let another person use your account. You must tell the Owner at once if your phone is lost or your account is misused. Normal call charges on your phone plan are your own unless the Owner has agreed otherwise in writing.'],
+ ['9. Access May Be Changed Or Removed','The Owner may approve, limit, change or remove your access at any time, with or without notice, including for breaking this policy. The Owner may also change the contacts assigned to you at any time.'],
+ ['10. Misuse','Misuse of contacts or the App, including sharing the data, copying it or using it for another business, may lead to removal of your access and legal action under applicable law.'],
+ ['11. Your Consent To Use Of Your Information','By agreeing, you consent to the collection and use of your information as set out in this policy, in line with the Digital Personal Data Protection Act, 2023 and other Indian laws. You may ask the Owner to correct or delete your information, and you may withdraw your consent by writing to the Owner, but then you cannot use the App.'],
+ ['12. No Guarantee','The App is provided as it is. The Owner does not promise that it will always be available or free of errors, and is not responsible for loss that arises from your phone, network or misuse of the App.'],
+ ['13. Changes To This Policy','The Owner may update this policy. If it changes in a way that matters, the App will show it again and ask you to agree again before you continue.'],
+ ['14. Questions','For any question about this policy, contact the Owner who gave you access to the App.']
+];
+function policyKey(){ return 'crPolicy_'+(uid||'x'); }
+function policyOk(){ try{ return localStorage.getItem(policyKey())===POLICY_V; }catch(e){ return true; } }
+function policyGate(){
+  var box=document.getElementById('policyBox');
+  if(accountOwner||!uid||policyOk()){ if(box) box.remove(); return false; }
+  if(box) return true;
+  box=mk('div'); box.id='policyBox'; box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-label','User policy');
+  box.style.cssText='position:fixed;inset:0;z-index:99998;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:max(16px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px));box-sizing:border-box';
+  var card=mk('div','card'); card.style.cssText='width:100%;max-width:640px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px';
+  card.append(mk('h2',null,'Contact Reporter User Policy'), mk('p','pmeta','Please read this policy fully. You must agree to it before you can use the App on this phone.'));
+  var sc=mk('div'); sc.style.cssText='flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--field)';
+  POLICY.forEach(function(x){ var h=mk('b',null,x[0]), t=mk('p',null,x[1]); t.style.cssText='margin:2px 0 0;text-transform:none;line-height:1.4;font-size:.92rem'; var w=mk('div'); w.append(h,t); sc.append(w); });
+  var ck=document.createElement('input'); ck.type='checkbox'; ck.style.cssText='width:22px;height:22px;margin:0;flex:none';
+  var cl=mk('label'); cl.style.cssText='display:flex;flex-direction:row;align-items:flex-start;gap:10px;margin:0;cursor:pointer'; cl.append(ck,mk('span',null,'I have read and understood this policy and I agree to follow it.'));
+  var ok=mk('button','btn primary','I Agree And Continue'), no=mk('button','btn','I Do Not Agree'); ok.type=no.type='button'; ok.disabled=true; ok.style.minHeight='44px'; no.style.minHeight='40px';
+  ck.addEventListener('change',function(){ ok.disabled=!ck.checked; });
+  ok.addEventListener('click',function(){ if(!ck.checked) return; try{ localStorage.setItem(policyKey(),POLICY_V); localStorage.setItem(policyKey()+'_at',String(Date.now())); }catch(e){} box.remove(); sig=''; render(); });
+  no.addEventListener('click',function(){ toast('You must agree to the policy to use the App.'); try{ ACC.out.click(); }catch(e){} });
+  card.append(sc,cl,ok,no); box.append(card); document.body.append(box);
+  return true;
+}
 function render(){
   if(!started) return;
+  if(policyGate()) return;
   modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
