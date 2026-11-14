@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 14 Nov 2026, 6:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 14 Nov 2026, 6:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -699,7 +699,7 @@ function render(){
   modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  var s=JSON.stringify([sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded,cptShow]);
+  var s=JSON.stringify([sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,mode,lgInc,viewAs,onlineIds,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded,cptShow]);
   if(s===sig) return; sig=s;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
@@ -817,7 +817,7 @@ function usersCard(body){
   if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
     ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
-    var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
+    var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
     body.append(uc); }
 }
 /* ---------- download all contacts: CSV, Excel, PDF ---------- */
@@ -1524,8 +1524,22 @@ function capList(){
   return Object.keys(src).filter(function(id){ var u=src[id]; return id!==me&&u&&u.st==='ok'&&mine[phone10(u.ph)]; }).map(function(id){ return [id,src[id]]; }).sort(function(a,b){ return String(a[1].n||'').localeCompare(String(b[1].n||'')); });
 }
 function watchCaptains(){ if(watchCaptains.done||accountOwner) return; watchCaptains.done=true; watchPrefix('cr/users/',function(list){ capUsers=listToMap(list,'cr/users/'); if(capSel&&!capList().some(function(it){ return it[0]===capSel; })){ capSel=''; logSub(); } sig=''; render(); }); }
+/* ---------- online presence: a user's app reports every 30 seconds; the owner sees a green dot ---------- */
+var onlineData={}, onlineIds='';
+function onlineCalc(){ var now=Date.now(), ids=Object.keys(onlineData).filter(function(id){ var t=Number((onlineData[id]||{}).t)||0; return t>0&&now-t<80000; }).sort().join(','); if(ids!==onlineIds){ onlineIds=ids; sig=''; if(started) render(); } }
+function isOnline(id){ return ((','+onlineIds+',').indexOf(','+id+',')>=0); }
+function presenceStart(){
+  if(presenceStart.done) return; presenceStart.done=true;
+  if(accountOwner){ watchPrefix('cr/online/',function(list){ onlineData=listToMap(list,'cr/online/'); onlineCalc(); }); setInterval(onlineCalc,15000); return; }
+  function beat(t){ if(!uid||!approved()) return; try{ var d=db.doc('cr/online/'+uid); Promise.resolve(d.set({t:t==null?Date.now():t})).catch(function(){}); }catch(e){} }
+  function tick(){ if(document.visibilityState==='visible') beat(); }
+  tick(); setInterval(tick,30000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') beat(); else beat(0); });
+  window.addEventListener('pagehide',function(){ beat(0); });
+}
 function startData(){
   if(startData.done) return; startData.done=true;
+  presenceStart();
   watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
   watchUsers(); watchCaptains();
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); render(); });

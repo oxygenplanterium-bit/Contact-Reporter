@@ -62,6 +62,7 @@ update public.docs set data = data - 'rl' - 'sp' where path like 'cr/users/%' an
 -- Paths:  cr/users/<user id>      the person's account record (name, phone, pending or approved)
 --         cr/g/<group id>         a group of contacts and the callers it is assigned to
 --         cr/log/<date>/<user id> that person's calls and reports for the day
+--         cr/online/<user id>     the time the person's app last reported it was open (the owner sees a green dot)
 -- Owner: everything. A person: their own account record, the groups assigned to them, and their own call log.
 create policy docs_select on public.docs for select to authenticated using (
   public.is_owner()
@@ -81,10 +82,11 @@ create policy docs_insert on public.docs for insert to authenticated with check 
   or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'ex'))
   or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
+  or (public.is_ok() and path = 'cr/online/' || auth.uid()::text)
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
+  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
+  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key
