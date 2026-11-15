@@ -3,7 +3,7 @@
   "appName": "Contact Reporter",
   "webDir": "www",
   "server": {
-    "url": "https://oxygenplanterium-bit.github.io/Contact-Reporter/",
+    "url": "https://oxygenplanterium-bit.github.io/contact-reporter/",
     "allowNavigation": ["oxygenplanterium-bit.github.io", "*.supabase.co"],
     "androidScheme": "https"
   },
