@@ -128,10 +128,10 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 
--- PDF library: a public storage bucket. Only the owner can add, change or remove files; anyone with the link can open one.
+-- PDF and image library: a public storage bucket. Only the owner can add, change or remove files; anyone with the link can open one.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('pdfs', 'pdfs', true, 20971520, array['application/pdf'])
-on conflict (id) do update set public = true, file_size_limit = 20971520, allowed_mime_types = array['application/pdf'];
+values ('pdfs', 'pdfs', true, 20971520, array['application/pdf','image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public = true, file_size_limit = 20971520, allowed_mime_types = array['application/pdf','image/jpeg','image/png','image/webp'];
 drop policy if exists pdfs_owner_insert on storage.objects;
 drop policy if exists pdfs_owner_update on storage.objects;
 drop policy if exists pdfs_owner_delete on storage.objects;

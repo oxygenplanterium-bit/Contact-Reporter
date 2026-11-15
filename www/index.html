@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 15 Nov 2026, 11:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 15 Nov 2026, 11:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -444,31 +444,31 @@ function pdfCur(){ return pdfSel&&pdfLib[pdfSel]&&pdfLib[pdfSel].u?pdfLib[pdfSel
 function pdfPicker(parent){
   var l=pdfList(); if(!l.length) return;
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;margin:6px 0';
-  c.append(mk('b',null,'PDF To Send On WhatsApp'));
-  var sel=document.createElement('select'); sel.setAttribute('aria-label','PDF to send');
+  c.append(mk('b',null,'File To Send On WhatsApp'));
+  var sel=document.createElement('select'); sel.setAttribute('aria-label','File to send');
   var o0=document.createElement('option'); o0.value=''; o0.textContent='None (Just Open The Chat)'; sel.append(o0);
-  l.forEach(function(it){ var o=document.createElement('option'); o.value=it[0]; o.textContent=it[1].t||'PDF'; sel.append(o); });
+  l.forEach(function(it){ var o=document.createElement('option'); o.value=it[0]; o.textContent=it[1].t||'File'; sel.append(o); });
   sel.value=pdfCur()?pdfSel:'';
   sel.addEventListener('change',function(){ pdfSel=sel.value; try{ localStorage.setItem('crPdfSel',pdfSel); }catch(e){} sig=''; render(); });
-  c.append(sel,mk('p','pmeta',pdfCur()?'Each contact’s WhatsApp button now says Send PDF. It opens their chat with the PDF link ready to send.':'Choose a PDF and the WhatsApp button on every contact will send it.'));
+  c.append(sel,mk('p','pmeta',pdfCur()?'Each contact’s WhatsApp button now says Send File. It opens their chat with the link ready to send.':'Choose a file and the WhatsApp button on every contact will send it.'));
   parent.append(c);
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  c.append(mk('b',null,'PDF Library'),mk('p','pmeta','Add PDFs here. Everyone can then pick one and send it to a contact from the WhatsApp button.'));
+  c.append(mk('b',null,'PDF And Image Library'),mk('p','pmeta','Add PDF or image files here. Everyone can then pick one and send it to a contact from the WhatsApp button.'));
   pdfList().forEach(function(it){ var id=it[0], d=it[1], r=mk('div','sline'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px';
     var nm=mk('span',null,d.t||'PDF'); nm.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere'; r.append(nm);
-    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('PDF deleted'); } }); }); r.append(dl); c.append(r); });
-  var ti=document.createElement('input'); ti.type='text'; ti.placeholder='Name for this PDF'; ti.autocomplete='off'; ti.maxLength=60;
-  var fi=document.createElement('input'); fi.type='file'; fi.accept='application/pdf,.pdf';
-  var up=btn('Upload PDF',async function(){
-    var f=fi.files&&fi.files[0]; if(!f){ toast('Choose a PDF file first'); return; }
-    if(!/\.pdf$/i.test(f.name)&&f.type!=='application/pdf'){ toast('Only PDF files can be added'); return; }
-    if(f.size>20*1024*1024){ toast('This PDF is larger than 20 MB'); return; }
-    var t=cleanName(ti.value)||f.name.replace(/\.pdf$/i,''); up.disabled=true; up.textContent='Uploading...';
-    try{ var fs=await window.claude.use('files'); if(!fs) throw new Error('x'); var r=await fs.upload(f.name,f); var pt={l:{}}; pt.l['p'+Date.now().toString(36)]={t:t,u:r.url,p:r.path,at:Date.now()}; if(await putDoc('cr/pdfs',pt,{l:{}})){ toast('PDF added'); ti.value=''; fi.value=''; } }
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); r.append(dl); c.append(r); });
+  var ti=document.createElement('input'); ti.type='text'; ti.placeholder='Name for this file'; ti.autocomplete='off'; ti.maxLength=60;
+  var fi=document.createElement('input'); fi.type='file'; fi.accept='application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp';
+  var up=btn('Upload File',async function(){
+    var f=fi.files&&fi.files[0]; if(!f){ toast('Choose a PDF or image file first'); return; }
+    if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){ toast('Only PDF or image files (JPG, PNG, WebP) can be added'); return; }
+    if(f.size>20*1024*1024){ toast('This file is larger than 20 MB'); return; }
+    var t=cleanName(ti.value)||f.name.replace(/\.[a-z0-9]+$/i,''); up.disabled=true; up.textContent='Uploading...';
+    try{ var fs=await window.claude.use('files'); if(!fs) throw new Error('x'); var r=await fs.upload(f.name,f); var pt={l:{}}; pt.l['p'+Date.now().toString(36)]={t:t,u:r.url,p:r.path,at:Date.now()}; if(await putDoc('cr/pdfs',pt,{l:{}})){ toast('File added'); ti.value=''; fi.value=''; } }
     catch(e){ toast('Could not upload. Run the new SQL in Supabase first.',4500); }
-    up.disabled=false; up.textContent='Upload PDF'; },'primary');
+    up.disabled=false; up.textContent='Upload File'; },'primary');
   c.append(ti,fi,up); body.append(c);
 }
 /* ---------- dialer ---------- */
@@ -783,7 +783,7 @@ function rows(box,list,own,off){
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; if(chBtn) chBtn.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='2px 12px'; cb.style.minHeight='24px';
-    { var pd=pdfCur(), wb=btn(pd?'Send PDF':'WhatsApp',function(){ var d=digitsOf(c.p), p10=phone10(c.p); if(!d){ toast('This contact has no phone number.'); return; } var n=(p10.length===10)?'91'+p10:d; var pdn=pdfCur(); var a=document.createElement('a'); a.href='https://wa.me/'+n+(pdn?'?text='+encodeURIComponent((pdn.t||'PDF')+'\n'+pdn.u):''); a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); },'primary'); wb.style.flex='0 0 auto'; wb.style.padding='2px 10px'; wb.style.minHeight='24px'; var cb0=cb; cb=mk('div'); cb.style.cssText='display:flex;gap:6px;flex:0 0 auto;align-items:center'; cb.append(wb,cb0); } if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
+    { var pd=pdfCur(), wb=btn(pd?'Send File':'WhatsApp',function(){ var d=digitsOf(c.p), p10=phone10(c.p); if(!d){ toast('This contact has no phone number.'); return; } var n=(p10.length===10)?'91'+p10:d; var pdn=pdfCur(); var a=document.createElement('a'); a.href='https://wa.me/'+n+(pdn?'?text='+encodeURIComponent((pdn.t||'File')+'\n'+pdn.u):''); a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); },'primary'); wb.style.flex='0 0 auto'; wb.style.padding='2px 10px'; wb.style.minHeight='24px'; var cb0=cb; cb=mk('div'); cb.style.cssText='display:flex;gap:6px;flex:0 0 auto;align-items:center'; cb.append(wb,cb0); } if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
       if(!selUser) return; var want=sc.checked, tgt=selUser, nm0=(tgt==='-')?'':((users[tgt]&&users[tgt].n)||'user'); sc.disabled=true;
       var ok=false; if(want){ ok=await assignContacts(tgt,[id]); if(ok) toast(c.n+(tgt==='-'?' unassigned':' assigned to '+nm0)); } else if(tgt!=='-'&&c.g==='u'+tgt){ ok=await assignContacts('-',[id]); if(ok) toast(c.n+' unassigned'); } else ok=true;
       sc.disabled=false; if(!ok){ sc.checked=!want; if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); } sig=''; render(); });

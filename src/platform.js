@@ -229,8 +229,10 @@ const downloads = {
 /* Public PDF storage (bucket "pdfs"): only the owner can add or remove; anyone with the link can open. */
 const files = {
   upload: async (name, data) => {
-    const path = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.pdf';
-    const r = await sb.storage.from('pdfs').upload(path, data, { contentType: 'application/pdf', upsert: false });
+    const ct = (data && data.type) || (/\.pdf$/i.test(name) ? 'application/pdf' : 'application/octet-stream');
+    const ext = ct === 'application/pdf' ? 'pdf' : ct === 'image/png' ? 'png' : ct === 'image/webp' ? 'webp' : 'jpg';
+    const path = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.' + ext;
+    const r = await sb.storage.from('pdfs').upload(path, data, { contentType: ct, upsert: false });
     if (r.error) throw mapErr(r.error);
     return { path, url: sb.storage.from('pdfs').getPublicUrl(path).data.publicUrl };
   },
