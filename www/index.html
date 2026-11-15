@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -456,10 +456,13 @@ function imgToPdf(buf,title,type){ return new Promise(function(res,rej){
       res(doc.build('Contact Reporter - '+title)); }catch(e){ rej(e); } };
   im.onerror=function(){ URL.revokeObjectURL(url); rej(new Error('img')); }; im.src=url; }); }
 function pdfExt(u){ var m=/\.(pdf|png|webp|jpe?g)(?:\?|$)/i.exec(u||''); return m?m[1].toLowerCase():'pdf'; }
-function pdfPrefetch(id){ var d=pdfLib[id]; if(!d||!d.u||pdfBuf[d.u]) return; fetch(d.u).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(b){ var e=pdfExt(d.u); if(e==='pdf'){ pdfBuf[d.u]=b; return; } return imgToPdf(b,d.t||'Image',e==='png'?'image/png':e==='webp'?'image/webp':'image/jpeg').then(function(u8){ pdfBuf[d.u]=u8.buffer; }); }).catch(function(){}); }
+var pdfSt={};
+function pdfPrefetch(id){ var d=pdfLib[id]; if(!d||!d.u||pdfBuf[d.u]||pdfSt[d.u]==='busy') return; pdfSt[d.u]='busy'; fetch(d.u).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(b){ var e=pdfExt(d.u); if(e==='pdf'){ pdfBuf[d.u]=b; return; } return imgToPdf(b,d.t||'Image',e==='png'?'image/png':e==='webp'?'image/webp':'image/jpeg').then(function(u8){ pdfBuf[d.u]=u8.buffer; }); }).then(function(){ pdfSt[d.u]=pdfBuf[d.u]?'ready':'fail'; pdfNote(); },function(){ pdfSt[d.u]='fail'; pdfNote(); }); }
+function pdfNote(){ var n=document.getElementById('pdfNote'); if(n) n.textContent=pdfNoteText(); }
+function pdfNoteText(){ var d=pdfCur(); if(!d) return 'Choose a file and the WhatsApp button on every contact will send it.'; var s=pdfSt[d.u]; return s==='ready'?'Ready. Tap Send File on a contact, choose WhatsApp, then the contact.':s==='fail'?'Could not prepare this file. Check your internet and choose it again.':'Getting the file ready...'; }
 async function pdfSend(d){
   var buf=pdfBuf[d.u];
-  if(!buf){ pdfPrefetch(pdfSel); toast('Getting the file ready. Tap again in a moment.'); return; }
+  if(!buf){ if(pdfSt[d.u]==='fail') pdfSt[d.u]=''; pdfPrefetch(pdfSel); toast(pdfSt[d.u]==='busy'?'Getting the file ready. Tap again in a moment.':'Could not prepare the file',3500); return; }
   var nm=(String(d.t||'File').replace(/[^A-Za-z0-9 _-]+/g,'').trim()||'File')+'.pdf';
   try{ var dn=await window.claude.use('downloads'); await dn.save({filename:nm,data:buf.slice(0)}); }catch(e){ if(e&&e.code==='declined') return; toast('Could not share the file'); }
 }
@@ -472,7 +475,7 @@ function pdfPicker(parent){
   l.forEach(function(it){ var o=document.createElement('option'); o.value=it[0]; o.textContent=it[1].t||'File'; sel.append(o); });
   sel.value=pdfCur()?pdfSel:''; if(pdfCur()) pdfPrefetch(pdfSel);
   sel.addEventListener('change',function(){ pdfSel=sel.value; try{ localStorage.setItem('crPdfSel',pdfSel); }catch(e){} pdfPrefetch(pdfSel); sig=''; render(); });
-  c.append(sel,mk('p','pmeta',pdfCur()?'Each contact’s WhatsApp button now says Send File. It opens the share screen with the file attached. Choose WhatsApp, then the contact.':'Choose a file and the WhatsApp button on every contact will send it.'));
+  var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; c.append(sel,pn);
   parent.append(c);
 }
 function pdfLibCard(body){
