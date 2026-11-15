@@ -214,12 +214,13 @@ const downloads = {
       }
       return { status: 'saved' };
     }
-    const type0 = /\.pdf$/i.test(name) ? 'application/pdf' : 'application/json';
+    const mimeOf = n => /\.pdf$/i.test(n) ? 'application/pdf' : /\.png$/i.test(n) ? 'image/png' : /\.webp$/i.test(n) ? 'image/webp' : /\.jpe?g$/i.test(n) ? 'image/jpeg' : 'application/json';
+    const type0 = mimeOf(name);
     try {
       const file = new File([o.data], name, { type: type0 });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return { status: 'saved' }; }
     } catch (e) { if (e && e.name === 'AbortError') { const x = new Error('declined'); x.code = 'declined'; throw x; } }
-    const blob = new Blob([o.data], { type: /\.pdf$/i.test(name) ? 'application/pdf' : 'application/json' });
+    const blob = new Blob([o.data], { type: type0 });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     return { status: 'saved' };
