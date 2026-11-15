@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:20 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:45 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -697,6 +697,73 @@ function ctBulk(){
   });
   openDlg(d);
 }
+/* ---------- import contacts: Excel (.xlsx), CSV, phone contacts (.vcf) ---------- */
+async function zipRead(buf){
+  var u=new Uint8Array(buf), dv=new DataView(buf), e=u.length-22; while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--; if(e<0) throw new Error('zip');
+  var n=dv.getUint16(e+10,true), p=dv.getUint32(e+16,true), out={}, td=new TextDecoder();
+  for(var i=0;i<n;i++){ var meth=dv.getUint16(p+10,true), csz=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lo=dv.getUint32(p+42,true), name=td.decode(u.subarray(p+46,p+46+nl));
+    p+=46+nl+xl+cl; if(!/^xl\/(sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/.test(name)) continue;
+    var ln=dv.getUint16(lo+26,true), lx=dv.getUint16(lo+28,true), ds=lo+30+ln+lx, raw=u.subarray(ds,ds+csz), txt;
+    if(meth===0) txt=td.decode(raw); else { var st=new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')); txt=td.decode(await new Response(st).arrayBuffer()); }
+    out[name]=txt; }
+  return out;
+}
+function colIx(r){ var m=/^([A-Z]+)/.exec(r||''), s=m?m[1]:'A', x=0; for(var i=0;i<s.length;i++) x=x*26+s.charCodeAt(i)-64; return x-1; }
+async function xlsxRows(buf){
+  var z=await zipRead(buf), P=new DOMParser(), ss=[];
+  if(z['xl/sharedStrings.xml']){ var sd=P.parseFromString(z['xl/sharedStrings.xml'],'text/xml'); Array.prototype.forEach.call(sd.getElementsByTagName('si'),function(si){ var t=''; Array.prototype.forEach.call(si.getElementsByTagName('t'),function(x){ t+=x.textContent; }); ss.push(t); }); }
+  var nm=Object.keys(z).filter(function(k){ return /worksheets/.test(k); }).sort()[0]; if(!nm) throw new Error('sheet');
+  var sh=P.parseFromString(z[nm],'text/xml'), rows=[];
+  Array.prototype.forEach.call(sh.getElementsByTagName('row'),function(r){ var row=[]; Array.prototype.forEach.call(r.getElementsByTagName('c'),function(c){ var t=c.getAttribute('t'), v=c.getElementsByTagName('v')[0], val='';
+      if(t==='s') val=ss[+(v&&v.textContent)]||''; else if(t==='inlineStr'){ val=c.textContent; } else val=v?v.textContent:''; row[colIx(c.getAttribute('r'))]=String(val==null?'':val).trim(); }); rows.push(row); });
+  return rows;
+}
+function csvRows(t){ var rows=[], row=[], f='', q=false, i, c; t=t.replace(/^﻿/,'');
+  var del=((t.split(/\r?\n/)[0]||'').split(';').length>(t.split(/\r?\n/)[0]||'').split(',').length)?';':',';
+  for(i=0;i<t.length;i++){ c=t.charAt(i);
+    if(q){ if(c==='"'){ if(t.charAt(i+1)==='"'){ f+='"'; i++; } else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===del){ row.push(f.trim()); f=''; } else if(c==='\n'||c==='\r'){ if(c==='\r'&&t.charAt(i+1)==='\n') i++; row.push(f.trim()); rows.push(row); row=[]; f=''; } else f+=c; }
+  if(f||row.length){ row.push(f.trim()); rows.push(row); } return rows; }
+function vcfPeople(t){ var out=[]; t=t.replace(/\r?\n[ \t]/g,'');
+  t.split(/BEGIN:VCARD/i).slice(1).forEach(function(b){ var nm='', tels=[];
+    b.split(/\r?\n/).forEach(function(ln){ var m=/^([A-Z-]+)(?:;[^:]*)?:(.*)$/i.exec(ln); if(!m) return; var k=m[1].toUpperCase(), v=m[2].trim();
+      if(k==='FN'&&v) nm=v; else if(k==='N'&&!nm){ var s=v.split(';'); nm=((s[1]||'')+' '+(s[0]||'')).trim(); } else if(k==='TEL'||/^ITEM\d+\.TEL$/.test(k)) tels.push(v); });
+    if(nm&&tels.length) out.push({n:nm,p:tels[0]}); }); return out; }
+function rowsToPeople(rows){
+  rows=rows.filter(function(r){ return r&&r.some(function(x){ return x; }); }); if(!rows.length) return [];
+  var hd=rows[0].map(function(x){ return String(x||'').toLowerCase().replace(/[^a-z]/g,''); }), idx={}, any=false;
+  var map={n:['name','fullname','contactname','firstname'],p:['phone','mobile','mobilenumber','phonenumber','number','contactnumber','cell','tel'],tg:['tags','tag'],bc:['bnichapter','chapter'],bk:['categoryinbni','category'],pl:['place','city','location'],nt:['note','notes','remarks']};
+  Object.keys(map).forEach(function(k){ var j=hd.findIndex(function(x){ return map[k].indexOf(x)>=0; }); if(j>=0){ idx[k]=j; any=true; } });
+  var start=1; if(!any||idx.p==null||idx.n==null){ if(any&&idx.p!=null){ var fi=hd.indexOf('firstname'), li=hd.indexOf('lastname'); if(fi>=0&&idx.n==null){ idx.n=fi; } } if(idx.n==null||idx.p==null){ idx={n:0,p:1}; start=(/\d{6,}/.test(rows[0].join(' ')))?0:1; } }
+  var ln=hd.indexOf('lastname'), out=[];
+  rows.slice(start).forEach(function(r){ var o={n:r[idx.n]||'',p:r[idx.p]||''}; if(ln>=0&&hd.indexOf('firstname')===idx.n&&r[ln]) o.n=(o.n+' '+r[ln]).trim(); ['tg','bc','bk','pl','nt'].forEach(function(k){ if(idx[k]!=null&&r[idx[k]]) o[k]=r[idx[k]]; }); out.push(o); });
+  return out;
+}
+function impPhone(p){ var raw=String(p||'').trim(), plus=raw.charAt(0)==='+', d=digitsOf(raw), t=phone10(raw); if(t.length===10) return t; if(d.length>=8&&d.length<=15) return (plus?'+':'')+d; return ''; }
+function ctImport(){
+  var r=dlg('dlgCt'), d=r[0], b=r[1], cand=null;
+  b.append(mk('h2',null,'Import Contacts'));
+  b.append(mk('p','pmeta','Choose an Excel (.xlsx), CSV or phone contacts (.vcf) file. Contacts whose phone number is already saved are skipped. Excel and CSV need a Name column and a Phone column.'));
+  var fi=document.createElement('input'); fi.type='file'; fi.accept='.xlsx,.csv,.vcf,.txt,text/csv,text/vcard,text/x-vcard,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var gs=groupSel('',false), er=mk('p','pmeta'), info=mk('p','pmeta'); er.style.color='var(--warn)';
+  var row=mk('div','two'), sv=mk('button','btn primary','Import'), cn=mk('button','btn','Cancel'); sv.type=cn.type='button'; sv.disabled=true; row.append(sv,cn);
+  b.append(fld('File',fi));
+  if(navigator.contacts&&navigator.contacts.select){ var pk=btn('Pick From Phone Contacts',async function(){ try{ var l=await navigator.contacts.select(['name','tel'],{multiple:true}); prep(l.filter(function(x){ return x.name&&x.name[0]&&x.tel&&x.tel[0]; }).map(function(x){ return {n:x.name[0],p:x.tel[0]}; })); }catch(e){ er.textContent='Could not open the phone contacts.'; } },''); b.append(pk); }
+  b.append(fld('Group for all',gs),info,er,row);
+  function prep(people){
+    var seen={}; ctAll().forEach(function(it){ seen[phone10(it[1].p)]=1; }); var good=[], dup=0, bad=0;
+    people.forEach(function(x){ var nm=cleanName(x.n).slice(0,60), ph=impPhone(x.p); if(!nm||!ph){ bad++; return; } var key=phone10(ph); if(seen[key]){ dup++; return; } seen[key]=1;
+      var c={n:nm,p:ph,nt:(x.nt||'').slice(0,300),bc:(x.bc||'').slice(0,60),bk:(x.bk||'').slice(0,60),pl:(x.pl||'').slice(0,60),tg:(x.tg||'').slice(0,100)}; good.push(c); });
+    cand=good; er.textContent=''; info.textContent=good.length+' new contact'+(good.length===1?'':'s')+' to import. '+dup+' already saved (skipped). '+bad+' without a name or valid phone number (skipped).'; sv.disabled=!good.length; }
+  fi.addEventListener('change',async function(){ var f=fi.files&&fi.files[0]; if(!f) return; er.textContent=''; info.textContent='Reading the file...'; sv.disabled=true;
+    try{ var nmf=f.name.toLowerCase(), people;
+      if(/\.xlsx$/.test(nmf)) people=rowsToPeople(await xlsxRows(await f.arrayBuffer())); else { var t=await f.text(); people=(/BEGIN:VCARD/i.test(t))?vcfPeople(t):rowsToPeople(csvRows(t)); }
+      prep(people); }catch(e){ info.textContent=''; er.textContent='This file could not be read. Use an .xlsx, .csv or .vcf file.'; } });
+  cn.addEventListener('click',function(){ d.close(); });
+  sv.addEventListener('click',async function(){ if(!cand||!cand.length) return; sv.disabled=true; var pt={ct:{}}, id0=callId(); cand.forEach(function(c,i){ pt.ct[id0+i]=c; });
+    if(await grPut(gs.value||'none',pt)){ d.close(); toast(cand.length+' contact'+(cand.length>1?'s':'')+' imported'); } else sv.disabled=false; });
+  openDlg(d);
+}
 function grEdit(id){
   var g=id?groups[id]:{n:'',to:[],all:false}; if(id&&!g) return;
   var r=dlg('dlgGr'), d=r[0], b=r[1];
@@ -998,7 +1065,7 @@ function viewHome(body){
   }
   if(isOwner){ var am=mk('div','sline'), gp=mk('div'); gp.style.cssText='display:flex;flex-direction:column;gap:10px'; gp.hidden=!grShow;
       var gb=btn('Groups',function(){ grShow=!grShow; gp.hidden=!grShow; gb.setAttribute('aria-pressed',grShow); },'');
-      gb.setAttribute('aria-pressed',grShow); var sb=btn('Assign',function(){ if(selMode&&(!asgShown||actMode==='add')){ asgShown=true; actMode='asg'; selUn=true; sig=''; render(); return; } selMode=!selMode; asgShown=selMode; actMode=selMode?'asg':''; selSet={}; selUser=''; selUn=selMode; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; var adb=btn('Add Contact',function(){ actMode='add'; sig=''; render(); ctEdit(''); },actMode==='add'?'primary':''); if(selMode&&asgShown&&actMode!=='add') sb.classList.add('primary'); adb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; am.append(adb,sb); am.id='actBar'; if(actOpen){ var hb0=document.querySelector('#seg .btn'); if(isDesk()&&hb0) hb0.after(am); else body.append(am); }
+      gb.setAttribute('aria-pressed',grShow); var sb=btn('Assign',function(){ if(selMode&&(!asgShown||actMode==='add')){ asgShown=true; actMode='asg'; selUn=true; sig=''; render(); return; } selMode=!selMode; asgShown=selMode; actMode=selMode?'asg':''; selSet={}; selUser=''; selUn=selMode; sig=''; try{ document.activeElement.blur(); }catch(x){} render(); },''); sb.setAttribute('aria-pressed',selMode); sb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box'; am.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px'; var adb=btn('Add Contact',function(){ actMode='add'; sig=''; render(); ctEdit(''); },actMode==='add'?'primary':''); if(selMode&&asgShown&&actMode!=='add') sb.classList.add('primary'); adb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; var imb=btn('Import Contacts',ctImport,''); imb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0;grid-column:1/-1'; am.append(adb,sb,imb); am.id='actBar'; if(actOpen){ var hb0=document.querySelector('#seg .btn'); if(isDesk()&&hb0) hb0.after(am); else body.append(am); }
       var ul=okUsers();
       if(selMode&&actOpen&&asgShown){ var ab=mk('div','card'); ab.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px'; function mkSel(ph,list){ var x=document.createElement('select'), o0=mk('option',null,ph); o0.value=''; x.append(o0); var on=mk('option',null,'No one (remove assignment)'); on.value='-'; x.append(on);
           list.forEach(function(it){ var o=mk('option',null,it[0]); o.value=it[1]; x.append(o); }); x.value=Array.prototype.some.call(x.options,function(o){ return o.value===selUser; })?selUser:''; return x; }
@@ -1037,7 +1104,7 @@ function viewHome(body){
   fill();
 }
 function viewCt(body){
-  if(isOwner){ var ad=mk('div','sline'); ad.append(btn('Add Contact',function(){ ctEdit(''); },'primary'),btn('Add Many',ctBulk),btn('New Group',function(){ grEdit(''); })); body.append(ad); }
+  if(isOwner){ var ad=mk('div','sline'); ad.append(btn('Add Contact',function(){ ctEdit(''); },'primary'),btn('Add Many',ctBulk),btn('Import Contacts',ctImport),btn('New Group',function(){ grEdit(''); })); body.append(ad); }
   var bar=mk('div'); bar.style.cssText='display:flex;flex-direction:column;gap:8px';
   var q=document.createElement('input'); q.type='search'; q.placeholder='Search name, phone, chapter, category or place'; q.value=callQ; q.autocomplete='off';
   var gs=groupSel(callG,true); bar.append(clearable(q)); if(isOwner||grList().length>1) bar.append(gs); body.append(bar); pdfPicker(body);
