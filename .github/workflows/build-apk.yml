@@ -18,6 +18,12 @@ jobs:
       - run: npm run build:web
       - run: sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" www/index.html www/sw.js
       - run: npx cap add android
+      - name: Add WhatsApp chat plugin
+        run: |
+          D=android/app/src/main/java/com/oxygenplanterium/contactreporter
+          mkdir -p $D
+          cp android-plugin/*.java $D/
+          grep -c fileprovider android/app/src/main/AndroidManifest.xml || echo "no fileprovider entry"
       - run: pip install pillow && python3 scripts/make-icons.py
       - run: npx cap sync android
       - name: Build APK

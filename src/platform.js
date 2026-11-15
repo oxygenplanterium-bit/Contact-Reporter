@@ -1,7 +1,7 @@
 /* Platform layer: replaces the Claude artifact runtime (window.claude) with
    Supabase (Auth + database) and native file saving, so the same app code runs as an Android app. */
 import { createClient } from '@supabase/supabase-js';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { SUPABASE_URL, SUPABASE_KEY, OWNER_EMAIL } from './config.js';
@@ -199,7 +199,17 @@ function toBase64(buf) {
   for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
   return btoa(s);
 }
+const WhatsAppShare = registerPlugin('WhatsAppShare');
 const downloads = {
+  /* Android app only: opens WhatsApp straight on one person's chat with the file attached. */
+  async toWhatsApp(o) {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return { status: 'unsupported' };
+    try {
+      const w = await Filesystem.writeFile({ path: o.filename, data: toBase64(o.data), directory: Directory.Cache });
+      await WhatsAppShare.send({ path: w.uri, jid: String(o.phone || '').replace(/\D/g, ''), mime: o.mime || 'application/pdf' });
+      return { status: 'saved' };
+    } catch (e) { return { status: 'unsupported' }; }
+  },
   async save(o) {
     const name = o.filename || 'file', isStr = typeof o.data === 'string';
     if (Capacitor.isNativePlatform()) {
