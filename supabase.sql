@@ -62,6 +62,8 @@ update public.docs set data = data - 'rl' - 'sp' where path like 'cr/users/%' an
 -- Paths:  cr/users/<user id>      the person's account record (name, phone, pending or approved)
 --         cr/g/<group id>         a group of contacts and the callers it is assigned to
 --         cr/log/<date>/<user id> that person's calls and reports for the day
+--         cr/policy/<user id>     when the person accepted the user policy (the owner sees it in the Users list)
+--         cr/sent/<file id>       which contacts were sent that library file, when and by whom
 --         cr/pdfs                 the owner's PDF library (title and public link of each PDF); every approved person can read it
 --         cr/online/<user id>     the time the person's app last reported it was open (the owner sees a green dot)
 -- Owner: everything. A person: their own account record, the groups assigned to them, and their own call log.
@@ -70,6 +72,8 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/users/' || auth.uid()::text
   or path = 'cr/settings'
   or (path = 'cr/pdfs' and public.is_ok())
+  or path = 'cr/policy/' || auth.uid()::text
+  or (path like 'cr/sent/%' and public.is_ok())
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text
@@ -85,10 +89,12 @@ create policy docs_insert on public.docs for insert to authenticated with check 
   or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
   or (public.is_ok() and path = 'cr/online/' || auth.uid()::text)
+  or path = 'cr/policy/' || auth.uid()::text
+  or (public.is_ok() and path like 'cr/sent/%')
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text)
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending'));
+  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
+  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
 
 -- Merge helper: nested objects merge, null removes a key

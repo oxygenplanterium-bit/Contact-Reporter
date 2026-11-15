@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:45 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 2:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -444,7 +444,7 @@ function logSub(){
   }
 }
 /* ---------- PDF library ---------- */
-var pdfLib={}, pdfSel='';
+var pdfLib={}, sentLog={}, policyLog={}, sentOpen={}, pdfSel='';
 function pdfList(){ return Object.keys(pdfLib).filter(function(k){ return pdfLib[k]&&pdfLib[k].u; }).map(function(k){ return [k,pdfLib[k]]; }).sort(function(a,b){ return (a[1].t||'').localeCompare(b[1].t||''); }); }
 function pdfCur(){ return pdfSel&&pdfLib[pdfSel]&&pdfLib[pdfSel].u?pdfLib[pdfSel]:null; }
 var pdfBuf={};
@@ -480,9 +480,9 @@ function pdfNote(){ var n=document.getElementById('pdfNote'); if(n) n.textConten
 function pdfNoteText(){ var d=pdfCur(); if(!d) return 'Choose a file and the WhatsApp button on every contact will send it.'; var s=pdfSt[d.u]; return s==='ready'?'Ready. Tap Send File on a contact, choose WhatsApp, then the contact.':s==='fail'?'Could not prepare this file. Check your internet and choose it again.':'Getting the file ready...'; }
 async function pdfSend(d){
   var buf=pdfBuf[d.u];
-  if(!buf){ if(pdfSt[d.u]==='fail') pdfSt[d.u]=''; pdfPrefetch(pdfSel); toast(pdfSt[d.u]==='busy'?'Getting the file ready. Tap again in a moment.':'Could not prepare the file',3500); return; }
+  if(!buf){ if(pdfSt[d.u]==='fail') pdfSt[d.u]=''; pdfPrefetch(pdfSel); toast(pdfSt[d.u]==='busy'?'Getting the file ready. Tap again in a moment.':'Could not prepare the file',3500); return false; }
   var nm=(String(d.t||'File').replace(/[^A-Za-z0-9 _-]+/g,'').trim()||'File')+'.pdf';
-  try{ var dn=await window.claude.use('downloads'); await dn.save({filename:nm,data:buf.slice(0)}); }catch(e){ if(e&&e.code==='declined') return; toast('Could not share the file'); }
+  try{ var dn=await window.claude.use('downloads'); await dn.save({filename:nm,data:buf.slice(0)}); return true; }catch(e){ if(e&&e.code==='declined') return false; toast('Could not share the file'); return false; }
 }
 var pdfOpen=false;
 function pdfPicker(parent){
@@ -502,6 +502,17 @@ function pdfPicker(parent){
     c.append(lst); }
   var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; pn.style.color='#5c1a38'; c.append(pn);
   parent.append(c);
+}
+function sentLogCard(body){
+  var ids=Object.keys(sentLog).filter(function(k){ return Object.keys(sentLog[k]||{}).length; }); if(!ids.length) return;
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
+  c.append(mk('b',null,'Send Log'),mk('p','pmeta','Which contacts were sent which file, when and by whom. A contact already sent the chosen file shows Sent on its button.'));
+  ids.forEach(function(fid){ var m=sentLog[fid], keys=Object.keys(m).sort(function(a,b){ return (m[b].at||0)-(m[a].at||0); }), t=(pdfLib[fid]&&pdfLib[fid].t)||'Deleted file';
+    var hb=document.createElement('button'); hb.type='button'; hb.className='btn'; hb.setAttribute('aria-expanded',String(!!sentOpen[fid])); hb.style.cssText='display:flex;justify-content:space-between;gap:8px;width:100%;min-height:40px;text-align:left';
+    hb.append(mk('span',null,t+' ('+keys.length+' sent)'),mk('span',null,sentOpen[fid]?'▴':'▾')); hb.addEventListener('click',function(){ sentOpen[fid]=!sentOpen[fid]; sig=''; render(); }); c.append(hb);
+    if(sentOpen[fid]){ keys.forEach(function(k){ var e=m[k]; var cc=ctGet(k); c.append(mk('div','pmeta',((cc&&cc.n)||e.n||'Contact')+' · '+fmtIso(dayKey(e.at))+' '+fmtTime(e.at)+(e.by?' · by '+e.by:'')+(e.k>1?' · sent '+e.k+' times':''))); });
+      var cl=btn('Clear This Log',function(){},'danger'); cl.addEventListener('click',function(){ arm(cl,'sl'+fid,'Clear This Log',async function(){ if(await delDoc('cr/sent/'+fid)) toast('Send log cleared'); }); }); c.append(cl); } });
+  body.append(c);
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
@@ -825,6 +836,7 @@ var POLICY=[
 ];
 function policyKey(){ return 'crPolicy_'+(uid||'x'); }
 function policyOk(){ try{ return localStorage.getItem(policyKey())===POLICY_V; }catch(e){ return true; } }
+function policyRecord(){ var at=0; try{ at=Number(localStorage.getItem(policyKey()+'_at'))||0; }catch(e){} try{ db.doc('cr/policy/'+uid).set({at:at||Date.now(),v:POLICY_V,n:callerName(),ph:myPhone||''}).catch(function(){}); }catch(e){} }
 function policyGate(){
   var box=document.getElementById('policyBox');
   if(accountOwner||!uid||policyOk()){ if(box) box.remove(); return false; }
@@ -839,7 +851,7 @@ function policyGate(){
   var cl=mk('label'); cl.style.cssText='display:flex;flex-direction:row;align-items:flex-start;gap:10px;margin:0;cursor:pointer'; cl.append(ck,mk('span',null,'I have read and understood this policy and I agree to follow it.'));
   var ok=mk('button','btn primary','I Agree And Continue'), no=mk('button','btn','I Do Not Agree'); ok.type=no.type='button'; ok.disabled=true; ok.style.minHeight='44px'; no.style.minHeight='40px';
   ck.addEventListener('change',function(){ ok.disabled=!ck.checked; });
-  ok.addEventListener('click',function(){ if(!ck.checked) return; try{ localStorage.setItem(policyKey(),POLICY_V); localStorage.setItem(policyKey()+'_at',String(Date.now())); }catch(e){} box.remove(); sig=''; render(); });
+  ok.addEventListener('click',function(){ if(!ck.checked) return; try{ localStorage.setItem(policyKey(),POLICY_V); localStorage.setItem(policyKey()+'_at',String(Date.now())); }catch(e){} policyRecord(); box.remove(); sig=''; render(); });
   no.addEventListener('click',function(){ toast('You must agree to the policy to use the App.'); try{ ACC.out.click(); }catch(e){} });
   card.append(sc,cl,ok,no); box.append(card); document.body.append(box);
   return true;
@@ -900,7 +912,7 @@ function rows(box,list,own,off){
     longPress(top,function(){ infoContact(id,c); });
     top.addEventListener('click',function(){ ctOpen[id]=!ctOpen[id]; mt.hidden=!ctOpen[id]; if(chBtn) chBtn.hidden=!ctOpen[id]; top.setAttribute('aria-expanded',!!ctOpen[id]); });
     var cb=btn('Call',function(){ callStart(id); },'primary'); cb.style.flex='0 0 auto'; cb.style.padding='2px 12px'; cb.style.minHeight='24px';
-    { var pd=pdfCur(), wb=btn(pd?'Send File':'WhatsApp',function(){ var d=digitsOf(c.p), p10=phone10(c.p); if(!d){ toast('This contact has no phone number.'); return; } var n=(p10.length===10)?'91'+p10:d; var pdn=pdfCur(); if(pdn){ pdfSend(pdn); return; } var a=document.createElement('a'); a.href='https://wa.me/'+n; a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); },'primary'); wb.style.flex='0 0 auto'; wb.style.padding='2px 10px'; wb.style.minHeight='24px'; var cb0=cb; cb=mk('div'); cb.style.cssText='display:flex;gap:6px;flex:0 0 auto;align-items:center'; cb.append(wb,cb0); } if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
+    { var pd=pdfCur(), sdn=pd&&sentLog[pdfSel]&&sentLog[pdfSel][id], wb=btn(pd?(sdn?'Sent':'Send File'):'WhatsApp',function(){ var d=digitsOf(c.p), p10=phone10(c.p); if(!d){ toast('This contact has no phone number.'); return; } var n=(p10.length===10)?'91'+p10:d; var pdn=pdfCur(); if(pdn){ var sd0=sentLog[pdfSel]&&sentLog[pdfSel][id], fk=pdfSel; if(sd0&&!armed['snd'+id]){ armed['snd'+id]=true; toast('Already sent to '+c.n+' on '+fmtIso(dayKey(sd0.at))+' at '+fmtTime(sd0.at)+(sd0.by?' by '+sd0.by:'')+'. Tap again to send once more.',5000); setTimeout(function(){ armed['snd'+id]=false; },5000); return; } armed['snd'+id]=false; pdfSend(pdn).then(function(ok){ if(!ok) return; var e0={at:Date.now(),by:callerName(),u:uid,n:c.n,k:(sd0&&sd0.k||(sd0?1:0))+1}, pt={}; pt[id]=e0; putDoc('cr/sent/'+fk,pt,{}); }); return; } var a=document.createElement('a'); a.href='https://wa.me/'+n; a.target='_blank'; a.rel='noopener'; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ a.remove(); },500); },'primary'); if(sdn){ wb.classList.remove('primary'); wb.style.opacity='.8'; } wb.style.flex='0 0 auto'; wb.style.padding='2px 10px'; wb.style.minHeight='24px'; var cb0=cb; cb=mk('div'); cb.style.cssText='display:flex;gap:6px;flex:0 0 auto;align-items:center'; cb.append(wb,cb0); } if(selOn){ var sc=document.createElement('input'); sc.type='checkbox'; sc.checked=!!selSet[id]||(selUser&&selUser!=='-'&&c.g==='u'+selUser); sc.setAttribute('aria-label','Select '+c.n); sc.style.cssText='width:22px;height:22px;margin:0;flex:none'; sc.addEventListener('change',async function(){ if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt();
       if(!selUser) return; var want=sc.checked, tgt=selUser, nm0=(tgt==='-')?'':((users[tgt]&&users[tgt].n)||'user'); sc.disabled=true;
       var ok=false; if(want){ ok=await assignContacts(tgt,[id]); if(ok) toast(c.n+(tgt==='-'?' unassigned':' assigned to '+nm0)); } else if(tgt!=='-'&&c.g==='u'+tgt){ ok=await assignContacts('-',[id]); if(ok) toast(c.n+' unassigned'); } else ok=true;
       sc.disabled=false; if(!ok){ sc.checked=!want; if(sc.checked) selSet[id]=1; else delete selSet[id]; selCnt(); } sig=''; render(); });
@@ -968,7 +980,7 @@ function usersCard(body){
   var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.setAttribute('aria-expanded',usrShow); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(usrShow?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
-    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
+    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
     var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
     body.append(uc); }
 }
@@ -1047,7 +1059,7 @@ function viewSetOwner(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
-  pdfLibCard(body);
+  pdfLibCard(body); sentLogCard(body);
   var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
@@ -1695,6 +1707,8 @@ function startData(){
   presenceStart();
   watchPrefix('cr/g/',function(list){ groups=listToMap(list,'cr/g/'); groupsLoaded=true; render(); });
   watchUsers(); watchCaptains();
+  try{ watchPrefix('cr/sent/',function(list){ sentLog=listToMap(list,'cr/sent/'); sig=''; render(); }); }catch(e){}
+  if(accountOwner){ try{ watchPrefix('cr/policy/',function(list){ policyLog=listToMap(list,'cr/policy/'); sig=''; render(); }); }catch(e){} } else { try{ var pr=db.doc('cr/policy/'+uid); pr.get().then(function(s){ if(!s.exists&&policyOk()) policyRecord(); }).catch(function(){}); }catch(e){} }
   try{ db.doc('cr/pdfs').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); pdfLib=(d&&d.l)||{}; sig=''; render(); },function(){}); }catch(e){}
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); render(); });
   logSub();
