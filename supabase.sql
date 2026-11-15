@@ -62,12 +62,14 @@ update public.docs set data = data - 'rl' - 'sp' where path like 'cr/users/%' an
 -- Paths:  cr/users/<user id>      the person's account record (name, phone, pending or approved)
 --         cr/g/<group id>         a group of contacts and the callers it is assigned to
 --         cr/log/<date>/<user id> that person's calls and reports for the day
+--         cr/pdfs                 the owner's PDF library (title and public link of each PDF); every approved person can read it
 --         cr/online/<user id>     the time the person's app last reported it was open (the owner sees a green dot)
 -- Owner: everything. A person: their own account record, the groups assigned to them, and their own call log.
 create policy docs_select on public.docs for select to authenticated using (
   public.is_owner()
   or path = 'cr/users/' || auth.uid()::text
   or path = 'cr/settings'
+  or (path = 'cr/pdfs' and public.is_ok())
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text
@@ -124,3 +126,15 @@ alter table public.docs replica identity full;
 do $$ begin
   alter publication supabase_realtime add table public.docs;
 exception when duplicate_object then null; end $$;
+
+
+-- PDF library: a public storage bucket. Only the owner can add, change or remove files; anyone with the link can open one.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('pdfs', 'pdfs', true, 20971520, array['application/pdf'])
+on conflict (id) do update set public = true, file_size_limit = 20971520, allowed_mime_types = array['application/pdf'];
+drop policy if exists pdfs_owner_insert on storage.objects;
+drop policy if exists pdfs_owner_update on storage.objects;
+drop policy if exists pdfs_owner_delete on storage.objects;
+create policy pdfs_owner_insert on storage.objects for insert to authenticated with check (bucket_id = 'pdfs' and public.is_owner());
+create policy pdfs_owner_update on storage.objects for update to authenticated using (bucket_id = 'pdfs' and public.is_owner());
+create policy pdfs_owner_delete on storage.objects for delete to authenticated using (bucket_id = 'pdfs' and public.is_owner());

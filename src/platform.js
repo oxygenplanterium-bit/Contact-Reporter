@@ -226,12 +226,24 @@ const downloads = {
   }
 };
 
+/* Public PDF storage (bucket "pdfs"): only the owner can add or remove; anyone with the link can open. */
+const files = {
+  upload: async (name, data) => {
+    const path = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.pdf';
+    const r = await sb.storage.from('pdfs').upload(path, data, { contentType: 'application/pdf', upsert: false });
+    if (r.error) throw mapErr(r.error);
+    return { path, url: sb.storage.from('pdfs').getPublicUrl(path).data.publicUrl };
+  },
+  remove: async path => { const r = await sb.storage.from('pdfs').remove([path]); if (r.error) throw mapErr(r.error); }
+};
+
 window.claude = {
   signOut: async () => { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} location.reload(); },
   use: async n => {
     if (n === 'db') { await ready; return db; }
     if (n === 'user') { await ready; return user; }
     if (n === 'downloads') return downloads;
+    if (n === 'files') { await ready; return files; }
     return null;
   }
 };
