@@ -201,7 +201,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 9:25 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 9:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -557,7 +557,7 @@ function sentLogCard(body){
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  c.append(mk('b',null,'PDF And Image Library'),mk('p','pmeta','Add PDF or image files here. Every file is sent as a PDF in the report layout. Everyone can then pick one and send it to a contact from the WhatsApp button.'));
+  c.append(mk('b',null,'Add PDF Or JPG Files'));
   pdfList().forEach(function(it){ var id=it[0], d=it[1], r=mk('div','sline'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px';
     var nm=mk('span',null,d.t||'PDF'); nm.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere'; r.append(nm);
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); r.append(dl); c.append(r); });
