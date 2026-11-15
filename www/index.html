@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 3:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 3:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -505,15 +505,35 @@ function pdfPicker(parent){
   var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; pn.style.color='#5c1a38'; c.append(pn);
   parent.append(c);
 }
+function sentView(){
+  var out={};
+  Object.keys(sentLog).forEach(function(fid){ var m=sentLog[fid]||{}, o={}; Object.keys(m).forEach(function(k){ var e=m[k]; if(!e||!e.at) return; if(isOwner||ctGet(k)||e.u===uid) o[k]=e; }); if(Object.keys(o).length) out[fid]=o; });
+  return out;
+}
+function sentLogPdf(view){
+  var doc=new PDF.Doc(), ids=Object.keys(view), total=0; ids.forEach(function(f){ total+=Object.keys(view[f]).length; });
+  doc.text('Contact Reporter - Send Log',{size:16,bold:true,after:4,color:'0 0.4 0.15'});
+  doc.text(isOwner?'All Contacts':'My Contacts',{size:10,bold:true});
+  doc.text('Prepared by '+(accountOwner?'Owner':callerName())+' on '+fmtIso(todayKey())+' at '+fmtTime(Date.now()),{size:9});
+  doc.text(total+' file'+(total===1?'':'s')+' sent - '+ids.length+' file'+(ids.length===1?'':' types'),{size:9});
+  doc.rule();
+  ids.forEach(function(fid){ var m=view[fid], t=(pdfLib[fid]&&pdfLib[fid].t)||'Deleted file', keys=Object.keys(m).sort(function(a,b){ return (m[b].at||0)-(m[a].at||0); });
+    doc.text(t+' ('+keys.length+' sent)',{size:11,bold:true,before:8,color:'0 0.4 0.15'});
+    keys.forEach(function(k,i){ var e=m[k], cc=ctGet(k), nm=(cc&&cc.n)||e.n||'Contact', ph=cc&&cc.p?' ('+cc.p+')':'';
+      doc.text((i+1)+'. '+nm+ph,{size:10,bold:true,before:4});
+      doc.text('Sent: '+fmtIso(dayKey(e.at))+', '+fmtTime(e.at)+'   By: '+(e.by||'-')+(e.k>1?'   Times: '+e.k:''),{size:9,indent:12}); }); });
+  return doc.build('Contact Reporter - Send Log');
+}
 function sentLogCard(body){
-  var ids=Object.keys(sentLog).filter(function(k){ return Object.keys(sentLog[k]||{}).length; }); if(!ids.length) return;
+  var view=sentView(), ids=Object.keys(view); if(!ids.length) return;
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  c.append(mk('b',null,'Send Log'),mk('p','pmeta','Which contacts were sent which file, when and by whom. A contact already sent the chosen file today shows Sent on its button. It goes back to Send File the next day.'));
-  ids.forEach(function(fid){ var m=sentLog[fid], keys=Object.keys(m).sort(function(a,b){ return (m[b].at||0)-(m[a].at||0); }), t=(pdfLib[fid]&&pdfLib[fid].t)||'Deleted file';
+  c.append(mk('b',null,'Send Log'),mk('p','pmeta',(isOwner?'Which contacts were sent which file, when and by whom.':'Which of your contacts were sent which file, when and by whom.')+' A contact already sent the chosen file today shows Sent on its button. It goes back to Send File the next day.'));
+  var dl=btn('Download Send Log PDF',async function(){ try{ dl.disabled=true; await savePdf(sentLogPdf(sentView()),'Send-Log-'+todayKey()+'.pdf',true); }catch(e){ toast('Could not create the PDF'); } dl.disabled=false; },'primary'); c.append(dl);
+  ids.forEach(function(fid){ var m=view[fid], keys=Object.keys(m).sort(function(a,b){ return (m[b].at||0)-(m[a].at||0); }), t=(pdfLib[fid]&&pdfLib[fid].t)||'Deleted file';
     var hb=document.createElement('button'); hb.type='button'; hb.className='btn'; hb.setAttribute('aria-expanded',String(!!sentOpen[fid])); hb.style.cssText='display:flex;justify-content:space-between;gap:8px;width:100%;min-height:40px;text-align:left';
     hb.append(mk('span',null,t+' ('+keys.length+' sent)'),mk('span',null,sentOpen[fid]?'▴':'▾')); hb.addEventListener('click',function(){ sentOpen[fid]=!sentOpen[fid]; sig=''; render(); }); c.append(hb);
     if(sentOpen[fid]){ keys.forEach(function(k){ var e=m[k]; var cc=ctGet(k); c.append(mk('div','pmeta',((cc&&cc.n)||e.n||'Contact')+' · '+fmtIso(dayKey(e.at))+' '+fmtTime(e.at)+(e.by?' · by '+e.by:'')+(e.k>1?' · sent '+e.k+' times':''))); });
-      var cl=btn('Clear This Log',function(){},'danger'); cl.addEventListener('click',function(){ arm(cl,'sl'+fid,'Clear This Log',async function(){ if(await delDoc('cr/sent/'+fid)) toast('Send log cleared'); }); }); c.append(cl); } });
+      if(isOwner){ var cl=btn('Clear This Log',function(){},'danger'); cl.addEventListener('click',function(){ arm(cl,'sl'+fid,'Clear This Log',async function(){ if(await delDoc('cr/sent/'+fid)) toast('Send log cleared'); }); }); c.append(cl); } } });
   body.append(c);
 }
 function pdfLibCard(body){
@@ -977,7 +997,7 @@ function captainsCard(body){
     wrap.append(r); });
   grp.append(wrap);
 }
-function viewSet(body){ if(isOwner) viewSetOwner(body); else captainsCard(body); acctCard(body); }
+function viewSet(body){ if(isOwner) viewSetOwner(body); else { captainsCard(body); sentLogCard(body); } acctCard(body); }
 function usersCard(body){
   var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.setAttribute('aria-expanded',usrShow); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(usrShow?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
