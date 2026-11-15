@@ -24,6 +24,14 @@ jobs:
           mkdir -p $D
           cp android-plugin/*.java $D/
           grep -c fileprovider android/app/src/main/AndroidManifest.xml || echo "no fileprovider entry"
+          python3 - <<'PY'
+          p='android/app/src/main/AndroidManifest.xml'
+          s=open(p).read()
+          if '<queries>' not in s:
+              s=s.replace('<application','<queries><package android:name="com.whatsapp"/><package android:name="com.whatsapp.w4b"/></queries>\n    <application',1)
+              open(p,'w').write(s)
+          print('queries' in s)
+          PY
       - run: pip install pillow && python3 scripts/make-icons.py
       - run: npx cap sync android
       - name: Build APK

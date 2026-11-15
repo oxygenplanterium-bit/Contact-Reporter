@@ -208,7 +208,7 @@ const downloads = {
       const w = await Filesystem.writeFile({ path: o.filename, data: toBase64(o.data), directory: Directory.Cache });
       await WhatsAppShare.send({ path: w.uri, jid: String(o.phone || '').replace(/\D/g, ''), mime: o.mime || 'application/pdf' });
       return { status: 'saved' };
-    } catch (e) { return { status: 'unsupported' }; }
+    } catch (e) { return { status: 'unsupported', reason: String((e && (e.message || e.code)) || e || '') }; }
   },
   async save(o) {
     const name = o.filename || 'file', isStr = typeof o.data === 'string';
