@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -459,23 +459,28 @@ function pdfExt(u){ var m=/\.(pdf|png|webp|jpe?g)(?:\?|$)/i.exec(u||''); return 
 var pdfSt={};
 function pdfPrefetch(id){ var d=pdfLib[id]; if(!d||!d.u||pdfBuf[d.u]||pdfSt[d.u]==='busy') return; pdfSt[d.u]='busy'; fetch(d.u).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(b){ var e=pdfExt(d.u); if(e==='pdf'){ pdfBuf[d.u]=b; return; } return imgToPdf(b,d.t||'Image',e==='png'?'image/png':e==='webp'?'image/webp':'image/jpeg').then(function(u8){ pdfBuf[d.u]=u8.buffer; }); }).then(function(){ pdfSt[d.u]=pdfBuf[d.u]?'ready':'fail'; pdfNote(); },function(){ pdfSt[d.u]='fail'; pdfNote(); }); }
 function pdfNote(){ var n=document.getElementById('pdfNote'); if(n) n.textContent=pdfNoteText(); }
-function pdfNoteText(){ var d=pdfCur(); if(!d) return 'Choose a file and the WhatsApp button on every contact will send it.'; var s=pdfSt[d.u]; return s==='ready'?'Ready. Tap Send File on a contact, choose WhatsApp, then the contact.':s==='fail'?'Could not prepare this file. Check your internet and choose it again.':'Getting the file ready...'; }
+function pdfNoteText(){ var d=pdfCur(); if(!d) return 'Choose a file and the WhatsApp button on every contact will send it. Tap the chosen file again to clear it.'; var s=pdfSt[d.u]; return s==='ready'?'Ready. Tap Send File on a contact, choose WhatsApp, then the contact.':s==='fail'?'Could not prepare this file. Check your internet and choose it again.':'Getting the file ready...'; }
 async function pdfSend(d){
   var buf=pdfBuf[d.u];
   if(!buf){ if(pdfSt[d.u]==='fail') pdfSt[d.u]=''; pdfPrefetch(pdfSel); toast(pdfSt[d.u]==='busy'?'Getting the file ready. Tap again in a moment.':'Could not prepare the file',3500); return; }
   var nm=(String(d.t||'File').replace(/[^A-Za-z0-9 _-]+/g,'').trim()||'File')+'.pdf';
   try{ var dn=await window.claude.use('downloads'); await dn.save({filename:nm,data:buf.slice(0)}); }catch(e){ if(e&&e.code==='declined') return; toast('Could not share the file'); }
 }
+var pdfOpen=false;
 function pdfPicker(parent){
   var l=pdfList(); if(!l.length) return;
-  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;margin:6px 0';
-  c.append(mk('b',null,'File To Send On WhatsApp'));
-  var sel=document.createElement('select'); sel.setAttribute('aria-label','File to send');
-  var o0=document.createElement('option'); o0.value=''; o0.textContent='None (Just Open The Chat)'; sel.append(o0);
-  l.forEach(function(it){ var o=document.createElement('option'); o.value=it[0]; o.textContent=it[1].t||'File'; sel.append(o); });
-  sel.value=pdfCur()?pdfSel:''; if(pdfCur()) pdfPrefetch(pdfSel);
-  sel.addEventListener('change',function(){ pdfSel=sel.value; try{ localStorage.setItem('crPdfSel',pdfSel); }catch(e){} pdfPrefetch(pdfSel); sig=''; render(); });
-  var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; c.append(sel,pn);
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;margin:6px 0 10px';
+  c.append(mk('b',null,'Files To Share'));
+  var cur=pdfCur(); if(cur) pdfPrefetch(pdfSel);
+  var hd=document.createElement('button'); hd.type='button'; hd.className='btn'; hd.setAttribute('aria-expanded',String(pdfOpen)); hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:40px;text-align:left';
+  hd.append(mk('span',null,cur?(cur.t||'File'):'Choose A File'),mk('span',null,pdfOpen?'▴':'▾'));
+  hd.addEventListener('click',function(){ pdfOpen=!pdfOpen; sig=''; render(); }); c.append(hd);
+  if(pdfOpen){ var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto';
+    l.forEach(function(it,ix){ var on=pdfSel===it[0], b=mk('button','pickopt',it[1].t||'File'); b.type='button'; b.style.cssText='min-height:38px;padding:8px 12px;text-align:left;border:2px solid '+(on?'var(--accent)':'transparent')+';background:'+(ix%2?'color-mix(in srgb,#a855f7 18%,var(--card))':'color-mix(in srgb,#3b82f6 20%,var(--card))')+(on?';font-weight:700':'');
+      if(on) b.setAttribute('aria-pressed','true');
+      b.addEventListener('click',function(){ pdfSel=on?'':it[0]; try{ localStorage.setItem('crPdfSel',pdfSel); }catch(e){} pdfOpen=false; if(pdfSel) pdfPrefetch(pdfSel); sig=''; render(); }); lst.append(b); });
+    c.append(lst); }
+  var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; c.append(pn);
   parent.append(c);
 }
 function pdfLibCard(body){
