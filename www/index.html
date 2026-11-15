@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:35 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:45 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -444,7 +444,7 @@ function logSub(){
   }
 }
 /* ---------- PDF library ---------- */
-var pdfLib={}, pdfSel=(function(){ try{ return localStorage.getItem('crPdfSel')||''; }catch(e){ return ''; } })();
+var pdfLib={}, pdfSel='';
 function pdfList(){ return Object.keys(pdfLib).filter(function(k){ return pdfLib[k]&&pdfLib[k].u; }).map(function(k){ return [k,pdfLib[k]]; }).sort(function(a,b){ return (a[1].t||'').localeCompare(b[1].t||''); }); }
 function pdfCur(){ return pdfSel&&pdfLib[pdfSel]&&pdfLib[pdfSel].u?pdfLib[pdfSel]:null; }
 var pdfBuf={};
