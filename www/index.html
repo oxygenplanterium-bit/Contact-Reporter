@@ -188,7 +188,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -303,8 +303,8 @@ var PDF=(function(){
     if(o.after) this.y-=o.after; };
   Doc.prototype.rule=function(){ this.room(8); this.y-=4; this.pages[this.pages.length-1].push('0.6 w 0.75 G '+this.L+' '+this.y.toFixed(1)+' m '+this.R+' '+this.y.toFixed(1)+' l S 0 G'); this.y-=4; };
   Doc.prototype.gap=function(h){ this.y-=h; };
-  Doc.prototype.image=function(bin,iw,ih){ var mw=this.R-this.L, mh=802-this.B-4, sc=Math.min(mw/iw,mh/ih,1.6), w=iw*sc, hh=ih*sc;
-    this.room(hh+6); if(hh>this.y-this.B){ this.pages.push([]); this.y=802; }
+  Doc.prototype.image=function(bin,iw,ih){ var mw=this.R-this.L; if(this.y-this.B<200){ this.pages.push([]); this.y=802; }
+    var mh=this.y-this.B-6, sc=Math.min(mw/iw,mh/ih,1.6), w=iw*sc, hh=ih*sc;
     if(!this.imgs) this.imgs=[]; this.imgs.push({d:bin,w:iw,h:ih}); var k=this.imgs.length, x=this.L+(mw-w)/2; this.y-=hh+4;
     this.pages[this.pages.length-1].push('q '+w.toFixed(1)+' 0 0 '+hh.toFixed(1)+' '+x.toFixed(1)+' '+this.y.toFixed(1)+' cm /Px'+k+' Do Q'); };
   Doc.prototype.build=function(title){
