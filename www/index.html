@@ -201,7 +201,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 11:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:20 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1101,6 +1101,72 @@ function exportDlg(){
   b.append(go('Download Excel File',expXlsx,'Contacts-'+day+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),go('Download CSV File',expCsv,'Contacts-'+day+'.csv','text/csv'),go('Download PDF File',expPdf,'Contacts-'+day+'.pdf','application/pdf'),er,cl);
   openDlg(d);
 }
+/* ---------- owner summary (day / week) ---------- */
+var sumPer='day', sumData=null, sumKey='', sumBusy=false;
+function sumDays(){ var n=sumPer==='week'?7:1, o=[]; for(var i=0;i<n;i++) o.push(dayKey(Date.now()-i*DAY)); return o; }
+async function sumLoad(){
+  var key=sumPer+'|'+todayKey(); if(sumBusy) return; sumBusy=true;
+  try{ var per={}, days=sumDays();
+    await Promise.all(days.map(async function(day){ try{ var l=await db.list('cr/log/'+day+'/'); (l||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ var e=cl[id]; if(!e) return; var sid=e.sid||String(x.path||'').split('/').pop(); var p=per[sid]=per[sid]||{c:0,s:0,p:0,days:{},last:0}; p.c++; if(e.o==='spoke') p.s++; if(!e.o) p.p++; p.days[day]=1; if((e.at||0)>p.last) p.last=e.at||0; }); }); }catch(e){} }));
+    sumData=per; sumKey=key; }catch(e){ sumData={}; sumKey=key; }
+  sumBusy=false; sig=''; render();
+}
+function sumRows(){
+  var per=sumData||{}, us=okUsers().filter(function(it){ return it[1].rl!=='owner'; });
+  return us.map(function(it){ var p=per[it[0]]||{c:0,s:0,p:0,days:{},last:0}; return {id:it[0],n:it[1].n,c:p.c,s:p.s,p:p.p,d:Object.keys(p.days).length,last:p.last}; });
+}
+function sumPdf(){
+  var rows=sumRows(), days=sumDays(), wk=sumPer==='week', doc=new PDF.Doc(), tc=0, ts=0; rows.forEach(function(r){ tc+=r.c; ts+=r.s; });
+  doc.text('Contact Reporter - '+(wk?'Weekly':'Daily')+' Summary',{size:16,bold:true,after:4,color:'0 0.4 0.15'});
+  doc.text(wk?('Period: '+fmtIso(days[days.length-1])+' to '+fmtIso(days[0])):('Date: '+fmtIso(days[0])),{size:10,bold:true});
+  doc.text('Prepared by Owner on '+fmtIso(todayKey())+' at '+fmtTime(Date.now()),{size:9});
+  doc.text(tc+' call'+(tc===1?'':'s')+' - '+ts+' answered - '+rows.length+' user'+(rows.length===1?'':'s'),{size:9});
+  doc.rule();
+  rows.slice().sort(function(a,b){ return b.c-a.c; }).forEach(function(r,i){
+    doc.text((i+1)+'. '+r.n,{size:10,bold:true,before:6});
+    doc.text('Calls: '+r.c+'   Answered: '+r.s+'   Pending reports: '+r.p+(wk?'   Days active: '+r.d+' of 7':'')+(r.last?'   Last call: '+fmtIso(dayKey(r.last))+', '+fmtTime(r.last):''),{size:9,indent:12}); });
+  var nc=rows.filter(function(r){ return !r.c; });
+  doc.text((wk?'No calls this week':'Not called today')+' ('+nc.length+')',{size:11,bold:true,before:10,color:'0 0.4 0.15'});
+  if(!nc.length) doc.text('Everyone has called.',{size:9,indent:12}); else nc.forEach(function(r,i){ doc.text((i+1)+'. '+r.n,{size:10,indent:12,before:2}); });
+  return doc.build('Contact Reporter - '+(wk?'Weekly':'Daily')+' Summary');
+}
+function sumCard(body){
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; c.append(mk('b',null,'Daily And Weekly Summary'));
+  var sg=mk('div','aseg'); sg.style.gridTemplateColumns='1fr 1fr'; [['day','Today'],['week','Last 7 Days']].forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sumPer===t[0]); b.addEventListener('click',function(){ sumPer=t[0]; sumData=null; sumKey=''; sig=''; render(); }); sg.append(b); }); c.append(sg);
+  var need=sumPer+'|'+todayKey();
+  if(sumKey!==need){ c.append(mk('p','pmeta','Loading...')); sumLoad(); body.append(c); return; }
+  var rows=sumRows(), wk=sumPer==='week', tc=0, ts=0; rows.forEach(function(r){ tc+=r.c; ts+=r.s; });
+  c.append(mk('p','pmeta',tc+' call'+(tc===1?'':'s')+' · '+ts+' answered · '+rows.length+' user'+(rows.length===1?'':'s')));
+  rows.slice().sort(function(a,b){ return b.c-a.c; }).forEach(function(r,i){ var d=mk('div'); d.style.cssText='display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px'; tint(d,i);
+    d.append(mk('b',null,r.n),mk('span',null,r.c+' calls · '+r.s+' answered')); c.append(d); });
+  var nc=rows.filter(function(r){ return !r.c; });
+  c.append(mk('b',null,(wk?'No Calls This Week':'Not Called Today')+' ('+nc.length+')'));
+  if(!nc.length) c.append(mk('p','pmeta','Everyone has called.')); else nc.forEach(function(r){ c.append(mk('div','pmeta',r.n)); });
+  var rf=btn('Refresh',function(){ sumKey=''; sumData=null; sig=''; render(); },''), dl=btn('Download Summary PDF',async function(){ try{ dl.disabled=true; await savePdf(sumPdf(),(wk?'Weekly':'Daily')+'-Summary-'+todayKey()+'.pdf',true); }catch(e){ toast('Could not create the PDF'); } dl.disabled=false; },'primary');
+  var ar=mk('div','sline'); ar.append(dl,rf); c.append(ar); body.append(c);
+}
+/* ---------- owner alerts: new sign-ups and payment claims ---------- */
+var alertInit=false;
+function alertPending(){ var o=[]; Object.keys(users).forEach(function(k){ var u=users[k]; if(u&&u.n&&u.st==='pending') o.push(['u'+k,'New sign-up: '+u.n+(u.ph?' ('+fmtPhone(u.ph)+')':'')]); }); Object.keys(claims).forEach(function(k){ var x=claims[k]; if(x&&x.st==='pending'){ var u=users[k]; o.push(['p'+k+'_'+(x.at||0),'Payment claim from '+((u&&u.n)||'a user')+(x.amt?' ('+moneyTxt(x.amt)+')':'')]); } }); return o; }
+function alertNotify(msg){
+  toast(msg,5000);
+  try{ if(window.Notification&&Notification.permission==='granted'){ if(navigator.serviceWorker&&navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(function(r){ r.showNotification('Contact Reporter',{body:msg,icon:'icon-192.png',tag:msg}); }).catch(function(){ new Notification('Contact Reporter',{body:msg}); }); else new Notification('Contact Reporter',{body:msg}); } }catch(e){}
+}
+function alertCheck(){
+  if(!accountOwner||!settingsLoaded) return;
+  var seen={}; try{ seen=JSON.parse(localStorage.getItem('crSeen')||'null')||null; }catch(e){}
+  var cur=alertPending(), first=seen===null; seen=seen||{};
+  cur.forEach(function(a){ if(!seen[a[0]]){ seen[a[0]]=1; if(!first&&alertInit) alertNotify(a[1]); } });
+  try{ localStorage.setItem('crSeen',JSON.stringify(seen)); }catch(e){}
+  alertInit=true;
+}
+function alertCard(body){
+  var cur=alertPending(), c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; c.append(mk('b',null,'Activity Alerts'));
+  if(!cur.length) c.append(mk('p','pmeta','No new sign-ups or payment claims.')); else cur.forEach(function(a,i){ var d=mk('div',null,a[1]); d.style.cssText='padding:6px 10px;border:1px solid var(--line);border-radius:10px;font-weight:600'; tint(d,i); c.append(d); });
+  if(window.Notification&&Notification.permission!=='granted'&&Notification.permission!=='denied'){ var nb=btn('Turn On Notifications',async function(){ try{ await Notification.requestPermission(); }catch(e){} sig=''; render(); },'primary'); c.append(nb); }
+  else if(window.Notification&&Notification.permission==='granted') c.append(mk('p','pmeta','Notifications are on for this device.'));
+  body.append(c);
+}
 function viewSetOwner(body){
   usersCard(body);
   var sbl=mk('label','sw'), sbi=document.createElement('input'); sbi.type='checkbox'; sbi.checked=subsOn(); sbi.setAttribute('role','switch'); sbi.setAttribute('aria-label','App subscription'); sbl.style.marginTop='8px'; sbl.append(mk('h2',null,'Subscription'),sbi,document.createElement('i')); sbl.style.cssText+=';margin:8px 0 0;padding:0 2px 0 0'; sbl.firstChild.style.margin='0';
@@ -1109,7 +1175,7 @@ function viewSetOwner(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
-  pdfLibCard(body); sentLogCard(body);
+  alertCard(body); sumCard(body); pdfLibCard(body); sentLogCard(body);
   var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
@@ -1729,7 +1795,7 @@ document.addEventListener('click',function(e){
   document.addEventListener('focusout',function(){ setTimeout(fit,200); });
 })();
 /* ---------- start ---------- */
-function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); render(); }); }
+function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); alertCheck(); render(); }); }
 function normName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function capName(){ return accountOwner?((viewAs&&users[viewAs]&&users[viewAs].n)||callerName()):callerName(); }
 function hasCapTag(t,name){ var nm=normName(name); if(!nm) return false; return String(t||'').split(/[,;]+/).some(function(x){ return normName(x)===nm; }); }
@@ -1760,7 +1826,7 @@ function startData(){
   try{ watchPrefix('cr/sent/',function(list){ sentLog=listToMap(list,'cr/sent/'); sig=''; render(); }); }catch(e){}
   if(accountOwner){ try{ watchPrefix('cr/policy/',function(list){ policyLog=listToMap(list,'cr/policy/'); sig=''; render(); }); }catch(e){} } else { try{ var pr=db.doc('cr/policy/'+uid); pr.get().then(function(s){ if(!s.exists&&policyOk()) policyRecord(); }).catch(function(){}); }catch(e){} }
   try{ db.doc('cr/pdfs').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); pdfLib=(d&&d.l)||{}; sig=''; render(); },function(){}); }catch(e){}
-  if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); render(); });
+  if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); alertCheck(); render(); });
   logSub();
 }
 (async function boot(){
