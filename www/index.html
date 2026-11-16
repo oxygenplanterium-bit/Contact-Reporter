@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 4:05 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 4:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -320,6 +320,9 @@ var PDF=(function(){
   Doc.prototype.title=function(t,o){ o=o||{}; var size=o.size||24, lead=size*1.25, lines=wrap(t,size,true,this.R-this.L), self=this;
     lines.forEach(function(ln){ self.room(lead); self.y-=lead; var w=width(ln,size,true), x=self.L+(self.R-self.L-w)/2; self.pages[self.pages.length-1].push((o.color?o.color+' rg ':'')+'BT /F2 '+size+' Tf '+x.toFixed(1)+' '+self.y.toFixed(1)+' Td ('+esc(ln)+') Tj ET'+(o.color?' 0 g':'')); });
     if(o.after) this.y-=o.after; };
+  Doc.prototype.subtitle=function(t,o){ o=o||{}; var size=o.size||15, lead=size*1.4, tx=clean(t), w=width(tx,size,true), x=this.L+(this.R-this.L-w)/2; this.room(lead+4); this.y-=lead;
+    this.pages[this.pages.length-1].push((o.color?o.color+' rg '+o.color+' RG ':'')+'BT /F2 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET 1 w '+x.toFixed(1)+' '+(this.y-2.5).toFixed(1)+' m '+(x+w).toFixed(1)+' '+(this.y-2.5).toFixed(1)+' l S'+(o.color?' 0 g 0 G':'')); if(o.after) this.y-=o.after; };
+  Doc.prototype.ctext=function(t,o){ o=o||{}; var size=o.size||10, lead=size*1.35, tx=clean(t), w=width(tx,size,false), x=this.L+(this.R-this.L-w)/2; this.room(lead); this.y-=lead; this.pages[this.pages.length-1].push('BT /F1 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET'); if(o.after) this.y-=o.after; };
   Doc.prototype.row=function(cells,xs,ws,o){ o=o||{}; var size=o.size||11, bold=!!o.bold, lead=size*1.35, pad=5, parts=cells.map(function(c,i){ return wrap(c,size,bold,ws[i]-8); }), n=0; parts.forEach(function(p){ n=Math.max(n,p.length); });
     var h=n*lead+pad*2; this.room(h); var top=this.y, pg=this.pages[this.pages.length-1];
     if(o.fill) pg.push(o.fill+' rg '+this.L+' '+(top-h).toFixed(1)+' '+(this.R-this.L)+' '+h.toFixed(1)+' re f 0 g');
@@ -1181,12 +1184,15 @@ function alertCard(body){
   body.append(c);
 }
 /* ---------- category tables and flyers (owner) ---------- */
-var cats={c:{},o:{}}, catShow={c:false,o:false}, catBusy=false;
+var cats={c:{},o:{},u:0}, catShow={c:false,o:false}, catBusy=false;
 function catRows(k){ var m=cats[k]||{}; return Object.keys(m).filter(function(i){ return m[i]; }).sort(function(a,b){ return (m[a].at||0)-(m[b].at||0); }).map(function(i){ return [i,m[i]]; }); }
 function catFlyer(k){
-  var rows=catRows(k), closed=k==='c', doc=new PDF.Doc(), g='0 0.4 0.15';
+  var rows=catRows(k), closed=k==='c', doc=new PDF.Doc(), g='0 0.4 0.15', up=Number(cats.u)||0;
+  if(!up){ rows.forEach(function(it){ if((it[1].at||0)>up) up=it[1].at; }); } if(!up) up=Date.now();
+  if(!closed) rows=rows.slice(0,25);
   doc.title(closed?'Closed Categories For Royals Chapter':'Open Categories For Royals Chapter',{size:28,color:g,after:6});
-  doc.text('Updated on '+fmtIso(todayKey()),{size:10,after:10}); doc.rule(); doc.gap(6);
+  if(!closed) doc.subtitle('Top 25 Open Categories',{size:16,color:g,after:4});
+  doc.ctext('Last updated on '+fmtIso(dayKey(up))+' at '+fmtTime(up),{size:10,after:10}); doc.rule(); doc.gap(6);
   var xs=closed?[40,90,305]:[40,100], ws=closed?[50,215,250]:[60,455];
   doc.row(closed?['Sl.No.','Member Name','Category Name']:['Sl.No.','Category Name'],xs,ws,{bold:true,size:12,fill:g,color:'1 1 1'});
   if(!rows.length) doc.text('No categories added yet.',{size:11,before:8});
@@ -1211,13 +1217,13 @@ function catCard(body){
     if(catShow[k]){
       rows.forEach(function(it,i){ var id=it[0], e=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px'; tint(r,i);
         r.append(mk('span',null,(i+1)+'. '+(k==='c'?(e.m||'')+' - ':'')+(e.c||''))); r.firstChild.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere';
-        var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'cat'+k+id,'Delete',async function(){ var pt={}; pt[k]={}; pt[k][id]=null; await putDoc('cr/cats',pt,{c:{},o:{}}); }); }); r.append(dl); c.append(r); });
+        var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'cat'+k+id,'Delete',async function(){ var pt={u:Date.now()}; pt[k]={}; pt[k][id]=null; await putDoc('cr/cats',pt,{c:{},o:{}}); }); }); r.append(dl); c.append(r); });
       var mi=k==='c'?document.createElement('input'):null, ci=document.createElement('input'); ci.type='text'; ci.placeholder='Category name'; ci.autocomplete='off'; ci.maxLength=80;
       if(mi){ mi.type='text'; mi.placeholder='Member name'; mi.autocomplete='off'; mi.maxLength=80; c.append(mi); } c.append(ci);
       c.append(btn('Add Row',async function(){ var cn=cleanName(ci.value), mn=mi?cleanName(mi.value):''; if(!cn||(mi&&!mn)){ toast(mi?'Enter the member and category':'Enter the category'); return; }
-        var pt={}; pt[k]={}; pt[k]['r'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)]=mi?{m:mn,c:cn,at:Date.now()}:{c:cn,at:Date.now()}; if(await putDoc('cr/cats',pt,{c:{},o:{}})){ ci.value=''; if(mi) mi.value=''; toast('Row added'); } },'primary'));
+        var pt={u:Date.now()}; pt[k]={}; pt[k]['r'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)]=mi?{m:mn,c:cn,at:Date.now()}:{c:cn,at:Date.now()}; if(await putDoc('cr/cats',pt,{c:{},o:{}})){ ci.value=''; if(mi) mi.value=''; toast('Row added'); } },'primary'));
       c.append(btn('Create '+sec[1]+' Flyer',function(){ catSave(k); },'primary'));
-      c.append(mk('p','pmeta','The flyer is saved in the Files list as "'+sec[1]+'" and can be shared to contacts.'));
+      c.append(mk('p','pmeta','The flyer is saved in the Files list as "'+sec[1]+'" and can be shared to contacts.'+(k==='o'?' Only the first 25 rows appear on the flyer.':'')));
     }
     body.append(c); });
 }
@@ -1879,7 +1885,7 @@ function startData(){
   watchUsers(); watchCaptains();
   try{ watchPrefix('cr/sent/',function(list){ sentLog=listToMap(list,'cr/sent/'); sig=''; render(); }); }catch(e){}
   if(accountOwner){ try{ watchPrefix('cr/policy/',function(list){ policyLog=listToMap(list,'cr/policy/'); sig=''; render(); }); }catch(e){} } else { try{ var pr=db.doc('cr/policy/'+uid); pr.get().then(function(s){ if(!s.exists&&policyOk()) policyRecord(); }).catch(function(){}); }catch(e){} }
-  if(accountOwner){ try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{}}; sig=''; render(); },function(){}); }catch(e){} }
+  if(accountOwner){ try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0}; sig=''; render(); },function(){}); }catch(e){} }
   try{ db.doc('cr/pdfs').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); pdfLib=(d&&d.l)||{}; sig=''; render(); },function(){}); }catch(e){}
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); alertCheck(); render(); });
   logSub();
