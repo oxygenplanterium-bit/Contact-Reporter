@@ -74,6 +74,7 @@ create policy docs_select on public.docs for select to authenticated using (
   or (path = 'cr/pdfs' and public.is_ok())
   or path = 'cr/policy/' || auth.uid()::text
   or (path like 'cr/sent/%' and public.is_ok())
+  or (path = 'cr/online/' || auth.uid()::text and public.is_ok())
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text
