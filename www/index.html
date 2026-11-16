@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 4:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 4:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -325,8 +325,9 @@ var PDF=(function(){
   Doc.prototype.ctext=function(t,o){ o=o||{}; var size=o.size||10, lead=size*1.35, tx=clean(t), w=width(tx,size,false), x=this.L+(this.R-this.L-w)/2; this.room(lead); this.y-=lead; this.pages[this.pages.length-1].push('BT /F1 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET'); if(o.after) this.y-=o.after; };
   Doc.prototype.row=function(cells,xs,ws,o){ o=o||{}; var size=o.size||11, bold=!!o.bold, lead=size*1.35, pad=5, parts=cells.map(function(c,i){ return wrap(c,size,bold,ws[i]-8); }), n=0; parts.forEach(function(p){ n=Math.max(n,p.length); });
     var h=n*lead+pad*2; this.room(h); var top=this.y, pg=this.pages[this.pages.length-1];
-    if(o.fill) pg.push(o.fill+' rg '+this.L+' '+(top-h).toFixed(1)+' '+(this.R-this.L)+' '+h.toFixed(1)+' re f 0 g');
-    pg.push('0.5 w 0.7 G '+this.L+' '+(top-h).toFixed(1)+' m '+this.R+' '+(top-h).toFixed(1)+' l S 0 G');
+    var sg=o.segs||[[this.L,this.R-this.L]], sk=o.skip||[];
+    sg.forEach(function(q,qi){ if(sk.indexOf(qi)>=0) return; if(o.fill) pg.push(o.fill+' rg '+q[0]+' '+(top-h).toFixed(1)+' '+q[1]+' '+h.toFixed(1)+' re f 0 g');
+      pg.push('0.5 w 0.7 G '+q[0]+' '+(top-h).toFixed(1)+' m '+(q[0]+q[1])+' '+(top-h).toFixed(1)+' l S 0 G'); });
     parts.forEach(function(p,i){ p.forEach(function(ln,j){ pg.push((o.color?o.color+' rg ':'')+'BT /'+(bold?'F2':'F1')+' '+size+' Tf '+(xs[i]+4).toFixed(1)+' '+(top-pad-lead*(j+1)+size*0.28).toFixed(1)+' Td ('+esc(ln)+') Tj ET'+(o.color?' 0 g':'')); }); });
     this.y=top-h; };
   Doc.prototype.image=function(bin,iw,ih){ var mw=this.R-this.L; if(this.y-this.B<200){ this.pages.push([]); this.y=802; }
@@ -1193,10 +1194,18 @@ function catFlyer(k){
   doc.title(closed?'Closed Categories For Royals Chapter':'Open Categories For Royals Chapter',{size:28,color:g,after:6});
   if(!closed) doc.subtitle('Top 25 Open Categories',{size:16,color:g,after:4});
   doc.ctext('Last updated on '+fmtIso(dayKey(up))+' at '+fmtTime(up),{size:10,after:10}); doc.rule(); doc.gap(6);
-  var xs=closed?[40,90,305]:[40,100], ws=closed?[50,215,250]:[60,455];
-  doc.row(closed?['Sl.No.','Member Name','Category Name']:['Sl.No.','Category Name'],xs,ws,{bold:true,size:12,fill:g,color:'1 1 1'});
+  if(!closed){
+    var xs2=[40,84,303,347], ws2=[44,213,44,208], sg=[[40,257],[303,252]];
+    doc.row(['Sl.No.','Category Name','Sl.No.','Category Name'],xs2,ws2,{bold:true,size:11,fill:g,color:'1 1 1',segs:sg});
+    if(!rows.length) doc.text('No categories added yet.',{size:11,before:8});
+    for(var r=0;r<13&&r<rows.length;r++){ var l=rows[r], rt=rows[r+12], lc=r<12&&l, cells=[lc?String(r+1):'',lc?(l[1].c||''):'',rt?String(r+13):'',rt?(rt[1].c||''):''], sk=[]; if(!lc) sk.push(0); if(!rt) sk.push(1);
+      doc.row(cells,xs2,ws2,{size:11,fill:r%2?'1 1 1':'0.93 0.97 0.94',segs:sg,skip:sk}); }
+    return doc.build('Open Categories');
+  }
+  var xs=[40,90,305], ws=[50,215,250];
+  doc.row(['Sl.No.','Member Name','Category Name'],xs,ws,{bold:true,size:12,fill:g,color:'1 1 1'});
   if(!rows.length) doc.text('No categories added yet.',{size:11,before:8});
-  rows.forEach(function(it,i){ var e=it[1]; doc.row(closed?[String(i+1),e.m||'',e.c||'']:[String(i+1),e.c||''],xs,ws,{size:11,fill:i%2?'1 1 1':'0.93 0.97 0.94'}); });
+  rows.forEach(function(it,i){ var e=it[1]; doc.row([String(i+1),e.m||'',e.c||''],xs,ws,{size:11,fill:i%2?'1 1 1':'0.93 0.97 0.94'}); });
   return doc.build(closed?'Closed Categories':'Open Categories');
 }
 window.crCat={flyer:catFlyer};
