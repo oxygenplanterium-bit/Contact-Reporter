@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 2:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 3:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1816,7 +1816,7 @@ function isOnline(id){ return ((','+onlineIds+',').indexOf(','+id+',')>=0); }
 function presenceStart(){
   if(presenceStart.done) return; presenceStart.done=true;
   if(accountOwner){ watchPrefix('cr/online/',function(list){ onlineData=listToMap(list,'cr/online/'); onlineCalc(); }); setInterval(onlineCalc,15000); }
-  var lastBeat=0; function beat(t){ if(!uid||!approved()) return Promise.resolve(); try{ var v=t==null?Date.now():t; lastBeat=Date.now(); var d=db.doc('cr/online/'+uid); return Promise.resolve(d.set({t:v,l:lastBeat})).catch(function(){}); }catch(e){ return Promise.resolve(); } }
+  var lastBeat=0; function beat(t){ if(!uid||!approved()) return Promise.resolve(); try{ var v=t==null?Date.now():t; lastBeat=Date.now(); var d=db.doc('cr/online/'+uid); return Promise.resolve(d.set({t:v,l:lastBeat})).catch(function(er){ if(!beat.warned){ beat.warned=true; toast('Online status not saved: '+String((er&&er.message)||er).slice(0,90),9000); } }); }catch(e){ return Promise.resolve(); } }
   function tick(){ if(document.visibilityState==='visible') beat(); }
   tick(); setInterval(tick,30000); window.crBeatOff=function(){ return Promise.race([beat(0),new Promise(function(r){ setTimeout(r,1500); })]); };
   document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') beat(); else beat(0); });
