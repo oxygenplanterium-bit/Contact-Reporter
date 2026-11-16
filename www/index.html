@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 12:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 1:05 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1132,7 +1132,10 @@ function sumPdf(){
   return doc.build('Contact Reporter - '+(wk?'Weekly':'Daily')+' Summary');
 }
 function sumCard(body){
-  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; c.append(mk('b',null,'Daily And Weekly Summary'));
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; var shw=true; try{ shw=localStorage.getItem('crSumShow')!=='0'; }catch(e){}
+  var sl=mk('label','sw'), si=document.createElement('input'); si.type='checkbox'; si.checked=shw; si.setAttribute('role','switch'); si.setAttribute('aria-label','Show summary'); sl.append(mk('h2',null,'Daily And Weekly Summary'),si,document.createElement('i')); c.append(sl);
+  si.addEventListener('change',function(){ try{ localStorage.setItem('crSumShow',si.checked?'1':'0'); }catch(e){} sig=''; render(); });
+  if(!shw){ body.append(c); return; }
   var sg=mk('div','aseg'); sg.style.gridTemplateColumns='1fr 1fr'; [['day','Today'],['week','Last 7 Days']].forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sumPer===t[0]); b.addEventListener('click',function(){ sumPer=t[0]; sumData=null; sumKey=''; sig=''; render(); }); sg.append(b); }); c.append(sg);
   var need=sumPer+'|'+todayKey();
   if(sumKey!==need){ c.append(mk('p','pmeta','Loading...')); sumLoad(); body.append(c); return; }
