@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 17 Nov 2026, 4:55 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 17 Nov 2026, 5:40 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -577,14 +577,16 @@ function pdfLibCard(body){
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); r.append(dl); c.append(r); });
   var ti=document.createElement('input'); ti.type='text'; ti.placeholder='Name for this file'; ti.autocomplete='off'; ti.maxLength=60;
   var fi=document.createElement('input'); fi.type='file'; fi.accept='application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp';
+  fi.style.display='none';
   var up=btn('Upload File',async function(){
-    var f=fi.files&&fi.files[0]; if(!f){ toast('Choose a PDF or image file first'); return; }
+    var f=fi.files&&fi.files[0]; if(!f){ fi.click(); return; }
     if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){ toast('Only PDF or image files (JPG, PNG, WebP) can be added'); return; }
     if(f.size>20*1024*1024){ toast('This file is larger than 20 MB'); return; }
     var t=cleanName(ti.value)||f.name.replace(/\.[a-z0-9]+$/i,''); up.disabled=true; up.textContent='Uploading...';
     try{ var fs=await window.claude.use('files'); if(!fs) throw new Error('x'); var r=await fs.upload(f.name,f); var pt={l:{}}; pt.l['p'+Date.now().toString(36)]={t:t,u:r.url,p:r.path,at:Date.now()}; if(await putDoc('cr/pdfs',pt,{l:{}})){ toast('File added'); ti.value=''; fi.value=''; } }
     catch(e){ toast('Could not upload. Run the new SQL in Supabase first.',4500); }
     up.disabled=false; up.textContent='Upload File'; },'primary');
+  fi.addEventListener('change',function(){ if(fi.files&&fi.files[0]) up.click(); });
   c.append(ti,fi,up); body.append(c);
 }
 /* ---------- dialer ---------- */
