@@ -35,7 +35,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.has_cm() returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.has_ac('cadd') or public.has_ac('casg') or public.has_ac('cimp') or public.has_ac('ctm')
+  select public.has_ac('cadd') or public.has_ac('casg') or public.has_ac('cimp')
 $$;
 create or replace function public.has_view() returns boolean
 language sql stable security definer set search_path = public as $$

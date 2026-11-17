@@ -219,7 +219,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 6:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 6:25 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -420,8 +420,8 @@ function acNow(){ if(accountOwner&&!isOwner&&viewAs&&viewAs!==uid) return (users
 function acOk(k){ return !!(isOwner||acNow()[k]===true); }
 function acLogs(){ var a=acNow(); return a.logs===true||a.rep===true||a.grp===true; }
 function acView(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.dash===true||me.ac.logs===true||me.ac.rep===true||me.ac.grp===true||me.ac.cts===true||me.ac.sum===true||cmAny(me.ac))); }
-function cmAny(a){ return !!(a&&(a.cadd===true||a.casg===true||a.cimp===true||a.ctm===true)); }
-function cmFor(k){ var a=acNow(); return isOwner||a[k]===true||a.ctm===true; }
+function cmAny(a){ return !!(a&&(a.cadd===true||a.casg===true||a.cimp===true)); }
+function cmFor(k){ var a=acNow(); return isOwner||a[k]===true; }
 function cmOk(){ return isOwner||cmAny(acNow()); }
 function ctsOk(){ var a=acNow(); return a.cts===true||cmAny(a); }
 function canRep(){ var a=acNow(); return isOwner||!acLogs()||a.rep===true||a.grp===true; }
@@ -1107,6 +1107,7 @@ var IC_AC='<path d="M12 3l8 3v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6z"/><path d="
 var AC_LIST=[['sum','Daily And Weekly Summary','The daily and weekly summary of calls for all users'],['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['grp','Group Call Logs Report','See all call logs by group, with the group filter, and download the group report'],['cts','All Contacts','See all contacts and groups, the same as the owner sees them (view only)'],['cadd','Add Contacts','Add new contacts. Also shows them all contacts'],['casg','Assign Contacts','Assign contacts to users. Also shows them all contacts'],['cimp','Import Contacts','Import contacts from the phone or a file. Also shows them all contacts'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
 function acText(u){ var a=(u&&u.ac)||{}, n=AC_LIST.filter(function(x){ return a[x[0]]===true; }).map(function(x){ return x[1]; }); return n.length?'Access: '+n.join(', '):''; }
 function accessDlg(id){
+  if(users[id]&&users[id].ac&&users[id].ac.ctm!==undefined) putDoc('cr/users/'+id,{ac:{ctm:null}});
   var u=users[id]||{}, r=dlg('dlgAc'), d=r[0], b=r[1]; b.append(mk('h2',null,'Give Access To '+(u.n||'User')));
   b.append(mk('p','pmeta','Switch on what this user may do. Each switch saves at once. Switch it off to take the access back.'));
   AC_LIST.forEach(function(x){ var k=x[0], on=!!(users[id]&&users[id].ac&&users[id].ac[k]===true);
