@@ -33,13 +33,13 @@ language sql stable security definer set search_path = public as $$
   select public.is_ok() and exists (
     select 1 from public.docs u where u.path = 'cr/users/' || auth.uid()::text and coalesce(u.data -> 'ac' ->> k, 'false') = 'true')
 $$;
-create or replace function public.has_view() returns boolean
-language sql stable security definer set search_path = public as $$
-  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_cm()
-$$;
 create or replace function public.has_cm() returns boolean
 language sql stable security definer set search_path = public as $$
   select public.has_ac('cadd') or public.has_ac('casg') or public.has_ac('cimp') or public.has_ac('ctm')
+$$;
+create or replace function public.has_view() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_cm()
 $$;
 grant execute on function public.has_ac(text), public.has_view(), public.has_cm() to authenticated;
 
