@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:15 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -540,7 +540,7 @@ function pdfPicker(parent){
     l.forEach(function(it,ix){ var on=pdfSel===it[0], b=mk('button','pickopt',it[1].t||'File'); b.type='button'; b.style.cssText='min-height:38px;padding:8px 12px;text-align:left;border:2px solid '+(on?'var(--accent)':'transparent')+';background:'+(ix%2?'#6b34a3':'#2457a8')+';color:#fff;font-size:1.1rem;font-weight:700;letter-spacing:.2px;min-height:46px;';
       if(on) b.setAttribute('aria-pressed','true');
       b.addEventListener('click',function(){ pdfSel=on?'':it[0]; try{ localStorage.setItem('crPdfSel',pdfSel); }catch(e){} pdfOpen=false; if(pdfSel) pdfPrefetch(pdfSel); sig=''; render(); });
-      var bg=(ix%2?'#6b34a3':'#2457a8'), sb=iconBtn('Share file',IC_SHARE,function(){ pdfShare(it[0]); },'#fff'); sb.style.cssText+=';width:50px;height:auto;min-height:46px;background:'+bg+';border-radius:8px;flex:0 0 50px'; sb.querySelector('svg').setAttribute('width','22'); sb.querySelector('svg').setAttribute('height','22');
+      var bg=(ix%2?'#6b34a3':'#2457a8'), sb=iconBtn('Share file',IC_SHARE,function(){ msStart(it[0]); },'#fff'); sb.style.cssText+=';width:50px;height:auto;min-height:46px;background:'+bg+';border-radius:8px;flex:0 0 50px'; sb.querySelector('svg').setAttribute('width','22'); sb.querySelector('svg').setAttribute('height','22');
       var rw=mk('div'); rw.style.cssText='display:flex;gap:6px;align-items:stretch'; b.style.flex='1 1 auto'; b.style.minWidth='0'; rw.append(b,sb); lst.append(rw); });
     c.append(lst); }
   var pn=mk('p','pmeta',pdfNoteText()); pn.id='pdfNote'; pn.style.color='#1d4a78'; c.append(pn);
@@ -924,6 +924,7 @@ function policyGate(){
   return true;
 }
 function render(){
+  try{ msBarSync(); }catch(e){}
   if(!started) return;
   if(policyGate()) return;
   modeSync(); 
@@ -966,6 +967,26 @@ function render(){
   if(sub==='home') viewHome(body); else if(sub==='ct') viewCt(body); else if(sub==='gr') viewGr(body); else if(sub==='cs') viewCs(body,isOwner?'':(isSuMode()?'su':'us')); else if(sub==='pay'&&isOwner) viewPay(body); else if(sub==='set') viewSet(body); else viewLg(body);
 }
 var usrShow=false, ctDetAll=false, ctHide=false, ctInit=false, ctViewSet=(function(){ try{ if(localStorage.getItem('crCtDet')==='full') ctDetAll=true; if(localStorage.getItem('crCtHide')==='1') ctHide=true; }catch(e){} return 1; })(), usOpen={}, selUn=false, usShow='', viewAs=(function(){ try{ return localStorage.getItem('crViewAs')||''; }catch(e){ return ''; } })(), selUser='', ctOpen={}, selMode=false, selSet={}, selCnt=function(){};
+/* ---------- send one file to up to 5 selected contacts ---------- */
+var MS_MAX=5, ms={on:false,fid:'',ids:{},q:null,i:0,busy:false};
+function msReset(){ ms={on:false,fid:'',ids:{},q:null,i:0,busy:false}; sig=''; try{ render(); }catch(e){} }
+function msStart(fid){ ms={on:true,fid:fid,ids:{},q:null,i:0,busy:false}; pdfSel=fid; try{ localStorage.setItem('crPdfSel',fid); }catch(e){} pdfOpen=false; pdfPrefetch(fid); sig=''; render(); toast('Tick up to '+MS_MAX+' contacts, then press Send To Selected',4500); }
+function msRecord(fid,id,c){ var sd0=sentToday(fid,id), prev0=sentLog[fid]&&sentLog[fid][id], e0={at:Date.now(),by:callerName(),u:uid,n:c.n,k:(sd0&&sd0.k||(sd0?1:0))+1}; if(!sd0&&prev0&&prev0.k) e0.k=(prev0.k||0)+1; var pt={}; pt[id]=e0; putDoc('cr/sent/'+fid,pt,{}); }
+async function msSendCur(){
+  if(ms.busy) return; var id=ms.q[ms.i], c=ctGet(id), d=pdfLib[ms.fid]; if(!c||!d){ ms.i++; msNext(); return; }
+  var dg=digitsOf(c.p), p10=phone10(c.p), n=(p10.length===10)?'91'+p10:dg; if(!dg){ toast(c.n+' has no phone number'); ms.i++; msNext(); return; }
+  ms.busy=true; var ok=false; try{ ok=await pdfSend(d,n); }catch(e){} ms.busy=false;
+  if(ok){ msRecord(ms.fid,id,c); ms.i++; msNext(); } else msBarSync();
+}
+function msNext(){ if(ms.i>=ms.q.length){ toast('Finished sending to '+ms.q.length+' contact'+(ms.q.length===1?'':'s'),4000); msReset(); return; } sig=''; render(); msBarSync(); }
+function msBarSync(){
+  var bar=document.getElementById('msBar');
+  if(!ms.on){ if(bar) bar.remove(); return; }
+  if(!bar){ bar=mk('div'); bar.id='msBar'; bar.style.cssText='position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:2500;display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:14px;border:2px solid #e27aa6;background:#bfdcf7;color:#0b2540;box-shadow:0 6px 24px rgba(0,0,0,.35)'; document.body.append(bar); }
+  bar.textContent=''; var nm=(pdfLib[ms.fid]&&pdfLib[ms.fid].t)||'File', row=mk('div'); row.style.cssText='display:flex;gap:8px';
+  if(!ms.q){ var n=Object.keys(ms.ids).length; var t=mk('b',null,nm+': '+n+' of '+MS_MAX+' selected'); t.style.color='#0b2540'; var go=btn('Send To Selected',function(){ var q=Object.keys(ms.ids); if(!q.length){ toast('Tick at least one contact'); return; } ms.q=q; ms.i=0; sig=''; render(); msBarSync(); },'primary'), cn=btn('Cancel',msReset,''); go.style.flex='1'; cn.style.flex='1'; go.disabled=!n; row.append(go,cn); bar.append(t,row); }
+  else { var c=ctGet(ms.q[ms.i]), t2=mk('b',null,'Sending '+(ms.i+1)+' of '+ms.q.length+': '+((c&&c.n)||'')); t2.style.color='#0b2540'; var sd=btn('Send To '+((c&&c.n)||'Contact'),msSendCur,'primary'), sk=btn('Skip',function(){ ms.i++; msNext(); },''), st=btn('Stop',msReset,''); sd.style.flex='2'; sk.style.flex='1'; st.style.flex='1'; sd.disabled=ms.busy; row.append(sd,sk,st); bar.append(t2,row); }
+}
 function rows(box,list,own,off){
   list.forEach(function(it,ix){ ix+=(off||0);
     var id=it[0], c=it[1], el=mk('div'), hd=mk('div'), top=mk('div'), ac=mk('div','sline');
@@ -992,6 +1013,8 @@ function rows(box,list,own,off){
       db2.addEventListener('click',function(){ if(!armed['ctd'+id]){ armed['ctd'+id]=true; db2.style.background='var(--loss)'; db2.style.color='#fff'; toast('Tap the bin again to delete'); setTimeout(function(){ armed['ctd'+id]=false; db2.style.background='transparent'; db2.style.color='var(--loss)'; },4000); return; } armed['ctd'+id]=false; (async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); })(); });
       ics.append(eb,db2); hd.append(ics,top,cb); } else hd.append(top,cb); el.append(hd);
     if(own&&sub==='ct'){ ac.append(btn('Edit',function(){ ctEdit(id); })); var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'ctd'+id,'Delete',async function(){ var pt={ct:{}}; pt.ct[id]=null; if(await grPut(c.g||'none',pt)) toast('Contact deleted'); }); }); ac.append(dl); el.append(ac); }
+    if(ms.on&&!ms.q){ var mc=document.createElement('input'); mc.type='checkbox'; mc.setAttribute('aria-label','Select '+c.n); mc.checked=!!ms.ids[id]; mc.disabled=!digitsOf(c.p); mc.style.cssText='width:26px;height:26px;flex:0 0 auto;margin:0;accent-color:#e27aa6';
+      mc.addEventListener('click',function(ev){ ev.stopPropagation(); }); mc.addEventListener('change',function(){ if(mc.checked){ if(Object.keys(ms.ids).length>=MS_MAX){ mc.checked=false; toast('You can select up to '+MS_MAX+' contacts'); return; } ms.ids[id]=1; } else delete ms.ids[id]; msBarSync(); }); hd.insertBefore(mc,hd.firstChild); }
     box.append(el);
   });
 }
