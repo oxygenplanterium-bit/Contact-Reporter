@@ -152,6 +152,10 @@ html,body{max-width:100%; overflow-x:hidden}
 #rngRow .rc label{min-width:0; overflow:hidden}
 #rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
 #rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:500; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+.setview .card{background:#bfdcf7!important; border-color:#6fa8dc!important; color:#0b2540!important}
+.setview .card :where(h2,h3,b,p,td,th,legend):not([style*="background"] *){color:#0b2540!important}
+.setview .card .btn:not(.primary):not(.danger):not([aria-pressed="true"]),.setview .card input,.setview .card select,.setview .card [style*="background"]{color:var(--ink)!important}
+.setview .card :where(.pmeta,#appVer):not([style*="background"] *){color:#2f4b6b!important}
 #rngRow,#dateCard{background:#bfdcf7!important; border-color:#6fa8dc!important; color:#0b2540!important}
 #rngRow .rp>span,#rngRow label.f>span,#dateCard label.f>span:first-child{color:#0b2540!important}
 #rngRow .rp select,#rngRow .dw,#dateWrap{background:#111!important; border-color:#6fa8dc!important}
@@ -232,7 +236,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -995,7 +999,7 @@ function render(){
   tabs.forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',sub===t[0]);
     if(t[0]==='home'&&cmOk()){ b.setAttribute('aria-expanded',actOpen); var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='display:inline-block;margin-left:5px;vertical-align:middle;line-height:0;transition:transform .15s;'+(actOpen?'transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; b.append(ar); }
     b.addEventListener('click',function(){ try{ document.activeElement.blur(); }catch(e){} if(t[0]==='home'&&cmOk()){ actOpen=(sub==='home')?!actOpen:true; if(!actOpen){ if(selMode) homeQ=''; asgShown=false; selMode=false; selSet={}; selUser=''; selUn=false; actMode=''; } } sub=t[0]; sig=''; render(); }); seg.append(b); });
-  $('#dateCard').hidden=sub!=='lg'; $('#rngRow').hidden=sub!=='lg'; $('#vwCard').hidden=true; rngSync();
+  body.classList.toggle('setview',sub==='set'); $('#dateCard').hidden=sub!=='lg'; $('#rngRow').hidden=sub!=='lg'; $('#vwCard').hidden=true; rngSync();
   $('#addLog').hidden=!!capSel;
   if(!groupsLoaded){ body.append(mk('p','pmeta','Loading...')); return; }
   if(!accountOwner&&subsOn()&&me&&me.ex){ var bn=mk('div'); bn.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px'; var left=Math.ceil((Number(me.ex)-Date.now())/DAY); var bt=mk('span','pmeta','Subscription valid till '+fmtIso(dayKey(Number(me.ex)))+(left<=7?' ('+left+' day'+(left===1?'':'s')+' left)':'')); if(left<=7) bt.style.cssText='color:var(--warn);font-weight:600'; bn.append(bt,btn('Renew',payDlg,left<=7?'primary':'')); body.append(bn); }
