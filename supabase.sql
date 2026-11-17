@@ -26,6 +26,19 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 
+-- Extra access the owner can give to a chosen person (cr/users/<id>.ac = { dash, logs, cats, rep }).
+-- has_ac(k): the caller is approved and the owner switched on that access. has_view(): any of the three that need to read everyone's data.
+create or replace function public.has_ac(k text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_ok() and exists (
+    select 1 from public.docs u where u.path = 'cr/users/' || auth.uid()::text and coalesce(u.data -> 'ac' ->> k, 'false') = 'true')
+$$;
+create or replace function public.has_view() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep')
+$$;
+grant execute on function public.has_ac(text), public.has_view() to authenticated;
+
 -- A "Captain" is an approved person whose phone number is in a contact, in a list the caller can see, that carries a tag equal to the caller's own name.
 -- Callers may read the account record and call logs of their Captains, and nobody else's.
 create or replace function public.is_captain(target text) returns boolean
@@ -75,6 +88,8 @@ create policy docs_select on public.docs for select to authenticated using (
   or path = 'cr/policy/' || auth.uid()::text
   or (path like 'cr/sent/%' and public.is_ok())
   or (path = 'cr/online/' || auth.uid()::text and public.is_ok())
+  or (public.has_view() and (path like 'cr/users/%' or path like 'cr/log/%' or path like 'cr/g/%' or path like 'cr/online/%'))
+  or (public.has_ac('cats') and path = 'cr/cats')
   or path = 'cr/pay/' || auth.uid()::text
   or (public.is_ok() and (
         (path like 'cr/g/%' and (data ->> 'all' = 'true' or (data -> 'to') ? auth.uid()::text
@@ -86,17 +101,18 @@ create policy docs_select on public.docs for select to authenticated using (
 -- A new person can create only their own record, and only as pending.
 create policy docs_insert on public.docs for insert to authenticated with check (
   public.is_owner()
-  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'ex'))
+  or (path = 'cr/users/' || auth.uid()::text and data ->> 'st' = 'pending' and not (data ? 'ex') and not (data ? 'ac'))
   or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending')
   or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text)
   or (public.is_ok() and path = 'cr/online/' || auth.uid()::text)
   or path = 'cr/policy/' || auth.uid()::text
   or (public.is_ok() and path like 'cr/sent/%')
+  or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs'))
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
-  with check (public.is_owner() or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
-create policy docs_delete on public.docs for delete to authenticated using (public.is_owner());
+  using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
+  with check (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
+create policy docs_delete on public.docs for delete to authenticated using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')));
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb
@@ -142,6 +158,6 @@ on conflict (id) do update set public = true, file_size_limit = 20971520, allowe
 drop policy if exists pdfs_owner_insert on storage.objects;
 drop policy if exists pdfs_owner_update on storage.objects;
 drop policy if exists pdfs_owner_delete on storage.objects;
-create policy pdfs_owner_insert on storage.objects for insert to authenticated with check (bucket_id = 'pdfs' and public.is_owner());
-create policy pdfs_owner_update on storage.objects for update to authenticated using (bucket_id = 'pdfs' and public.is_owner());
-create policy pdfs_owner_delete on storage.objects for delete to authenticated using (bucket_id = 'pdfs' and public.is_owner());
+create policy pdfs_owner_insert on storage.objects for insert to authenticated with check (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));
+create policy pdfs_owner_update on storage.objects for update to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));
+create policy pdfs_owner_delete on storage.objects for delete to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));

@@ -219,7 +219,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:55 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -415,13 +415,17 @@ function payCard(expired){
 }
 function payDlg(){ var r=dlg('dlgPay'), d=r[0], b=r[1]; b.append(payCard(false)); var x=mk('button','btn','Close'); x.type='button'; x.addEventListener('click',function(){ d.close(); }); b.append(x); openDlg(d); }
 /* This app has no SuperUsers. */
+function acOk(k){ return !!(accountOwner||isOwner||(me&&me.ac&&me.ac[k]===true)); }
+function acLogs(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.logs===true||me.ac.rep===true)); }
+function acView(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.dash===true||me.ac.logs===true||me.ac.rep===true)); }
+function canRep(){ return accountOwner||isOwner||!acLogs()||!!(me&&me.ac&&me.ac.rep===true); }
 function isSuAcct(){ return false; }
 function canSu(){ return false; }
 function isSuMode(){ return false; }
 function viewAll(){ return isOwner||isSuMode(); }
 function grList(){ return Object.keys(groups).filter(function(k){ if(k==='none'||!groups[k]||!groups[k].n) return false; if(isOwner) return true; var g=groups[k]; return !!(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0); }).map(function(k){ return [k,groups[k]]; }).sort(byName); }
-function ctAll(){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
-    if(!isOwner&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',pl:c[id].pl||'',tg:c[id].tg||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
+function ctAll(every){ var out=[]; Object.keys(groups).forEach(function(gid){ var g=groups[gid]||{}, c=g.ct||{};
+    if(!isOwner&&!every&&!(gid!=='none'&&(g.all||(g.to||[]).indexOf(accountOwner?(viewAs||uid):uid)>=0))) return; Object.keys(c).forEach(function(id){ if(c[id]&&c[id].n) out.push([id,{n:c[id].n,p:c[id].p||'',nt:c[id].nt||'',bc:c[id].bc||'',bk:c[id].bk||'',pl:c[id].pl||'',tg:c[id].tg||'',cf:c[id].cf||{},g:gid==='none'?'':gid}]); }); }); return out.sort(byName); }
 function ctText(c){ var t=[c.n,c.p,c.nt,c.bc,c.bk,c.pl,c.tg]; if(isOwner){ var wn=whoNames(c.g&&groups[c.g]); t.push(wn.length?wn.join(' '):'nobody unassigned'); } Object.keys(c.cf||{}).forEach(function(k){ t.push(c.cf[k].l,c.cf[k].v); }); return t.filter(Boolean).join(' ').toLowerCase(); }
 function tagsClean(v){ var seen={}, o=[]; String(v||'').split(/[,;\n]+/).forEach(function(x){ x=cleanName(x); var k=x.toLowerCase(); if(x&&!seen[k]){ seen[k]=1; o.push(x); } }); return o.join(', ').slice(0,120); }
 function ctCopy(c){ var o={n:c.n,p:c.p,nt:c.nt||'',bc:c.bc||'',bk:c.bk||'',pl:c.pl||'',tg:c.tg||''}; if(c.cf&&Object.keys(c.cf).length) o.cf=c.cf; return o; }
@@ -473,14 +477,14 @@ function logSub(){
     var dead=false, run=async function(){
       var out={}, dys={}, add=function(day,d){ var cl=(d&&d.cl)||{}; Object.keys(cl).forEach(function(id){ if(cl[id]){ out[id]=cl[id]; dys[id]=day; } }); };
       await Promise.all(logDayList().map(async function(day){ try{
-        if(accountOwner){ var l=await db.list('cr/log/'+day+'/'); (l||[]).forEach(function(x){ add(day,x.data); }); }
+        if(accountOwner||acLogs()){ var l=await db.list('cr/log/'+day+'/'); (l||[]).forEach(function(x){ add(day,x.data); }); }
         else{ var sn=await db.doc('cr/log/'+day+'/'+(capSel||uid)).get(); if(sn&&sn.exists&&sn.data()) add(day,sn.data()); }
       }catch(e){} }));
       if(dead||gen!==logGen) return; logRows=out; logDays=dys; sig=''; render();
     };
     run(); var t=setInterval(run,12000); logStops.push(function(){ dead=true; clearInterval(t); }); return;
   }
-  if(accountOwner){
+  if(accountOwner||acLogs()){
     logStops.push(watchPrefix('cr/log/'+k+'/',function(list){ if(k!==logKey) return; var m={}; (list||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ m[id]=cl[id]; }); }); logRows=m; render(); }));
   }else{
     var st=db.doc('cr/log/'+k+'/'+(capSel||uid)).onSnapshot(function(s){ if(k!==logKey) return; logRows=(s.exists&&s.data()&&s.data().cl)||{}; render(); },function(){});
@@ -1091,13 +1095,26 @@ function captainsCard(body){
     wrap.append(r); });
   grp.append(wrap);
 }
-function viewSet(body){ if(isOwner) viewSetOwner(body); else { captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
+function viewSet(body){ if(isOwner) viewSetOwner(body); else { if(acOk('dash')) dashCard(body); if(acOk('cats')) catCard(body); captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
+var IC_AC='<path d="M12 3l8 3v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>';
+var AC_LIST=[['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
+function acText(u){ var a=(u&&u.ac)||{}, n=AC_LIST.filter(function(x){ return a[x[0]]===true; }).map(function(x){ return x[1]; }); return n.length?'Access: '+n.join(', '):''; }
+function accessDlg(id){
+  var u=users[id]||{}, r=dlg('dlgAc'), d=r[0], b=r[1]; b.append(mk('h2',null,'Give Access To '+(u.n||'User')));
+  b.append(mk('p','pmeta','Switch on what this user may do. Each switch saves at once. Switch it off to take the access back.'));
+  AC_LIST.forEach(function(x){ var k=x[0], on=!!(users[id]&&users[id].ac&&users[id].ac[k]===true);
+    var sl=mk('label','sw'), si=document.createElement('input'); si.type='checkbox'; si.checked=on; si.setAttribute('role','switch'); si.setAttribute('aria-label',x[1]); sl.style.marginTop='8px'; sl.append(mk('h2',null,x[1]),si,document.createElement('i'));
+    si.addEventListener('change',async function(){ var v=si.checked, p={ac:{}}; p.ac[k]=v?true:null; if(await putDoc('cr/users/'+id,p)) toast(x[1]+(v?' switched on':' switched off')); else si.checked=!v; });
+    b.append(sl,mk('p','pmeta',x[2])); });
+  var cl=mk('button','btn','Close'); cl.type='button'; cl.style.marginTop='10px'; cl.addEventListener('click',function(){ d.close(); }); b.append(cl);
+  openDlg(d);
+}
 function usersCard(body){
   var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.setAttribute('aria-expanded',usrShow); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(usrShow?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
-    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var od=onlineData[id]||{}, ls=Math.max(Number(od.t)||0,Number(od.l)||0); t.append(mk('div','pmeta',isOnline(id)?'Online Now':(ls?'Last Seen: '+fmtIso(dayKey(ls))+' at '+fmtTime(ls):'Last Seen: Not Yet'))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
-    var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
+    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var od=onlineData[id]||{}, ls=Math.max(Number(od.t)||0,Number(od.l)||0); t.append(mk('div','pmeta',isOnline(id)?'Online Now':(ls?'Last Seen: '+fmtIso(dayKey(ls))+' at '+fmtTime(ls):'Last Seen: Not Yet'))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var acT=acText(u); if(acT) t.append(mk('div','pmeta',acT)); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
+    var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Give access',IC_AC,function(){ accessDlg(id); }),iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); r.append(t,ic); uc.append(r); });
     body.append(uc); }
 }
 /* ---------- download all contacts: CSV, Excel, PDF ---------- */
@@ -1300,8 +1317,8 @@ async function dshLoad(){
 }
 function dshCaps(){
   var byName={}; okUsers().forEach(function(it){ var k=normName(it[1].n); if(k) (byName[k]=byName[k]||[]).push(it[0]); }); byName[normName('Owner')]=byName[normName('Owner')]||['owner'];
-  var mark={}; ctAll().forEach(function(it){ var d=phone10(it[1].p); if(d.length!==10) return; String(it[1].tg||'').split(/[,;]+/).forEach(function(x){ var k=normName(x); if(k&&byName[k]){ (mark[d]=mark[d]||{}); byName[k].forEach(function(v){ mark[d][v]=1; }); } }); });
-  var list=okUsers().filter(function(it){ var m=mark[phone10(it[1].ph)]; return m&&Object.keys(m).some(function(v){ return v!==it[0]; }); }).map(function(it){ return it[0]===uid?[it[0],Object.assign({},it[1],{n:(it[1].n||'Owner')+' (Owner)'})]:it; });
+  var mark={}; ctAll(true).forEach(function(it){ var d=phone10(it[1].p); if(d.length!==10) return; String(it[1].tg||'').split(/[,;]+/).forEach(function(x){ var k=normName(x); if(k&&byName[k]){ (mark[d]=mark[d]||{}); byName[k].forEach(function(v){ mark[d][v]=1; }); } }); });
+  var list=okUsers().filter(function(it){ var m=mark[phone10(it[1].ph)]; return m&&Object.keys(m).some(function(v){ return v!==it[0]; }); }).map(function(it){ return accountOwner&&it[0]===uid?[it[0],Object.assign({},it[1],{n:(it[1].n||'Owner')+' (Owner)'})]:it; });
   if(accountOwner&&uid&&!list.some(function(it){ return it[0]===uid; })){ var ur=users[uid]||{}, ph=ur.ph||myPhone||'', m2=mark[phone10(ph)]; if(m2&&Object.keys(m2).some(function(v){ return v!==uid; })) list.push([uid,{n:(ur.n||myName||'Owner')+' (Owner)',ph:ph,st:'ok'}]); }
   return list;
 }
@@ -1710,11 +1727,11 @@ function shareDlg(title,list,withBy){
 }
 function viewLg(body){
   var all=Object.keys(logRows).map(function(k){ return [k,logRows[k]]; }).filter(function(it){ return it[1]&&it[1].n; });
-  var incl=isOwner||(isSuMode()&&lgInc);
+  var incl=isOwner||acLogs()||(isSuMode()&&lgInc);
   var both=!capSel&&accountOwner&&!isOwner&&viewAs&&viewAs!==uid;
   if(!incl) all=all.filter(function(it){ return both?(it[1].sid===viewAs||it[1].sid===uid):it[1].sid===(capSel||(accountOwner&&!isOwner?(viewAs||uid):uid)); });
   if(capSel&&!capList().some(function(it){ return it[0]===capSel; })){ capSel=''; logSub(); }
-  if(!isOwner){ var cs=document.createElement('select'), c0=mk('option',null,'Me'); c0.value=''; cs.append(c0); capList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; cs.append(o); }); cs.value=capSel; cs.addEventListener('change',function(){ capSel=cs.value; lgUser={}; sig=''; try{ cs.blur(); }catch(e){} logSub(); render(); }); body.append(fld('Captains',cs)); }
+  if(!isOwner&&!incl){ var cs=document.createElement('select'), c0=mk('option',null,'Me'); c0.value=''; cs.append(c0); capList().forEach(function(it){ var o=mk('option',null,it[1].n); o.value=it[0]; cs.append(o); }); cs.value=capSel; cs.addEventListener('change',function(){ capSel=cs.value; lgUser={}; sig=''; try{ cs.blur(); }catch(e){} logSub(); render(); }); body.append(fld('Captains',cs)); }
   if(isSuMode()){ var ic=document.createElement('input'); ic.type='checkbox'; ic.checked=lgInc; ic.style.cssText='width:20px;height:20px;margin:0;flex:none'; var il=mk('label'); il.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px;margin:0'; il.append(ic,mk('span',null,"Include users' reports")); ic.addEventListener('change',function(){ lgInc=ic.checked; sig=''; try{ ic.blur(); }catch(x){} render(); }); body.append(il); }
   var frow=mk('div'); frow.style.cssText='display:flex;gap:8px'; if(incl) body.append(frow);
   if(incl&&!isOwner){
@@ -1734,7 +1751,7 @@ function viewLg(body){
   var sp=all.filter(function(it){ return it[1].o==='spoke'; }).length, pd=all.filter(function(it){ return !it[1].o; }).length;
   var sr=mk('div'); sr.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
   sr.append(mk('p','pmeta',logLabel()+' · '+all.length+' call'+(all.length===1?'':'s')+' · '+sp+' spoke · '+pd+' pending'));
-  if(all.length) sr.append(btn('Share Report',function(){ shareDlg('Call report '+logLabel(),all,incl); },'primary'));
+  if(all.length&&canRep()) sr.append(btn('Share Report',function(){ shareDlg('Call report '+logLabel(),all,incl); },'primary'));
   body.append(sr);
   if(!all.length){ body.append(mk('p','pmeta','No calls in this period.')); return; }
   var addCall=function(it,ix,box,plain){
@@ -2019,7 +2036,8 @@ document.addEventListener('click',function(e){
   document.addEventListener('focusout',function(){ setTimeout(fit,200); });
 })();
 /* ---------- start ---------- */
-function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); alertCheck(); render(); }); }
+function watchCats(){ if(watchCats.done||!acOk('cats')) return; watchCats.done=true; try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0}; sig=''; render(); },function(){}); }catch(e){} }
+function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct()||acView())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); alertCheck(); render(); }); }
 function normName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function capName(){ return accountOwner?((viewAs&&users[viewAs]&&users[viewAs].n)||callerName()):callerName(); }
 function hasCapTag(t,name){ var nm=normName(name); if(!nm) return false; return String(t||'').split(/[,;]+/).some(function(x){ return normName(x)===nm; }); }
@@ -2049,7 +2067,7 @@ function startData(){
   watchUsers(); watchCaptains();
   try{ watchPrefix('cr/sent/',function(list){ sentLog=listToMap(list,'cr/sent/'); sig=''; render(); }); }catch(e){}
   if(accountOwner){ try{ watchPrefix('cr/policy/',function(list){ policyLog=listToMap(list,'cr/policy/'); sig=''; render(); }); }catch(e){} } else { try{ var pr=db.doc('cr/policy/'+uid); pr.get().then(function(s){ if(!s.exists&&policyOk()) policyRecord(); }).catch(function(){}); }catch(e){} }
-  if(accountOwner){ try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0}; sig=''; render(); },function(){}); }catch(e){} }
+  watchCats();
   try{ db.doc('cr/pdfs').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); pdfLib=(d&&d.l)||{}; sig=''; render(); },function(){}); }catch(e){}
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); alertCheck(); render(); });
   logSub();
@@ -2073,8 +2091,9 @@ function startData(){
         if(!made){ made=true; try{ await db.doc('cr/users/'+uid).set({n:myName||'New user',ph:myPhone||'',st:'pending',at:Date.now()}); }catch(e){ made=false; } }
         return;
       }
-      var oldRl=me&&me.rl; me=s.data(); meLoaded=true; var rlChanged=started&&startData.done&&(oldRl||'')!==(me.rl||'');
+      var oldRl=me&&me.rl, oldAc=JSON.stringify((me&&me.ac)||{}); me=s.data(); meLoaded=true; var rlChanged=started&&startData.done&&(oldRl||'')!==(me.rl||''), acChanged=started&&startData.done&&oldAc!==JSON.stringify(me.ac||{});
       if(rlChanged){ modeSync(); logSub(); watchUsers(); }
+      if(acChanged){ watchUsers(); watchCats(); logSub(); dsh.data=null; sig=''; }
       if(me.st==='ok'){ var first=!startData.done; startData(); if(first) callBack(0); }
       render();
     },function(){ meLoaded=true; render(); });
