@@ -35,7 +35,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.has_view() returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep')
+  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp')
 $$;
 grant execute on function public.has_ac(text), public.has_view() to authenticated;
 
