@@ -152,6 +152,7 @@ html,body{max-width:100%; overflow-x:hidden}
 #rngRow .rc label{min-width:0; overflow:hidden}
 #rngRow .dw{position:relative; display:block; height:40px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
 #rngRow .dw span{position:absolute; left:12px; right:12px; top:0; bottom:0; display:flex; align-items:center; font-size:1rem; font-weight:500; font-variant-numeric:tabular-nums; pointer-events:none; white-space:nowrap}
+.card.dshcard{border:2px solid #6fa8dc!important}
 .setview .card:not(.dshcard){background:#bfdcf7!important; border-color:#6fa8dc!important; color:#0b2540!important}
 .setview .card:not(.dshcard) :where(h2,h3,b,p,td,th,legend):not([style*="background"] *){color:#0b2540!important}
 .setview .card:not(.dshcard) .btn:not(.primary):not(.danger):not([aria-pressed="true"]),.setview .card:not(.dshcard) input,.setview .card:not(.dshcard) select,.setview .card:not(.dshcard) [style*="background"]{color:var(--ink)!important}
@@ -236,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:40 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
