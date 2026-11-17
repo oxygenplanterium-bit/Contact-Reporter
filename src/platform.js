@@ -224,7 +224,7 @@ const downloads = {
       }
       return { status: 'saved' };
     }
-    const mimeOf = n => /\.pdf$/i.test(n) ? 'application/pdf' : /\.png$/i.test(n) ? 'image/png' : /\.webp$/i.test(n) ? 'image/webp' : /\.jpe?g$/i.test(n) ? 'image/jpeg' : 'application/json';
+    const mimeOf = n => /\.pdf$/i.test(n) ? 'application/pdf' : /\.vcf$/i.test(n) ? 'text/vcard' : /\.png$/i.test(n) ? 'image/png' : /\.webp$/i.test(n) ? 'image/webp' : /\.jpe?g$/i.test(n) ? 'image/jpeg' : 'application/json';
     const type0 = mimeOf(name);
     try {
       const file = new File([o.data], name, { type: type0 });

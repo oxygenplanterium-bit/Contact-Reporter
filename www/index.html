@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 16 Nov 2026, 4:50 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 17 Nov 2026, 4:55 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1248,6 +1248,21 @@ function viewSetOwner(body){
   var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
+/* ---------- save contacts to the phone (vCard) ---------- */
+function vcfEsc(t){ return String(t==null?'':t).replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
+function vcfTel(p){ var raw=String(p||'').trim(), d=digitsOf(raw); if(!d) return ''; if(raw.charAt(0)==='+') return '+'+d; if(d.length===10) return '+91'+d; if(d.length===11&&d.charAt(0)==='0') return '+91'+d.slice(1); return '+'+d; }
+function vcfBuild(list){
+  return list.map(function(it){ var c=it[1], nm=cleanName(c.n), note=[];
+    if(c.bc) note.push('BNI Chapter: '+c.bc); if(c.bk) note.push('Category In BNI: '+c.bk); if(c.pl) note.push('Place: '+c.pl); if(c.tg) note.push('Tags: '+c.tg); if(c.nt) note.push('Note: '+c.nt);
+    var L=['BEGIN:VCARD','VERSION:3.0','FN:'+vcfEsc(nm),'N:'+vcfEsc(nm)+';;;;']; var t=vcfTel(c.p); if(t) L.push('TEL;TYPE=CELL:'+t); if(c.bc) L.push('ORG:'+vcfEsc('BNI '+c.bc)); if(note.length) L.push('NOTE:'+vcfEsc(note.join(' | '))); L.push('END:VCARD'); return L.join('\r\n'); }).join('\r\n')+'\r\n';
+}
+window.crVcf={build:vcfBuild};
+async function vcfSave(text,name){
+  var bytes=new TextEncoder().encode(text), native=false; try{ native=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
+  var touch=!isDesk();
+  if(native||touch){ try{ var dn=await window.claude.use('downloads'); await dn.save({filename:name,data:bytes.buffer}); return true; }catch(e){ if(e&&e.code==='declined') return false; } }
+  var blob=new Blob([bytes],{type:'text/vcard;charset=utf-8'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
+}
 function viewHome(body){
   if(isOwner){
     var pl=userList().filter(function(it){ return it[1].st!=='ok'; });
@@ -1287,6 +1302,9 @@ function viewHome(body){
   var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=ctDetAll; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show full contact details'); swl.style.cssText+=';flex:1 1 auto;justify-content:flex-end;margin:0;gap:8px'; swl.append(mk('span',null,'Full Details'),swi,document.createElement('i'));
   swi.addEventListener('change',function(){ ctDetAll=swi.checked; try{ localStorage.setItem('crCtDet',ctDetAll?'full':'col'); }catch(e){} ctInit=true; ctOpen={}; if(ctDetAll) ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); sig=''; try{ swi.blur(); }catch(e){} render(); });
   cr.append(shb,swl); body.append(cr);
+  if(isOwner){ var sv=btn('Save Contacts To Phone',async function(){ var qq=homeQ.trim().toLowerCase(), l=ctAll().filter(function(it){ return !qq||ctText(it[1]).indexOf(qq)>=0; }).filter(function(it){ return vcfTel(it[1].p); }); if(!l.length){ toast('No contacts with a phone number to save'); return; }
+      try{ sv.disabled=true; if(await vcfSave(vcfBuild(l),'Contact-Reporter-Contacts-'+todayKey()+'.vcf')) toast(l.length+' contact'+(l.length===1?'':'s')+' ready. Open the file and choose Add To Contacts.',6000); }catch(e){ toast('Could not create the contacts file'); } sv.disabled=false; },'primary');
+    sv.style.cssText+=';width:100%;min-height:40px;font-weight:700;margin:0 0 8px;box-sizing:border-box'; body.append(sv); }
   var lst=mk('div'); lst.style.cssText='display:flex;flex-direction:column;gap:0;border:1px solid #6fa8dc;border-radius:12px;padding:6px;background:#bfdcf7'; lst.className='pkbox'; body.append(lst); var sp=mk('div'); sp.style.height='64px'; body.append(sp);
   function fill(){
     if(ctDetAll&&!ctInit&&ctAll().length){ ctInit=true; ctAll().forEach(function(it){ ctOpen[it[0]]=true; }); }
