@@ -35,9 +35,13 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.has_view() returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_ac('ctm')
+  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_cm()
 $$;
-grant execute on function public.has_ac(text), public.has_view() to authenticated;
+create or replace function public.has_cm() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.has_ac('cadd') or public.has_ac('casg') or public.has_ac('cimp') or public.has_ac('ctm')
+$$;
+grant execute on function public.has_ac(text), public.has_view(), public.has_cm() to authenticated;
 
 -- A "Captain" is an approved person whose phone number is in a contact, in a list the caller can see, that carries a tag equal to the caller's own name.
 -- Callers may read the account record and call logs of their Captains, and nobody else's.
@@ -108,12 +112,12 @@ create policy docs_insert on public.docs for insert to authenticated with check 
   or path = 'cr/policy/' || auth.uid()::text
   or (public.is_ok() and path like 'cr/sent/%')
   or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs'))
-  or (public.has_ac('ctm') and path like 'cr/g/%')
+  or (public.has_cm() and path like 'cr/g/%')
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('ctm') and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
-  with check (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('ctm') and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
-create policy docs_delete on public.docs for delete to authenticated using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('ctm') and path like 'cr/g/%'));
+  using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
+  with check (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
+create policy docs_delete on public.docs for delete to authenticated using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%'));
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb
