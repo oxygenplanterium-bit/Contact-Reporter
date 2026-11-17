@@ -1266,7 +1266,7 @@ function vcfBuild(list){
     if(c.bc) note.push('BNI Chapter: '+c.bc); if(c.bk) note.push('Category In BNI: '+c.bk); if(c.pl) note.push('Place: '+c.pl); if(c.tg) note.push('Tags: '+c.tg); if(c.nt) note.push('Note: '+c.nt);
     var L=['BEGIN:VCARD','VERSION:3.0','FN:'+vcfEsc(nm),'N:'+vcfEsc(nm)+';;;;']; var t=vcfTel(c.p); if(t) L.push('TEL;TYPE=CELL:'+t); if(c.bc) L.push('ORG:'+vcfEsc('BNI '+c.bc)); if(note.length) L.push('NOTE:'+vcfEsc(note.join(' | '))); L.push('END:VCARD'); return L.join('\r\n'); }).join('\r\n')+'\r\n';
 }
-window.crVcf={build:vcfBuild};
+window.crVcf={build:vcfBuild,img:imgToPdf};
 async function vcfSave(text,name){
   var bytes=new TextEncoder().encode(text), native=false; try{ native=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
   var touch=!isDesk();
