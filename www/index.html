@@ -47,6 +47,8 @@ textarea{resize:vertical}
 .aseg{display:grid; gap:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--field)}
 .aseg .btn{border:0; border-right:1px solid var(--line); border-radius:0; padding:4px 2px; min-height:36px; font-size:.78rem !important; white-space:nowrap; background:transparent}
 .aseg .btn:last-child{border-right:0}
+.aseg.gap{gap:6px; border:0!important; background:transparent!important; overflow:visible}
+.aseg.gap .btn{border:1px solid #6fa8dc!important; border-radius:12px!important}
 .aseg .btn[aria-pressed="true"]{background:var(--pk); color:var(--pk-ink); border-color:var(--pk)}
 dialog{border:1px solid var(--line); border-radius:20px; background:var(--card); color:var(--ink); padding:0; width:calc(100% - 28px); max-width:520px}
 dialog::backdrop{background:rgba(0,0,0,.55)}
@@ -213,13 +215,13 @@ html,body{max-width:100%; overflow-x:hidden}
 <div class="wrap">
   <div class="hdrbox"><div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
     <nav class="modes" aria-label="Mode" id="modes"><button class="btn" id="modeOwner" type="button" aria-pressed="false">Owner Mode</button><div id="modes2"><button class="btn" id="modeSu" type="button" aria-pressed="false">SuperUser Mode</button><button class="btn" id="modeSup" type="button" aria-pressed="false">User Mode</button></div></nav>
-  <div class="aseg" id="seg"></div></div>
+  <div class="aseg gap" id="seg"></div></div>
   <div class="card" id="vwCard" hidden style="padding:10px 12px"></div>
   <div class="card" id="rngRow" hidden></div>
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 7:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 7:20 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1432,7 +1434,7 @@ async function vcfSave(text,name){
   var blob=new Blob([bytes],{type:'text/vcard;charset=utf-8'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.append(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
 }
 function ctTabs(body){
-  if(!isOwner&&ctsOk()){ var tg=mk('div','aseg'); tg.style.cssText+=';grid-template-columns:1fr 1fr;margin-bottom:8px'; [['mine','My Contacts'],['all','Owner + My Contacts']].forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',ctTab===t[0]); b.addEventListener('click',function(){ ctTab=t[0]; sig=''; render(); }); tg.append(b); }); body.append(tg); }
+  if(!isOwner&&ctsOk()){ var tg=mk('div','aseg gap'); tg.style.cssText+=';grid-template-columns:1fr 1fr;margin-bottom:8px'; [['mine','My Contacts'],['all','Owner + My Contacts']].forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',ctTab===t[0]); b.addEventListener('click',function(){ ctTab=t[0]; sig=''; render(); }); tg.append(b); }); body.append(tg); }
 }
 function viewHome(body){
   var amEl=null, abEl=null;
