@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 2:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -970,7 +970,7 @@ var usrShow=false, ctDetAll=false, ctHide=false, ctInit=false, ctViewSet=(functi
 /* ---------- send one file to up to 5 selected contacts ---------- */
 var MS_MAX=5, ms={on:false,fid:'',ids:{},q:null,i:0,busy:false};
 function msReset(){ ms={on:false,fid:'',ids:{},q:null,i:0,busy:false}; sig=''; try{ render(); }catch(e){} }
-function msStart(fid){ ms={on:true,fid:fid,ids:{},q:null,i:0,busy:false}; pdfSel=fid; try{ localStorage.setItem('crPdfSel',fid); }catch(e){} pdfOpen=false; pdfPrefetch(fid); sig=''; render(); toast('Tick up to '+MS_MAX+' contacts, then press Send To Selected',4500); }
+function msStart(fid){ ms={on:true,fid:fid,ids:{},q:null,i:0,busy:false}; pdfOpen=false; pdfPrefetch(fid); sig=''; render(); toast('Tick up to '+MS_MAX+' contacts, then press Send To Selected',4500); }
 function msRecord(fid,id,c){ var sd0=sentToday(fid,id), prev0=sentLog[fid]&&sentLog[fid][id], e0={at:Date.now(),by:callerName(),u:uid,n:c.n,k:(sd0&&sd0.k||(sd0?1:0))+1}; if(!sd0&&prev0&&prev0.k) e0.k=(prev0.k||0)+1; var pt={}; pt[id]=e0; putDoc('cr/sent/'+fid,pt,{}); }
 async function msSendCur(){
   if(ms.busy) return; var id=ms.q[ms.i], c=ctGet(id), d=pdfLib[ms.fid]; if(!c||!d){ ms.i++; msNext(); return; }
