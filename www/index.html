@@ -192,6 +192,23 @@ html,body{max-width:100%; overflow-x:hidden}
   .bot{left:calc(var(--sw) + (100vw - var(--sw))/2); max-width:1000px}
   #toast,.toast{left:calc(50% + var(--sw)/2)}
 }
+:root{--v1:#3987e5;--v2:#d95926;--v3:#199e70;--v4:#c98500;--v5:#d55181;--v6:#0ca30c;--vg:#7a7f87}
+:root[data-theme="light"]{--v1:#2a78d6;--v2:#eb6834;--v3:#1baf7a;--v4:#eda100;--v5:#e87ba4;--v6:#008300;--vg:#a3a8b0}
+.dsh{display:flex;flex-direction:column;gap:12px}
+.dsh .kp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dsh .kt{border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--field)}
+.dsh .kt b{display:block;font-size:1.55rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.dsh .kt span{font-size:.78rem;color:var(--muted)}
+.dsh h3{margin:0;font-size:.95rem}
+.dsh svg{width:100%;height:auto;display:block;overflow:visible}
+.dsh svg text{fill:var(--ink);font-size:11px;font-family:inherit}
+.dsh svg .mu{fill:var(--muted)}
+.dsh .lg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.8rem}
+.dsh .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.dsh table{width:100%;border-collapse:collapse;font-size:.8rem}
+.dsh th,.dsh td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right}
+.dsh th:first-child,.dsh td:first-child{text-align:left}
+#vzTip{position:fixed;z-index:4000;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.8rem;box-shadow:0 4px 14px rgba(0,0,0,.3);max-width:70vw}
 </style></head><body>
 <div class="wrap">
   <div class="hdrbox"><div class="brand"><img src="icon-192.png" alt=""><div style="flex:1 1 auto;min-width:0"><h1>Contact Reporter</h1><p class="pmeta" id="who"></p></div><button class="btn small" id="themeBtn" type="button" aria-label="Switch dark or light mode" style="flex:0 0 auto"></button></div>
@@ -202,7 +219,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 2:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1271,6 +1288,89 @@ function catCard(body){
     }
     body.append(c); });
 }
+/* ---------- captains dashboard (owner) ---------- */
+var dsh={per:7,data:null,key:'',busy:false}, DSH_OUT=[['spoke','Spoke','var(--v1)'],['noans','No answer','var(--v2)'],['busy','Busy','var(--v3)'],['wrong','Wrong number','var(--v4)'],['off','Switched off','var(--v5)'],['cb','Call back later','var(--v6)'],['','Report pending','var(--vg)']];
+function escH(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function dshLoad(){
+  if(dsh.busy) return; dsh.busy=true; var key=todayKey();
+  try{ var days=[]; for(var i=0;i<30;i++) days.push(dayKey(Date.now()-i*DAY)); var out={};
+    await Promise.all(days.map(async function(day){ try{ var l=await db.list('cr/log/'+day+'/'); (l||[]).forEach(function(x){ var cl=(x.data&&x.data.cl)||{}; Object.keys(cl).forEach(function(id){ var e=cl[id]; if(!e) return; var sid=e.sid||String(x.path||'').split('/').pop(); (out[day]=out[day]||[]).push({sid:sid,o:e.o||'',at:e.at||0}); }); }); }catch(e){} }));
+    dsh.data=out; dsh.key=key; }catch(e){ dsh.data={}; dsh.key=key; }
+  dsh.busy=false; sig=''; render();
+}
+function dshCaps(){
+  var byName={}; okUsers().forEach(function(it){ var k=normName(it[1].n); if(k) (byName[k]=byName[k]||[]).push(it[0]); }); byName[normName('Owner')]=byName[normName('Owner')]||['owner'];
+  var mark={}; ctAll().forEach(function(it){ var d=phone10(it[1].p); if(d.length!==10) return; String(it[1].tg||'').split(/[,;]+/).forEach(function(x){ var k=normName(x); if(k&&byName[k]){ (mark[d]=mark[d]||{}); byName[k].forEach(function(v){ mark[d][v]=1; }); } }); });
+  return okUsers().filter(function(it){ var m=mark[phone10(it[1].ph)]; return m&&Object.keys(m).some(function(v){ return v!==it[0]; }); });
+}
+function dshCalc(){
+  var caps=dshCaps(), ids={}; caps.forEach(function(it){ ids[it[0]]=it[1].n||'Captain'; });
+  var days=[]; for(var i=0;i<dsh.per;i++) days.push(dayKey(Date.now()-i*DAY));
+  var per={}; Object.keys(ids).forEach(function(id){ per[id]={id:id,n:ids[id],c:0,out:{},last:0}; });
+  var tot={}; DSH_OUT.forEach(function(o){ tot[o[0]]=0; });
+  days.forEach(function(d){ (dsh.data[d]||[]).forEach(function(e){ var r=per[e.sid]; if(!r) return; r.c++; var k=DSH_OUT.some(function(o){ return o[0]===e.o; })?e.o:''; r.out[k]=(r.out[k]||0)+1; tot[k]++; if(e.at>r.last) r.last=e.at; }); });
+  var nd=Math.max(7,dsh.per), series=[]; for(var j=nd-1;j>=0;j--){ var dk=dayKey(Date.now()-j*DAY), n=0; (dsh.data[dk]||[]).forEach(function(e){ if(ids[e.sid]) n++; }); series.push([dk,n]); }
+  var list=Object.keys(per).map(function(k){ return per[k]; }).sort(function(a,b){ return b.c-a.c||a.n.localeCompare(b.n); });
+  var calls=list.reduce(function(a,r){ return a+r.c; },0), spoke=tot.spoke||0, pend=tot['']||0;
+  return {list:list,tot:tot,series:series,calls:calls,spoke:spoke,pend:pend,caps:list.length,rate:calls?Math.round(spoke*100/calls):0};
+}
+function dshBars(D){
+  var rows=D.list, W=340, lw=96, rw=46, bw=W-lw-rw, rh=30, H=rows.length*rh+4, mx=Math.max(1,rows.reduce(function(a,r){ return Math.max(a,r.c); },1)), g='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Calls per captain">';
+  rows.forEach(function(r,i){ var y=i*rh+4, x=lw, nm=r.n.length>14?r.n.slice(0,13)+'…':r.n; g+='<text x="0" y="'+(y+15)+'">'+escH(nm)+'</text>';
+    DSH_OUT.forEach(function(o){ var n=r.out[o[0]]||0; if(!n) return; var w=Math.max(3,n/mx*bw-2); g+='<rect data-tip="'+escH(r.n+' - '+o[1]+': '+n)+'" x="'+x.toFixed(1)+'" y="'+y+'" width="'+w.toFixed(1)+'" height="20" rx="4" fill="'+o[2]+'"/>'; x+=w+2; });
+    if(!r.c) g+='<rect x="'+lw+'" y="'+(y+9)+'" width="'+bw+'" height="2" fill="var(--line)"/>';
+    g+='<text class="mu" x="'+(W)+'" y="'+(y+15)+'" text-anchor="end">'+r.c+'</text>'; });
+  return g+'</svg>';
+}
+function dshCols(D){
+  var data=D.series, W=340, H=150, pl=26, pb=20, pt=8, n=data.length, mx=Math.max(4,data.reduce(function(a,d){ return Math.max(a,d[1]); },0)), top=Math.ceil(mx/4)*4, cw=(W-pl)/n, bw=Math.max(3,Math.min(26,cw-4)), g='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Calls per day">';
+  for(var k=0;k<=2;k++){ var v=top*k/2, y=H-pb-(H-pb-pt)*v/top; g+='<line x1="'+pl+'" x2="'+W+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="var(--line)" stroke-width="1"/><text class="mu" x="0" y="'+(y+4).toFixed(1)+'">'+v+'</text>'; }
+  data.forEach(function(d,i){ var h=(H-pb-pt)*d[1]/top, x=pl+i*cw+(cw-bw)/2, y=H-pb-h; if(d[1]>0) g+='<path data-tip="'+escH(fmtIso(d[0])+': '+d[1]+' call'+(d[1]===1?'':'s'))+'" d="M'+x.toFixed(1)+' '+(H-pb)+'V'+(y+4).toFixed(1)+'a4 4 0 0 1 4 -4h'+(bw-8).toFixed(1)+'a4 4 0 0 1 4 4V'+(H-pb)+'Z" fill="var(--v1)"/>'; else g+='<rect data-tip="'+escH(fmtIso(d[0])+': 0 calls')+'" x="'+x.toFixed(1)+'" y="'+(H-pb-2)+'" width="'+bw.toFixed(1)+'" height="2" fill="var(--line)"/>';
+    if(i===0||i===n-1||i===Math.floor(n/2)) g+='<text class="mu" x="'+(x+bw/2).toFixed(1)+'" y="'+(H-4)+'" text-anchor="'+(i===0?'start':i===n-1?'end':'middle')+'">'+fmtIso(d[0]).slice(0,5)+'</text>'; });
+  return g+'</svg>';
+}
+function dshDonut(D){
+  var parts=DSH_OUT.map(function(o){ return {o:o,n:D.tot[o[0]]||0}; }).filter(function(x){ return x.n>0; }), T=D.calls, cx=70, cy=70, r=52, sw=22, g='<svg viewBox="0 0 140 140" style="width:150px;flex:none" role="img" aria-label="Call outcomes">';
+  function pt(a){ return [cx+r*Math.cos(a),cy+r*Math.sin(a)]; }
+  if(!T) g+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--line)" stroke-width="'+sw+'"/>';
+  else if(parts.length===1) g+='<circle data-tip="'+escH(parts[0].o[1]+': '+parts[0].n)+'" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+parts[0].o[2]+'" stroke-width="'+sw+'"/>';
+  else { var a0=-Math.PI/2; parts.forEach(function(x){ var span=x.n/T*Math.PI*2, gap=0.05, s0=a0+gap/2, s1=a0+span-gap/2, p0=pt(s0), p1=pt(s1); g+='<path data-tip="'+escH(x.o[1]+': '+x.n+' ('+Math.round(x.n*100/T)+'%)')+'" d="M'+p0[0].toFixed(2)+' '+p0[1].toFixed(2)+'A'+r+' '+r+' 0 '+(span>Math.PI?1:0)+' 1 '+p1[0].toFixed(2)+' '+p1[1].toFixed(2)+'" fill="none" stroke="'+x.o[2]+'" stroke-width="'+sw+'"/>'; a0+=span; }); }
+  g+='<text x="70" y="72" text-anchor="middle" style="font-size:22px;font-weight:700">'+T+'</text><text class="mu" x="70" y="88" text-anchor="middle">calls</text></svg>';
+  var lg='<div class="lg" style="flex-direction:column;gap:5px;flex:1;min-width:0">'; DSH_OUT.forEach(function(o){ var n=D.tot[o[0]]||0; lg+='<span><i style="background:'+o[2]+'"></i>'+escH(o[1])+': <b>'+n+'</b></span>'; }); lg+='</div>';
+  return '<div style="display:flex;align-items:center;gap:10px">'+g+lg+'</div>';
+}
+function dshPdf(D){
+  var doc=new PDF.Doc(), g='0 0.4 0.15'; doc.text('Contact Reporter - Captains Report',{size:16,bold:true,after:4,color:g});
+  doc.text('Last '+dsh.per+' day'+(dsh.per===1?'':'s')+' - prepared by Owner on '+fmtIso(todayKey())+' at '+fmtTime(Date.now()),{size:9});
+  doc.text(D.caps+' captains - '+D.calls+' calls - '+D.spoke+' answered ('+D.rate+'%) - '+D.pend+' reports pending',{size:9}); doc.rule();
+  var xs=[40,215,285,355,425], ws=[175,70,70,70,130]; doc.row(['Captain','Calls','Answered','Rate','Last Call'],xs,ws,{bold:true,size:10,fill:g,color:'1 1 1'});
+  D.list.forEach(function(r,i){ var sp=r.out.spoke||0; doc.row([r.n,String(r.c),String(sp),(r.c?Math.round(sp*100/r.c):0)+'%',r.last?fmtIso(dayKey(r.last))+' '+fmtTime(r.last):'-'],xs,ws,{size:10,fill:i%2?'1 1 1':'0.93 0.97 0.94'}); });
+  return doc.build('Contact Reporter - Captains Report');
+}
+function dshTip(card){
+  function tip(){ var t=document.getElementById('vzTip'); if(!t){ t=mk('div'); t.id='vzTip'; t.hidden=true; document.body.append(t); } return t; }
+  function show(e){ var el=e.target.closest&&e.target.closest('[data-tip]'), t=tip(); if(!el||!card.contains(el)){ t.hidden=true; return; } t.textContent=el.getAttribute('data-tip'); t.hidden=false; var x=Math.min(window.innerWidth-t.offsetWidth-8,Math.max(8,e.clientX+10)), y=Math.max(8,e.clientY-t.offsetHeight-12); t.style.left=x+'px'; t.style.top=y+'px'; }
+  card.addEventListener('pointermove',show); card.addEventListener('pointerdown',show); card.addEventListener('pointerleave',function(){ tip().hidden=true; });
+  document.addEventListener('pointerdown',function(e){ if(!card.contains(e.target)){ var t=document.getElementById('vzTip'); if(t) t.hidden=true; } },{once:true,capture:true});
+}
+function dashCard(body){
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
+  var shw=true; try{ shw=localStorage.getItem('crDashShow')!=='0'; }catch(e){}
+  var sl=mk('label','sw'), si=document.createElement('input'); si.type='checkbox'; si.checked=shw; si.setAttribute('role','switch'); si.setAttribute('aria-label','Show captains dashboard'); sl.append(mk('h2',null,'Captains Dashboard'),si,document.createElement('i')); c.append(sl);
+  si.addEventListener('change',function(){ try{ localStorage.setItem('crDashShow',si.checked?'1':'0'); }catch(e){} sig=''; render(); });
+  if(!shw){ body.append(c); return; }
+  if(!dshCaps().length){ c.append(mk('p','pmeta','No captains yet. A captain is an approved user whose phone number is saved in a contact tagged with the name of another user, or Owner.')); body.append(c); return; }
+  var sg=mk('div','aseg'); sg.style.gridTemplateColumns='1fr 1fr 1fr'; [[1,'Today'],[7,'7 Days'],[30,'30 Days']].forEach(function(t){ var b=mk('button','btn',t[1]); b.type='button'; b.setAttribute('aria-pressed',dsh.per===t[0]); b.addEventListener('click',function(){ dsh.per=t[0]; sig=''; render(); }); sg.append(b); }); c.append(sg);
+  if(dsh.key!==todayKey()||!dsh.data){ c.append(mk('p','pmeta','Loading...')); dshLoad(); body.append(c); return; }
+  var D=dshCalc(), w=mk('div','dsh');
+  var kp=mk('div','kp'); [[D.caps,'Captains'],[D.calls,'Calls'],[D.rate+'%','Answered ('+D.spoke+')'],[D.pend,'Reports pending']].forEach(function(k){ var t=mk('div','kt'); t.append(mk('b',null,String(k[0])),mk('span',null,k[1])); kp.append(t); }); w.append(kp);
+  var s1=mk('div'); s1.append(mk('h3',null,'Calls Per Captain')); var b1=mk('div'); b1.innerHTML=dshBars(D); s1.append(b1); var lg=mk('div','lg'); lg.innerHTML=DSH_OUT.map(function(o){ return '<span><i style="background:'+o[2]+'"></i>'+escH(o[1])+'</span>'; }).join(''); s1.append(lg); w.append(s1);
+  var s2=mk('div'); s2.append(mk('h3',null,'Calls By Day')); var b2=mk('div'); b2.innerHTML=dshCols(D); s2.append(b2); w.append(s2);
+  var s3=mk('div'); s3.append(mk('h3',null,'Call Outcomes')); var b3=mk('div'); b3.innerHTML=dshDonut(D); s3.append(b3); w.append(s3);
+  var s4=mk('div'); s4.append(mk('h3',null,'Captain Report')); var tb='<table><thead><tr><th>Captain</th><th>Calls</th><th>Spoke</th><th>Rate</th></tr></thead><tbody>'; D.list.forEach(function(r){ var sp=r.out.spoke||0; tb+='<tr><td>'+escH(r.n)+'</td><td>'+r.c+'</td><td>'+sp+'</td><td>'+(r.c?Math.round(sp*100/r.c):0)+'%</td></tr>'; }); tb+='</tbody></table>'; var tw=mk('div'); tw.innerHTML=tb; s4.append(tw); w.append(s4);
+  var ar=mk('div','sline'), dl=btn('Download Captains Report PDF',async function(){ try{ dl.disabled=true; await savePdf(dshPdf(D),'Captains-Report-'+todayKey()+'.pdf',true); }catch(e){ toast('Could not create the PDF'); } dl.disabled=false; },'primary'), rf=btn('Refresh',function(){ dsh.key=''; dsh.data=null; sig=''; render(); },''); ar.append(dl,rf); w.append(ar);
+  c.append(w); body.append(c); dshTip(c);
+}
 function viewSetOwner(body){
   usersCard(body);
   var sbl=mk('label','sw'), sbi=document.createElement('input'); sbi.type='checkbox'; sbi.checked=subsOn(); sbi.setAttribute('role','switch'); sbi.setAttribute('aria-label','App subscription'); sbl.style.marginTop='8px'; sbl.append(mk('h2',null,'Subscription'),sbi,document.createElement('i')); sbl.style.cssText+=';margin:8px 0 0;padding:0 2px 0 0'; sbl.firstChild.style.margin='0';
@@ -1279,7 +1379,7 @@ function viewSetOwner(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
-  alertCard(body); sumCard(body); catCard(body); pdfLibCard(body); sentLogCard(body);
+  alertCard(body); sumCard(body); dashCard(body); catCard(body); pdfLibCard(body); sentLogCard(body);
   var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
