@@ -202,7 +202,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 17 Nov 2026, 8:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 17 Nov 2026, 8:30 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -577,10 +577,11 @@ function sentLogCard(body){
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  c.append(mk('b',null,'Add PDF Or JPG Files'));
+  c.append(mk('b',null,isOwner?'Add PDF Or JPG Files':'Uploaded Files'));
+  if(!isOwner&&!pdfList().length) c.append(mk('p','pmeta','No files have been added yet.'));
   pdfList().forEach(function(it){ var id=it[0], d=it[1], r=mk('div','sline'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px';
     var nm=mk('span',null,d.t||'PDF'); nm.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere'; r.append(nm);
-    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); var shb=iconBtn('Share file',IC_SHARE,function(){ pdfShare(id); },'var(--ink)'); shb.style.width='40px'; shb.style.height='40px'; shb.style.border='1px solid var(--line)'; var gp=mk('div'); gp.style.cssText='display:flex;align-items:center;gap:8px;flex:none'; gp.append(shb,dl); r.append(gp); c.append(r); });
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); var shb=iconBtn('Share file',IC_SHARE,function(){ pdfShare(id); },'var(--ink)'); shb.style.width='40px'; shb.style.height='40px'; shb.style.border='1px solid var(--line)'; var gp=mk('div'); gp.style.cssText='display:flex;align-items:center;gap:8px;flex:none'; if(isOwner) gp.append(shb,dl); else gp.append(shb); r.append(gp); c.append(r); });
   var ti=document.createElement('input'); ti.type='text'; ti.placeholder='Name for this file'; ti.autocomplete='off'; ti.maxLength=60;
   var fi=document.createElement('input'); fi.type='file'; fi.accept='application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp';
   fi.style.display='none';
@@ -593,6 +594,7 @@ function pdfLibCard(body){
     catch(e){ toast('Could not upload. Run the new SQL in Supabase first.',4500); }
     up.disabled=false; up.textContent='Upload File'; },'primary');
   fi.addEventListener('change',function(){ if(fi.files&&fi.files[0]) up.click(); });
+  if(!isOwner){ body.append(c); return; }
   c.append(ti,fi,up); body.append(c);
 }
 /* ---------- dialer ---------- */
@@ -1047,7 +1049,7 @@ function captainsCard(body){
     wrap.append(r); });
   grp.append(wrap);
 }
-function viewSet(body){ if(isOwner) viewSetOwner(body); else { captainsCard(body); sentLogCard(body); } acctCard(body); }
+function viewSet(body){ if(isOwner) viewSetOwner(body); else { captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
 function usersCard(body){
   var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.setAttribute('aria-expanded',usrShow); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(usrShow?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
