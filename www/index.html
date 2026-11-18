@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 9:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 11:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1128,17 +1128,18 @@ function accessDlg(id){
   if(users[id]&&users[id].ac&&users[id].ac.ctm!==undefined) putDoc('cr/users/'+id,{ac:{ctm:null}});
   var u=users[id]||{}, r=dlg('dlgAc'), d=r[0], b=r[1]; b.append(mk('h2',null,'Give Access To '+(u.n||'User')));
   b.append(mk('p','pmeta','Switch on what this user may do. Each switch saves at once. Switch it off to take the access back.'));
+  var sc=mk('div'); sc.style.cssText='overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:56vh;padding-right:2px;outline:none'; b.append(sc);
   AC_LIST.forEach(function(x){ var k=x[0], on=!!(users[id]&&users[id].ac&&users[id].ac[k]===true);
     var sl=mk('label','sw'), si=document.createElement('input'); si.type='checkbox'; si.checked=on; si.setAttribute('role','switch'); si.setAttribute('aria-label',x[1]); sl.style.marginTop='8px'; sl.append(mk('h2',null,x[1]),si,document.createElement('i'));
     si.addEventListener('change',async function(){ var v=si.checked, p={ac:{}}; p.ac[k]=v?true:null; if(await putDoc('cr/users/'+id,p)) toast(x[1]+(v?' switched on':' switched off')); else si.checked=!v; });
-    b.append(sl,mk('p','pmeta',x[2])); });
-  var cl=mk('button','btn','Close'); cl.type='button'; cl.style.marginTop='10px'; cl.addEventListener('click',function(){ d.close(); }); b.append(cl);
+    sc.append(sl,mk('p','pmeta',x[2])); });
+  var cl=mk('button','btn','Close'); cl.type='button'; cl.style.cssText='margin-top:10px;width:100%;min-height:44px'; cl.addEventListener('click',function(){ d.close(); }); b.append(cl);
   openDlg(d);
 }
-var usrOpen={};
-function usersCard(body){
-  var ul=okUsers(), ub=btn('Users ('+ul.length+')',function(){ usrShow=!usrShow; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',usrShow); ub.setAttribute('aria-expanded',usrShow); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(usrShow?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
-  if(usrShow){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
+var usrOpen={}, usrShowM={u:false,s:false};
+function usersBox(body,ul,title,key){
+  var shw=!!usrShowM[key], ub=btn(title+' ('+ul.length+')',function(){ usrShowM[key]=!usrShowM[key]; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',shw); ub.setAttribute('aria-expanded',shw); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(shw?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
+  if(shw){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
     ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var od=onlineData[id]||{}, ls=Math.max(Number(od.t)||0,Number(od.l)||0); t.append(mk('div','pmeta',isOnline(id)?'Online Now':(ls?'Last Seen: '+fmtIso(dayKey(ls))+' at '+fmtTime(ls):'Last Seen: Not Yet'))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var acT=acText(u); if(acT) t.append(mk('div','pmeta',acT)); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
     var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Give access',IC_AC,function(){ accessDlg(id); }),iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); var nm=t.firstChild, dt=mk('div'); dt.style.cssText='min-width:0'; while(t.children.length>1) dt.append(t.children[1]); if(dot&&dot.parentNode===ic) ic.removeChild(dot);
@@ -1148,6 +1149,11 @@ function usersCard(body){
       hd.addEventListener('click',function(){ usrOpen[id]=!usrOpen[id]; det.hidden=!usrOpen[id]; hd.setAttribute('aria-expanded',!!usrOpen[id]); ar.style.transform=usrOpen[id]?'rotate(180deg)':''; });
       r.style.display='block'; r.append(hd,det); uc.append(r); });
     body.append(uc); }
+}
+function hasAc(u){ var a=(u&&u.ac)||{}; return AC_LIST.some(function(x){ return a[x[0]]===true; }); }
+function usersCard(body){
+  var all=okUsers(), sup=all.filter(function(it){ return hasAc(it[1]); }), reg=all.filter(function(it){ return !hasAc(it[1]); });
+  usersBox(body,reg,'Users','u'); if(sup.length) usersBox(body,sup,'Super Users','s');
 }
 /* ---------- download all contacts: CSV, Excel, PDF ---------- */
 function expTable(){
