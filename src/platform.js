@@ -58,6 +58,12 @@ const db = {
       .subscribe();
     return () => { dead = true; clearInterval(timer); sb.removeChannel(ch); };
   },
+  async rpc(name, args) {
+    if (name !== 'approve_user' && name !== 'reject_user') throw new Error('not allowed');
+    const r = await sb.rpc(name, args || {});
+    if (r.error) throw mapErr(r.error);
+    return r.data;
+  },
   doc(path) {
     return {
       get: async () => snapOf(await fetchDoc(path)),

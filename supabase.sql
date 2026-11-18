@@ -39,9 +39,25 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.has_view() returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_cm()
+  select public.has_ac('dash') or public.has_ac('logs') or public.has_ac('rep') or public.has_ac('grp') or public.has_ac('cts') or public.has_ac('sum') or public.has_ac('apr') or public.has_cm()
 $$;
 grant execute on function public.has_ac(text), public.has_view(), public.has_cm() to authenticated;
+
+-- Approving or rejecting a new sign-up: the owner, or a person the owner gave the "approve new users" access. Only a pending record can be changed, and only to approve it (with the trial end date) or remove it.
+create or replace function public.approve_user(p_target text, p_ex bigint default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_owner() or public.has_ac('apr')) then raise exception 'not allowed'; end if;
+  update public.docs set data = data || case when p_ex is null then jsonb_build_object('st','ok') else jsonb_build_object('st','ok','ex',p_ex) end, updated_at = now()
+   where path = 'cr/users/' || p_target and data ->> 'st' = 'pending';
+end $$;
+create or replace function public.reject_user(p_target text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_owner() or public.has_ac('apr')) then raise exception 'not allowed'; end if;
+  delete from public.docs where path = 'cr/users/' || p_target and data ->> 'st' = 'pending';
+end $$;
+grant execute on function public.approve_user(text, bigint), public.reject_user(text) to authenticated;
 
 -- A "Captain" is an approved person whose phone number is in a contact, in a list the caller can see, that carries a tag equal to the caller's own name.
 -- Callers may read the account record and call logs of their Captains, and nobody else's.

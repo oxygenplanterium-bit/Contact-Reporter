@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 2:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -459,9 +459,12 @@ var ctTab='mine';
 function acNow(){ if(accountOwner&&!isOwner&&viewAs&&viewAs!==uid) return (users[viewAs]&&users[viewAs].ac)||{}; return accountOwner?{}:((me&&me.ac)||{}); }
 function acOk(k){ return !!(isOwner||acNow()[k]===true); }
 function acLogs(){ var a=acNow(); return a.logs===true||a.rep===true||a.grp===true; }
-function acView(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.dash===true||me.ac.logs===true||me.ac.rep===true||me.ac.grp===true||me.ac.cts===true||me.ac.sum===true||cmAny(me.ac))); }
+function acView(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.dash===true||me.ac.logs===true||me.ac.rep===true||me.ac.grp===true||me.ac.cts===true||me.ac.sum===true||me.ac.apr===true||cmAny(me.ac))); }
 function cmAny(a){ return !!(a&&(a.cadd===true||a.casg===true||a.cimp===true)); }
 function cmFor(k){ var a=acNow(); return isOwner||a[k]===true; }
+function aprOk(){ return isOwner||acNow().apr===true; }
+async function aprPut(id,pt){ if(accountOwner) return putDoc('cr/users/'+id,pt); try{ await db.rpc('approve_user',{p_target:id,p_ex:pt.ex==null?null:pt.ex}); return true; }catch(e){ return writeErr(e); } }
+async function aprDel(id){ if(accountOwner) return delDoc('cr/users/'+id); try{ await db.rpc('reject_user',{p_target:id}); return true; }catch(e){ return writeErr(e); } }
 function cmOk(){ return isOwner||cmAny(acNow()); }
 function ctsOk(){ var a=acNow(); return a.cts===true||cmAny(a); }
 function canRep(){ var a=acNow(); return isOwner||!acLogs()||a.rep===true||a.grp===true; }
@@ -1142,9 +1145,9 @@ function captainsCard(body){
     wrap.append(r); });
   grp.append(wrap);
 }
-function viewSet(body){ if(isOwner) viewSetOwner(body); else { if(acOk('sum')) sumCard(body); if(acOk('dash')) dashCard(body); if(acOk('cats')) catCard(body); captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
+function viewSet(body){ if(isOwner) viewSetOwner(body); else { if(acOk('apr')) alertCard(body); if(acOk('sum')) sumCard(body); if(acOk('dash')) dashCard(body); if(acOk('cats')) catCard(body); captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
 var IC_AC='<path d="M12 3l8 3v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>';
-var AC_LIST=[['sum','Daily And Weekly Summary','The daily and weekly summary of calls for all users'],['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['grp','Group Call Logs Report','See all call logs by group, with the group filter, and download the group report'],['cts','All Contacts','See all contacts and groups, the same as the owner sees them (view only)'],['cadd','Add Contacts','Add new contacts. Also shows them all contacts'],['casg','Assign Contacts','Assign contacts to users. Also shows them all contacts'],['cimp','Import Contacts','Import contacts from the phone or a file. Also shows them all contacts'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
+var AC_LIST=[['apr','Approve New Users','Get the new sign-up alert on the home screen and approve or reject new users, the same as the owner'],['sum','Daily And Weekly Summary','The daily and weekly summary of calls for all users'],['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['grp','Group Call Logs Report','See all call logs by group, with the group filter, and download the group report'],['cts','All Contacts','See all contacts and groups, the same as the owner sees them (view only)'],['cadd','Add Contacts','Add new contacts. Also shows them all contacts'],['casg','Assign Contacts','Assign contacts to users. Also shows them all contacts'],['cimp','Import Contacts','Import contacts from the phone or a file. Also shows them all contacts'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
 function acText(u){ var a=(u&&u.ac)||{}, n=AC_LIST.filter(function(x){ return a[x[0]]===true; }).map(function(x){ return x[1]; }); return n.length?'Access: '+n.join(', '):''; }
 function accessDlg(id){
   if(users[id]&&users[id].ac&&users[id].ac.ctm!==undefined) putDoc('cr/users/'+id,{ac:{ctm:null}});
@@ -1299,7 +1302,7 @@ function alertNotify(msg){
   try{ if(window.Notification&&Notification.permission==='granted'){ if(navigator.serviceWorker&&navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(function(r){ r.showNotification('Contact Reporter',{body:msg,icon:'icon-192.png',tag:msg}); }).catch(function(){ new Notification('Contact Reporter',{body:msg}); }); else new Notification('Contact Reporter',{body:msg}); } }catch(e){}
 }
 function alertCheck(){
-  if(!accountOwner||!settingsLoaded) return;
+  if(!(accountOwner||acNow().apr===true)||!settingsLoaded) return;
   var seen={}; try{ seen=JSON.parse(localStorage.getItem('crSeen')||'null')||null; }catch(e){}
   var cur=alertPending(), first=seen===null; seen=seen||{};
   cur.forEach(function(a){ if(!seen[a[0]]){ seen[a[0]]=1; if(!first&&alertInit) alertNotify(a[1]); } });
@@ -1511,14 +1514,14 @@ function ctTabs(body){
 }
 function viewHome(body){
   var amEl=null, abEl=null;
-  if(isOwner){
+  if(aprOk()){
     var pl=userList().filter(function(it){ return it[1].st!=='ok'; });
     if(pl.length){ var pc=mk('div','card'); pc.style.cssText='display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin-bottom:8px;border-color:var(--warn)';
       pc.append(mk('b',null,'Waiting For Approval ('+pl.length+')'));
       pl.forEach(function(it){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid var(--line)';
         r.append(mk('div',null,u.n),mk('div','pmeta',fmtPhone(u.ph)));
-        var ac=mk('div','sline'); ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary'));
-        var rj=btn('Reject',function(){},'danger'); rj.addEventListener('click',function(){ arm(rj,'rej'+id,'Reject',async function(){ if(await delDoc('cr/users/'+id)) toast('Request removed'); }); }); ac.append(rj);
+        var ac=mk('div','sline'); ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await aprPut(id,pt)) toast(u.n+' approved'); },'primary'));
+        var rj=btn('Reject',function(){},'danger'); rj.addEventListener('click',function(){ arm(rj,'rej'+id,'Reject',async function(){ if(await aprDel(id)) toast('Request removed'); }); }); ac.append(rj);
         r.append(ac); pc.append(r); });
       body.append(pc); }
   }
