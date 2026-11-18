@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:25 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -367,9 +367,11 @@ var PDF=(function(){
     this.pages[this.pages.length-1].push('q '+w.toFixed(1)+' 0 0 '+hh.toFixed(1)+' '+(this.R-w).toFixed(1)+' '+this.y.toFixed(1)+' cm /Px'+k+' Do Q'); this.y-=4; };
   Doc.prototype.imageTop=function(bin,iw,ih,w,top){ var hh=w*ih/iw; if(!this.imgs) this.imgs=[]; this.imgs.push({d:bin,w:iw,h:ih}); var k=this.imgs.length;
     this.pages[this.pages.length-1].push('q '+w.toFixed(1)+' 0 0 '+hh.toFixed(1)+' '+(this.R-w).toFixed(1)+' '+(top-hh).toFixed(1)+' cm /Px'+k+' Do Q'); return hh; };
-  Doc.prototype.starLine=function(o){ o=o||{}; var gold=o.gold||'0.83 0.63 0.09', r=o.r||9, gap=o.gap||28, h=r*2+8; this.room(h); var cy=this.y-h/2, cx=(this.L+this.R)/2, pg=this.pages[this.pages.length-1], c=[gold+' rg '+gold+' RG 1.6 w'];
-    var half=gap+r+8; c.push(this.L+' '+cy.toFixed(1)+' m '+(cx-half).toFixed(1)+' '+cy.toFixed(1)+' l S'); c.push((cx+half).toFixed(1)+' '+cy.toFixed(1)+' m '+this.R+' '+cy.toFixed(1)+' l S');
-    [-1,0,1].forEach(function(k){ var x0=cx+k*gap, pts=[]; for(var i=0;i<10;i++){ var a=Math.PI/2+i*Math.PI/5, rr=i%2?r*0.42:r; pts.push((x0+rr*Math.cos(a)).toFixed(2)+' '+(cy+rr*Math.sin(a)).toFixed(2)); } c.push(pts[0]+' m '+pts.slice(1).map(function(q){ return q+' l'; }).join(' ')+' h B'); });
+  Doc.prototype.starLine=function(o){ o=o||{}; var gold=o.gold||'0.83 0.63 0.09', r=o.r||9, gap=o.gap||28, h=r*2+8; this.room(h); var cy=this.y-h/2, cx=(this.L+this.R)/2, W=this.R-this.L, pg=this.pages[this.pages.length-1], c=[gold+' rg '+gold+' RG 1.6 w'];
+    var half=gap+r+8, outer=W/4;
+    [-1,1].forEach(function(sd){ c.push((cx+sd*half).toFixed(1)+' '+cy.toFixed(1)+' m '+(cx+sd*(outer-r-6)).toFixed(1)+' '+cy.toFixed(1)+' l S'); });
+    [-1,0,1].forEach(function(k){ star(cx+k*gap); }); [-1,1].forEach(function(sd){ star(cx+sd*outer); });
+    function star(x0){ var pts=[]; for(var i=0;i<10;i++){ var a=Math.PI/2+i*Math.PI/5, rr=i%2?r*0.42:r; pts.push((x0+rr*Math.cos(a)).toFixed(2)+' '+(cy+rr*Math.sin(a)).toFixed(2)); } c.push(pts[0]+' m '+pts.slice(1).map(function(q){ return q+' l'; }).join(' ')+' h B'); }
     c.push('0 g 0 G 1 w'); pg.push(c.join(' ')); this.y-=h; };
   Doc.prototype.bannerBottom=function(lines,o){ o=o||{}; var fill=o.fill||'0 0.3 0.12', pad=10, items=[]; lines.forEach(function(l){ wrap(l[0],l[1],true,this.R-this.L-24).forEach(function(t){ items.push([t,l[1]]); }); },this);
     var h=pad*2-2; items.forEach(function(it){ h+=it[1]*1.4; }); var bot=72; if(this.y<bot+h+10){ this.pages.push([]); this.y=802; } var pg=this.pages[this.pages.length-1], top=bot+h;
