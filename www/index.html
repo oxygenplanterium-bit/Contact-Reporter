@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:35 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:25 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -2233,6 +2233,36 @@ function startData(){
   var t=0; function later(){ if(t) return; t=setTimeout(function(){ t=0; scan(); },60); }
   function start(){ scan(); try{ new MutationObserver(later).observe(document.body,{childList:true,subtree:true}); }catch(e){} setInterval(function(){ list.forEach(sync); },500); }
   if(document.body) start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
+/* swipe left or right to move to the next or previous main tab */
+(function(){
+  var x0=0,y0=0,t0=0,ok=false;
+  function skip(el){
+    for(var n=el;n&&n!==document.body;n=n.parentElement){
+      var tg=n.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||tg==='DIALOG'||tg==='CANVAS') return true;
+      if(n.isContentEditable) return true;
+      if(n.scrollWidth>n.clientWidth+4){ var ox=getComputedStyle(n).overflowX; if(ox==='auto'||ox==='scroll') return true; }
+    }
+    return false;
+  }
+  document.addEventListener('touchstart',function(e){
+    ok=false; if(e.touches.length!==1) return;
+    if(document.querySelector('dialog[open]')) return;
+    var seg=document.getElementById('seg'); if(!seg||seg.hidden||!seg.children.length) return;
+    if(skip(e.target)) return;
+    x0=e.touches[0].clientX; y0=e.touches[0].clientY; t0=Date.now(); ok=true;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!ok) return; ok=false;
+    var t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0;
+    if(Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*0.5||Date.now()-t0>700) return;
+    var seg=document.getElementById('seg'), b=[].slice.call(seg.children), cur=b.findIndex(function(x){ return x.getAttribute('aria-pressed')==='true'; });
+    if(cur<0) return;
+    var nx=cur+(dx<0?1:-1); if(nx<0||nx>=b.length) return;
+    try{ document.activeElement.blur(); }catch(er){}
+    b[nx].click(); try{ window.scrollTo(0,0); }catch(er){}
+  },{passive:true});
 })();
 </script>
 </body></html>
