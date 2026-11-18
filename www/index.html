@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:25 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 8:45 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -995,6 +995,12 @@ function policyGate(){
   card.append(sc,cl,ok,no); box.append(card); document.body.append(box);
   return true;
 }
+var pgStack=[], pgLast=null, pgBack=false;
+window.__crBack=function(){
+  var d=[].slice.call(document.querySelectorAll('dialog[open]')).pop(); if(d){ try{ d.close(); }catch(e){} return true; }
+  if(!pgStack.length) return false;
+  var q=pgStack.pop(); pgBack=true; sub=q.sub; capSel=q.cap; sig=''; try{ document.activeElement.blur(); }catch(e){} render(); try{ window.scrollTo(0,0); }catch(e){} return true;
+};
 function render(){
   try{ msBarSync(); }catch(e){}
   if(!started) return;
@@ -1004,6 +1010,7 @@ function render(){
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   var s=JSON.stringify([sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,acNow(),mode,lgInc,viewAs,onlineIds,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded,cptShow]);
   if(s===sig) return; sig=s;
+  if(pgLast&&(pgLast.sub!==sub||pgLast.cap!==capSel)&&!pgBack){ var tp=pgStack[pgStack.length-1]; if(!tp||tp.sub!==pgLast.sub||tp.cap!==pgLast.cap) pgStack.push(pgLast); if(pgStack.length>30) pgStack.shift(); } pgLast={sub:sub,cap:capSel}; pgBack=false;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
   var bs0=$('#botSearch'); if(!bs0){ bs0=mk('div'); bs0.id='botSearch'; var bt1=document.querySelector('.bot'); bt1.insertBefore(bs0,bt1.firstChild); } bs0.textContent=''; bs0.hidden=true;
@@ -2251,7 +2258,7 @@ function startData(){
     if(document.querySelector('dialog[open]')) return;
     var seg=document.getElementById('seg'); if(!seg||seg.hidden||!seg.children.length) return;
     if(skip(e.target)) return;
-    x0=e.touches[0].clientX; y0=e.touches[0].clientY; t0=Date.now(); ok=true;
+    x0=e.touches[0].clientX; y0=e.touches[0].clientY; t0=Date.now(); if(x0<=26){ ok=false; return; } ok=true;
   },{passive:true});
   document.addEventListener('touchend',function(e){
     if(!ok) return; ok=false;
@@ -2263,6 +2270,30 @@ function startData(){
     try{ document.activeElement.blur(); }catch(er){}
     b[nx].click(); try{ window.scrollTo(0,0); }catch(er){}
   },{passive:true});
+})();
+
+/* short swipe from the left edge goes back to the page used before */
+(function(){
+  var on=false, y=0, fired=false, ind=null, TH=38;
+  function mkInd(){ if(ind) return ind; ind=document.createElement('div'); ind.setAttribute('aria-hidden','true'); ind.textContent='\u2039';
+    ind.style.cssText='position:fixed;left:0;width:34px;height:34px;margin-top:-17px;border-radius:0 17px 17px 0;background:rgba(20,20,20,.78);color:#fff;font:600 28px/30px sans-serif;text-align:center;z-index:99999;pointer-events:none;opacity:0;transform:translateX(-34px);transition:opacity .12s';
+    document.body.append(ind); return ind; }
+  document.addEventListener('touchstart',function(e){
+    on=false; fired=false; if(e.touches.length!==1) return;
+    var t=e.touches[0]; if(t.clientX>26) return; on=true; y=t.clientY;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!on) return; var t=e.touches[0], dx=t.clientX, dy=Math.abs(t.clientY-y);
+    if(dy>dx*1.2+30){ on=false; if(ind) ind.style.opacity='0'; return; }
+    var i=mkInd(); i.style.top=t.clientY+'px'; var k=Math.min(1,dx/TH); i.style.opacity=String(Math.max(0,Math.min(1,k))); i.style.transform='translateX('+(-34+34*k)+'px)';
+    if(dx>=TH&&!fired){ fired=true; try{ if(navigator.vibrate) navigator.vibrate(12); }catch(er){} }
+    if(dx<TH&&fired) fired=false;
+  },{passive:true});
+  document.addEventListener('touchend',function(){
+    if(!on) return; on=false; if(ind) ind.style.opacity='0';
+    if(fired){ fired=false; try{ if(window.__crBack) window.__crBack(); }catch(er){} }
+  },{passive:true});
+  document.addEventListener('touchcancel',function(){ on=false; if(ind) ind.style.opacity='0'; },{passive:true});
 })();
 </script>
 </body></html>
