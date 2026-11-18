@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 1:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 1:35 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1013,7 +1013,7 @@ function render(){
   if(pgLast&&(pgLast.sub!==sub||pgLast.cap!==capSel)&&!pgBack){ var tp=pgStack[pgStack.length-1]; if(!tp||tp.sub!==pgLast.sub||tp.cap!==pgLast.cap) pgStack.push(pgLast); if(pgStack.length>30) pgStack.shift(); } pgLast={sub:sub,cap:capSel}; pgBack=false;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
   $('#who').textContent=isOwner?'Owner':callerName();
-  try{ if(window.__fsIO){ window.__fsIO.disconnect(); window.__fsIO=null; } var fsb=document.getElementById('fsBar'); if(fsb) fsb.remove(); }catch(e){}
+  try{ if(window.__fsIO){ window.__fsIO.disconnect(); window.__fsIO=null; } var fsb=document.getElementById('fsBar'); if(fsb) fsb.remove(); document.body.style.overflow=''; window.__ctSize=null; if(sub!=='home') window.__ctSc=0; }catch(e){}
   var bs0=$('#botSearch'); if(!bs0){ bs0=mk('div'); bs0.id='botSearch'; var bt1=document.querySelector('.bot'); bt1.insertBefore(bs0,bt1.firstChild); } bs0.textContent=''; bs0.hidden=true;
   var fb=$('#fab'); if(!fb){ fb=mk('button','fab','+'); fb.id='fab'; fb.type='button'; fb.setAttribute('aria-label','Add new contact'); fb.addEventListener('click',function(){ ctEdit(''); }); var ar=$('#fabRow'); if(!ar){ ar=mk('div','addrow'); ar.id='fabRow'; var bt0=document.querySelector('.bot'); bt0.insertBefore(ar,bt0.firstChild); ar.append(fb); } }
   var fl=$('#fabLbl'); if(!fl){ fl=mk('button','fablbl','Add Contact'); fl.id='fabLbl'; fl.type='button'; fl.addEventListener('click',function(){ ctEdit(''); }); $('#fabRow').append(fl); }
@@ -1582,15 +1582,22 @@ function viewHome(body){
     all.forEach(function(it){ var l=(it[1].n.trim().charAt(0)||'#').toUpperCase(); if(!/[A-Z]/.test(l)) l='#'; if(l!==cur){ flush(); cur=l; } chunk.push(it); });
     flush();
   }
-  q.addEventListener('input',function(){ homeQ=q.value; fill(); });
+  q.addEventListener('input',function(){ homeQ=q.value; window.__ctSc=0; fill(); if(window.__ctSize) window.__ctSize(); });
   (function(){
-    var bar=mk('div'); bar.id='fsBar'; bar.style.cssText='position:fixed;left:var(--sw,0px);right:0;top:0;z-index:60;padding:max(8px,env(safe-area-inset-top,0px)) 12px 8px;background:var(--bg);border-bottom:1px solid var(--line);display:none';
-    var in2=mk('div'); in2.style.cssText='max-width:760px;margin:0 auto';
-    var fi=document.createElement('input'); fi.type='search'; fi.placeholder=q.placeholder; fi.value=homeQ; fi.autocomplete='off'; fi.setAttribute('aria-label','Search contacts'); fi.style.cssText='background:#111;color:#fff;margin:0';
-    in2.append(fi); bar.append(in2); document.body.append(bar);
-    fi.addEventListener('input',function(){ homeQ=fi.value; q.value=homeQ; fill(); });
-    q.addEventListener('input',function(){ fi.value=q.value; });
-    try{ var io=new IntersectionObserver(function(es){ bar.style.display=es[0].isIntersecting?'none':'block'; },{threshold:0}); io.observe(srow); window.__fsIO=io; }catch(e){}
+    var frozen=false;
+    function size(){
+      var off=function(){ lst.style.maxHeight=''; lst.style.overflowY=''; sp.style.display=''; document.body.style.overflow=''; frozen=false; };
+      if(!lst.isConnected||document.documentElement.clientWidth>=900){ off(); return; }
+      var sy=window.pageYOffset||0, top=lst.getBoundingClientRect().top+sy, bt=document.querySelector('.bot'), bh=(bt&&bt.offsetHeight)||0;
+      var h=Math.floor((window.visualViewport?window.visualViewport.height:window.innerHeight)-top-bh-12);
+      if(h<170){ off(); return; }
+      lst.style.maxHeight=h+'px'; lst.style.overflowY='auto'; lst.style.overscrollBehavior='contain'; lst.style.webkitOverflowScrolling='touch'; sp.style.display='none';
+      document.body.style.overflow='hidden'; frozen=true; if(sy) window.scrollTo(0,0);
+    }
+    lst.addEventListener('scroll',function(){ window.__ctSc=lst.scrollTop; },{passive:true});
+    var rest=function(){ if(window.__ctSc&&frozen){ lst.scrollTop=window.__ctSc; } };
+    window.__ctSize=function(){ size(); rest(); }; setTimeout(window.__ctSize,0); setTimeout(window.__ctSize,300);
+    if(!window.__ctRs){ window.__ctRs=1; window.addEventListener('resize',function(){ if(window.__ctSize) window.__ctSize(); }); if(window.visualViewport) window.visualViewport.addEventListener('resize',function(){ if(window.__ctSize) window.__ctSize(); }); }
   })();
   fill();
 }
