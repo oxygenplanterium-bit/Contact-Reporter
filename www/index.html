@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 11:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 12:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -358,6 +358,11 @@ var PDF=(function(){
   Doc.prototype.subtitle=function(t,o){ o=o||{}; var size=o.size||15, lead=size*1.4, tx=clean(t), w=width(tx,size,true), x=this.L+(this.R-this.L-w)/2; this.room(lead+4); this.y-=lead;
     this.pages[this.pages.length-1].push((o.color?o.color+' rg '+o.color+' RG ':'')+'BT /F2 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET 1 w '+x.toFixed(1)+' '+(this.y-2.5).toFixed(1)+' m '+(x+w).toFixed(1)+' '+(this.y-2.5).toFixed(1)+' l S'+(o.color?' 0 g 0 G':'')); if(o.after) this.y-=o.after; };
   Doc.prototype.ctext=function(t,o){ o=o||{}; var size=o.size||10, lead=size*1.35, tx=clean(t), w=width(tx,size,false), x=this.L+(this.R-this.L-w)/2; this.room(lead); this.y-=lead; this.pages[this.pages.length-1].push('BT /F1 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET'); if(o.after) this.y-=o.after; };
+  Doc.prototype.banner=function(lines,o){ o=o||{}; var fill=o.fill||'0 0.3 0.12', pad=10, items=[]; lines.forEach(function(l){ wrap(l[0],l[1],true,this.R-this.L-24).forEach(function(t){ items.push([t,l[1]]); }); },this);
+    var h=pad*2-2; items.forEach(function(it){ h+=it[1]*1.4; }); this.room(h+6); this.y-=6; var top=this.y, pg=this.pages[this.pages.length-1];
+    pg.push(fill+' rg '+this.L+' '+(top-h).toFixed(1)+' '+(this.R-this.L)+' '+h.toFixed(1)+' re f 1 g'); var yy=top-pad+2;
+    items.forEach(function(it){ var sz=it[1], w=width(it[0],sz,true), x=this.L+(this.R-this.L-w)/2; yy-=sz*1.4; pg.push('BT /F2 '+sz+' Tf '+x.toFixed(1)+' '+(yy+sz*0.3).toFixed(1)+' Td ('+esc(it[0])+') Tj ET'); },this);
+    pg.push('0 g'); this.y=top-h; };
   Doc.prototype.row=function(cells,xs,ws,o){ o=o||{}; var size=o.size||11, bold=!!o.bold, lead=size*1.35, pad=5, parts=cells.map(function(c,i){ return wrap(c,size,bold,ws[i]-8); }), n=0; parts.forEach(function(p){ n=Math.max(n,p.length); });
     var h=n*lead+pad*2; this.room(h); var top=this.y, pg=this.pages[this.pages.length-1];
     var sg=o.segs||[[this.L,this.R-this.L]], sk=o.skip||[];
@@ -1292,8 +1297,10 @@ function alertCard(body){
   body.append(c);
 }
 /* ---------- category tables and flyers (owner) ---------- */
-var cats={c:{},o:{},u:0}, catShow={c:false,o:false}, catBusy=false;
+var cats={c:{},o:{},u:0,amb:null}, catShow={c:false,o:false}, catBusy=false;
 function catRows(k){ var m=cats[k]||{}; return Object.keys(m).filter(function(i){ return m[i]; }).sort(function(a,b){ return (m[a].at||0)-(m[b].at||0); }).map(function(i){ return [i,m[i]]; }); }
+function catAmb(){ var a=cats.amb||{}; return {n:cleanName(a.n)||'Venkatesh Kulkarni',p:String(a.p||'').trim()||'93434 00203'}; }
+function catBanner(doc){ var a=catAmb(); doc.gap(10); doc.banner([['For More Details Contact Launch Ambassador',15],[a.n+' - Ph. No. '+a.p,20]]); }
 function catFlyer(k){
   var rows=catRows(k), closed=k==='c', doc=new PDF.Doc(), g='0 0.4 0.15', up=Number(cats.u)||0;
   if(!up){ rows.forEach(function(it){ if((it[1].at||0)>up) up=it[1].at; }); } if(!up) up=Date.now();
@@ -1307,13 +1314,13 @@ function catFlyer(k){
     if(!rows.length) doc.text('No categories added yet.',{size:11,before:8});
     for(var r=0;r<13&&r<rows.length;r++){ var l=rows[r], rt=rows[r+12], lc=r<12&&l, cells=[lc?String(r+1):'',lc?(l[1].c||''):'',rt?String(r+13):'',rt?(rt[1].c||''):''], sk=[]; if(!lc) sk.push(0); if(!rt) sk.push(1);
       doc.row(cells,xs2,ws2,{size:11,fill:r%2?'1 1 1':'0.93 0.97 0.94',segs:sg,skip:sk}); }
-    return doc.build('Open Categories');
+    catBanner(doc); return doc.build('Open Categories');
   }
   var xs=[40,90,305], ws=[50,215,250];
   doc.row(['Sl.No.','Member Name','Category Name'],xs,ws,{bold:true,size:12,fill:g,color:'1 1 1'});
   if(!rows.length) doc.text('No categories added yet.',{size:11,before:8});
   rows.forEach(function(it,i){ var e=it[1]; doc.row([String(i+1),e.m||'',e.c||''],xs,ws,{size:11,fill:i%2?'1 1 1':'0.93 0.97 0.94'}); });
-  return doc.build(closed?'Closed Categories':'Open Categories');
+  catBanner(doc); return doc.build(closed?'Closed Categories':'Open Categories');
 }
 window.crCat={flyer:catFlyer};
 async function catSave(k){
@@ -1326,7 +1333,14 @@ async function catSave(k){
   }catch(e){ toast('Could not save the flyer. Check the Supabase SQL is up to date.',4500); }
   catBusy=false;
 }
+function ambCard(body){
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; var a=catAmb();
+  var ni=mkIn('text','Name',a.n), pi=mkIn('text','Phone number',a.p); ni.maxLength=60; pi.maxLength=20;
+  c.append(mk('b',null,'Launch Ambassador On The Category Flyers'),mk('p','pmeta','This name and number appear at the bottom of the Closed Categories and Open Categories flyers. Create the flyers again after changing them.'),fld('Name',ni),fld('Phone Number',pi),btn('Save Ambassador',async function(){ var n=cleanName(ni.value), ph=pi.value.trim(); if(!n||!ph){ toast('Enter the name and the phone number'); return; } if(await putDoc('cr/cats',{amb:{n:n,p:ph}},{c:{},o:{},u:0})) toast('Ambassador saved'); },'primary'));
+  body.append(c);
+}
 function catCard(body){
+  if(isOwner) ambCard(body);
   [['c','Closed Categories'],['o','Open Categories']].forEach(function(sec){
     var k=sec[0], rows=catRows(k), c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
     var hb=btn(sec[1]+' ('+rows.length+')',function(){ catShow[k]=!catShow[k]; sig=''; render(); },''); hb.className+=' bigbtn usersbtn'; hb.setAttribute('aria-expanded',catShow[k]); hb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;margin:0'; c.append(hb);
@@ -2079,7 +2093,7 @@ document.addEventListener('click',function(e){
   document.addEventListener('focusout',function(){ setTimeout(fit,200); });
 })();
 /* ---------- start ---------- */
-function watchCats(){ if(watchCats.done||!(accountOwner||(me&&me.ac&&me.ac.cats===true))) return; watchCats.done=true; try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0}; sig=''; render(); },function(){}); }catch(e){} }
+function watchCats(){ if(watchCats.done||!(accountOwner||(me&&me.ac&&me.ac.cats===true))) return; watchCats.done=true; try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0,amb:(d&&d.amb)||null}; sig=''; render(); },function(){}); }catch(e){} }
 function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct()||acView())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); alertCheck(); render(); }); }
 function normName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function capName(){ return accountOwner?((viewAs&&users[viewAs]&&users[viewAs].n)||callerName()):callerName(); }
