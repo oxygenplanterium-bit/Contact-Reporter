@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 1:55 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 2:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -378,6 +378,7 @@ var PDF=(function(){
     pg.push(fill+' rg '+this.L+' '+bot+' '+(this.R-this.L)+' '+h.toFixed(1)+' re f 1 g'); var yy=top-pad+2;
     items.forEach(function(it){ var sz=it[1], w=width(it[0],sz,true), x=this.L+(this.R-this.L-w)/2; yy-=sz*1.4; pg.push('BT /F2 '+sz+' Tf '+x.toFixed(1)+' '+(yy+sz*0.3).toFixed(1)+' Td ('+esc(it[0])+') Tj ET'); },this); pg.push('0 g'); };
   Doc.prototype.rtext=function(t,o){ o=o||{}; var size=o.size||10, lead=size*1.35, tx=clean(t), w=width(tx,size,false), x=this.R-w; this.room(lead); this.y-=lead; this.pages[this.pages.length-1].push('BT /F1 '+size+' Tf '+x.toFixed(1)+' '+this.y.toFixed(1)+' Td ('+esc(tx)+') Tj ET'); if(o.after) this.y-=o.after; };
+  Doc.prototype.ltextAt=function(t,size,y){ this.pages[this.pages.length-1].push('BT /F1 '+size+' Tf '+this.L+' '+y.toFixed(1)+' Td ('+esc(clean(t))+') Tj ET'); };
   Doc.prototype.row=function(cells,xs,ws,o){ o=o||{}; var size=o.size||11, bold=!!o.bold, lead=size*1.35, pad=5, parts=cells.map(function(c,i){ return wrap(c,size,bold,ws[i]-8); }), n=0; parts.forEach(function(p){ n=Math.max(n,p.length); });
     var h=n*lead+pad*2; this.room(h); var top=this.y, pg=this.pages[this.pages.length-1];
     var sg=o.segs||[[this.L,this.R-this.L]], sk=o.skip||[];
@@ -1328,8 +1329,8 @@ function catFlyer(k){
   if(closed) doc.gap(8);
   var yTop=doc.y, lh=catLogo(doc,yTop);
   if(!closed) doc.subtitle('Top 25 Open Categories',{size:16,color:g,after:4});
-  if(doc.y>yTop-lh-4) doc.y=yTop-lh-4; doc.rule(); doc.gap(2);
-  doc.rtext('Last updated on '+fmtIso(dayKey(up))+' at '+fmtTime(up),{size:10,after:5});
+  doc.ltextAt('Last updated on '+fmtIso(dayKey(up))+' at '+fmtTime(up),10,yTop-lh+5);
+  if(doc.y>yTop-lh-4) doc.y=yTop-lh-4; doc.rule(); doc.gap(5);
   if(!closed){
     var xs2=[40,84,303,347], ws2=[44,213,44,208], sg=[[40,257],[303,252]];
     doc.row(['Sl.No.','Category Name','Sl.No.','Category Name'],xs2,ws2,{bold:true,size:11,fill:g,color:'1 1 1',segs:sg});
