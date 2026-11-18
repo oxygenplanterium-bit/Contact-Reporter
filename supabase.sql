@@ -44,17 +44,31 @@ $$;
 grant execute on function public.has_ac(text), public.has_view(), public.has_cm() to authenticated;
 
 -- Approving or rejecting a new sign-up: the owner, or a person the owner gave the "approve new users" access. Only a pending record can be changed, and only to approve it (with the trial end date) or remove it.
+-- Record of who approved or rejected whom (cr/aplog/<person>). Only the owner can read it.
+create or replace function public.log_approval(p_target text, p_what text) returns void
+language plpgsql security definer set search_path = public as $$
+declare t jsonb; b jsonb; bn text;
+begin
+  select data into t from public.docs where path = 'cr/users/' || p_target;
+  select data into b from public.docs where path = 'cr/users/' || auth.uid()::text;
+  bn := case when public.is_owner() then 'Owner' else coalesce(b ->> 'n', 'User') end;
+  insert into public.docs(path, data, updated_at) values ('cr/aplog/' || p_target,
+    jsonb_build_object('a', p_what, 'n', coalesce(t ->> 'n', ''), 'ph', coalesce(t ->> 'ph', ''), 'by', case when public.is_owner() then 'owner' else auth.uid()::text end, 'bn', bn, 'at', (extract(epoch from now()) * 1000)::bigint), now())
+  on conflict (path) do update set data = excluded.data, updated_at = now();
+end $$;
 create or replace function public.approve_user(p_target text, p_ex bigint default null) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if not (public.is_owner() or public.has_ac('apr')) then raise exception 'not allowed'; end if;
   update public.docs set data = data || case when p_ex is null then jsonb_build_object('st','ok') else jsonb_build_object('st','ok','ex',p_ex) end, updated_at = now()
    where path = 'cr/users/' || p_target and data ->> 'st' = 'pending';
+  if found then perform public.log_approval(p_target, 'approved'); end if;
 end $$;
 create or replace function public.reject_user(p_target text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if not (public.is_owner() or public.has_ac('apr')) then raise exception 'not allowed'; end if;
+  perform public.log_approval(p_target, 'rejected');
   delete from public.docs where path = 'cr/users/' || p_target and data ->> 'st' = 'pending';
 end $$;
 grant execute on function public.approve_user(text, bigint), public.reject_user(text) to authenticated;

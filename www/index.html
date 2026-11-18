@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 3:35 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -463,8 +463,9 @@ function acView(){ return !accountOwner&&!!(me&&me.ac&&(me.ac.dash===true||me.ac
 function cmAny(a){ return !!(a&&(a.cadd===true||a.casg===true||a.cimp===true)); }
 function cmFor(k){ var a=acNow(); return isOwner||a[k]===true; }
 function aprOk(){ return isOwner||acNow().apr===true; }
-async function aprPut(id,pt){ if(accountOwner) return putDoc('cr/users/'+id,pt); try{ await db.rpc('approve_user',{p_target:id,p_ex:pt.ex==null?null:pt.ex}); return true; }catch(e){ return writeErr(e); } }
-async function aprDel(id){ if(accountOwner) return delDoc('cr/users/'+id); try{ await db.rpc('reject_user',{p_target:id}); return true; }catch(e){ return writeErr(e); } }
+function aplogPut(id,a){ var u=users[id]||{}; putDoc('cr/aplog/'+id,{a:a,n:u.n||'',ph:u.ph||'',by:'owner',bn:'Owner',at:Date.now()},{}); }
+async function aprPut(id,pt){ if(accountOwner){ var ok=await putDoc('cr/users/'+id,pt); if(ok) aplogPut(id,'approved'); return ok; } try{ await db.rpc('approve_user',{p_target:id,p_ex:pt.ex==null?null:pt.ex}); return true; }catch(e){ return writeErr(e); } }
+async function aprDel(id){ if(accountOwner){ aplogPut(id,'rejected'); return delDoc('cr/users/'+id); } try{ await db.rpc('reject_user',{p_target:id}); return true; }catch(e){ return writeErr(e); } }
 function cmOk(){ return isOwner||cmAny(acNow()); }
 function ctsOk(){ var a=acNow(); return a.cts===true||cmAny(a); }
 function canRep(){ var a=acNow(); return isOwner||!acLogs()||a.rep===true||a.grp===true; }
@@ -1166,7 +1167,7 @@ function usersBox(body,ul,title,key){
   var shw=!!usrShowM[key], ub=btn(title+' ('+ul.length+')',function(){ usrShowM[key]=!usrShowM[key]; sig=''; render(); },''); ub.className+=' bigbtn'; ub.setAttribute('aria-pressed',shw); ub.setAttribute('aria-expanded',shw); var uar=document.createElement('span'); uar.setAttribute('aria-hidden','true'); uar.style.cssText='display:inline-block;line-height:0;transition:transform .15s;'+(shw?'transform:rotate(180deg)':''); uar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; var utx=mk('span',null,ub.textContent); ub.textContent=''; ub.append(utx,uar); ub.classList.add('usersbtn'); ub.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:0'; body.append(ub);
   if(shw){ var uc=mk('div'); uc.style.cssText='display:flex;flex-direction:column;gap:0;margin-top:6px';
     if(!ul.length) uc.append(mk('p','pmeta','No approved users yet.'));
-    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var od=onlineData[id]||{}, ls=Math.max(Number(od.t)||0,Number(od.l)||0); t.append(mk('div','pmeta',isOnline(id)?'Online Now':(ls?'Last Seen: '+fmtIso(dayKey(ls))+' at '+fmtTime(ls):'Last Seen: Not Yet'))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var acT=acText(u); if(acT) t.append(mk('div','pmeta',acT)); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
+    ul.forEach(function(it,i){ var id=it[0], u=it[1], r=mk('div'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px'; tint(r,i); var t=mk('div'); t.style.cssText='min-width:0'; t.append(mk('b',null,u.n),mk('div','pmeta',fmtPhone(u.ph))); var od=onlineData[id]||{}, ls=Math.max(Number(od.t)||0,Number(od.l)||0); t.append(mk('div','pmeta',isOnline(id)?'Online Now':(ls?'Last Seen: '+fmtIso(dayKey(ls))+' at '+fmtTime(ls):'Last Seen: Not Yet'))); var pa=policyLog[id]; t.append(mk('div','pmeta',pa&&pa.at?'Policy Accepted '+fmtIso(dayKey(pa.at))+' at '+fmtTime(pa.at):'Policy Not Accepted Yet')); var acT=acText(u); if(acT) t.append(mk('div','pmeta',acT)); var ap=aplog[id]; if(ap&&ap.a==='approved'&&ap.at) t.append(mk('div','pmeta','Approved by '+(ap.bn||'Owner')+' on '+fmtIso(dayKey(ap.at))+' at '+fmtTime(ap.at))); var udb=iconBtn('Delete user',IC_DEL,function(){},'var(--loss)'); udb.addEventListener('click',function(){ var k='ud'+id; if(!armed[k]){ armed[k]=true; udb.style.background='var(--loss)'; udb.style.color='#fff'; toast('Tap the bin again to delete '+u.n); setTimeout(function(){ armed[k]=false; udb.style.background='transparent'; udb.style.color='var(--loss)'; },4000); return; } armed[k]=false; userDelete(id,u); });
     var ic=mk('div'); ic.style.cssText='display:flex;align-items:center;gap:4px;flex:0 0 auto'; if(isOnline(id)){ var dot=mk('span'); dot.title='Online now'; dot.setAttribute('role','img'); dot.setAttribute('aria-label','Online now'); dot.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;background:#1fbf4a;box-shadow:0 0 0 2px color-mix(in srgb,#1fbf4a 30%,transparent);margin-right:6px;flex:0 0 auto'; ic.append(dot); } ic.append(iconBtn('Give access',IC_AC,function(){ accessDlg(id); }),iconBtn('Edit name',IC_EDIT,function(){ userNameDlg(id,u); }),udb); var nm=t.firstChild, dt=mk('div'); dt.style.cssText='min-width:0'; while(t.children.length>1) dt.append(t.children[1]); if(dot&&dot.parentNode===ic) ic.removeChild(dot);
       var open=!!usrOpen[id], hd=mk('div'); hd.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer'; hd.setAttribute('role','button'); hd.setAttribute('aria-expanded',open); var rt=mk('div'); rt.style.cssText='display:flex;align-items:center;gap:8px;flex:none'; if(dot){ dot.style.marginRight='0'; rt.append(dot); }
       var ar=document.createElement('span'); ar.setAttribute('aria-hidden','true'); ar.style.cssText='line-height:0;flex:none;transition:transform .15s'+(open?';transform:rotate(180deg)':''); ar.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; rt.append(ar); hd.append(nm,rt);
@@ -1309,6 +1310,13 @@ function alertCheck(){
   try{ localStorage.setItem('crSeen',JSON.stringify(seen)); }catch(e){}
   alertInit=true;
 }
+function aplogCard(body){
+  var l=Object.keys(aplog).map(function(k){ return aplog[k]; }).filter(function(e){ return e&&e.at; }).sort(function(a,b){ return b.at-a.at; });
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:10px'; c.append(mk('b',null,'Approval Records ('+l.length+')'));
+  if(!l.length) c.append(mk('p','pmeta','No approvals recorded yet. From now on every approval and rejection is listed here with who did it.'));
+  var bx=mk('div'); bx.style.cssText='display:flex;flex-direction:column;gap:5px;max-height:320px;overflow-y:auto'; l.slice(0,100).forEach(function(e,i){ var d=mk('div'); d.style.cssText='padding:6px 10px;border:1px solid var(--line);border-radius:10px'; tint(d,i); d.append(mk('b',null,(e.n||'User')+(e.ph?' · '+fmtPhone(e.ph):'')),mk('div','pmeta',(e.a==='rejected'?'Rejected':'Approved')+' by '+(e.bn||'Owner')+' on '+fmtIso(dayKey(e.at))+' at '+fmtTime(e.at))); bx.append(d); });
+  c.append(bx); body.append(c);
+}
 function alertCard(body){
   var cur=alertPending(), c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; c.append(mk('b',null,'Activity Alerts'));
   if(!cur.length) c.append(mk('p','pmeta','No new sign-ups or payment claims.')); else cur.forEach(function(a,i){ var d=mk('div',null,a[1]); d.style.cssText='padding:6px 10px;border:1px solid var(--line);border-radius:10px;font-weight:600'; tint(d,i); c.append(d); });
@@ -1317,7 +1325,7 @@ function alertCard(body){
   body.append(c);
 }
 /* ---------- category tables and flyers (owner) ---------- */
-var cats={c:{},o:{},u:0,amb:null,ambs:{},launch:''}, catShow={c:false,o:false}, catBusy=false;
+var aplog={}, cats={c:{},o:{},u:0,amb:null,ambs:{},launch:''}, catShow={c:false,o:false}, catBusy=false;
 function catRows(k){ var m=cats[k]||{}; return Object.keys(m).filter(function(i){ return m[i]; }).sort(function(a,b){ return (m[a].at||0)-(m[b].at||0); }).map(function(i){ return [i,m[i]]; }); }
 function catLaunch(){ var v=String(cats.launch||'2027-01-14'), m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v); if(!m) return '14-Jan-2027'; return Number(m[3])+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m[2])-1]+'-'+m[1]; }
 function ambRows(){ var o=[]; Object.keys(cats.ambs||{}).forEach(function(id){ var e=cats.ambs[id]; if(e&&e.n) o.push({id:id,n:cleanName(e.n),p:String(e.p||'').trim(),at:e.at||0,src:'ambs'}); }); o.sort(function(a,b){ return a.at-b.at; });
@@ -1490,7 +1498,7 @@ function viewSetOwner(body){
         if(on&&!(st.upi&&Number(st.amt)>0)){ sbi.checked=false; toast('Enter the UPI ID and amount, switch it on and Save',4000); subDlg(); return; }
         if(await putDoc('cr/settings',{on:on})) toast(on?'Subscription switched on':'Subscription switched off'); else sbi.checked=!on; });
       body.append(sbl,sset);
-  alertCard(body); sumCard(body); dashCard(body); catCard(body); pdfLibCard(body); sentLogCard(body);
+  alertCard(body); aplogCard(body); sumCard(body); dashCard(body); catCard(body); pdfLibCard(body); sentLogCard(body);
   var xb=btn('Download All Contacts',exportDlg,''); xb.className+=' bigbtn'; xb.style.cssText+=';width:100%;min-height:42px;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin-top:10px'; body.append(xb);
   var dz=mk('div','card'); dz.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; dz.append(mk('b',null,'Delete Everything'),mk('p','pmeta','Remove call logs, contacts and groups from the database. Choose what to remove in the next window.')); var wb=btn('Delete Everything',function(){ wipeDlg(); },'danger'); wb.style.alignSelf='flex-end'; dz.append(wb); body.append(dz);
 }
@@ -1713,7 +1721,7 @@ function viewCs(body,only,ro){
       } else if(!ro){ var sp=u.sp&&users[u.sp]; el.append(mk('div','pmeta','SuperUser: '+(sp?sp.n:'None'))); ac.append(btn('Assign SuperUser',function(){ spDlg(id); },'')); }
     }
     if(ok&&subsOn()&&!ro){ var vt=mk('div','pmeta',u.ex?(Number(u.ex)>Date.now()?'Valid till ':'Ended on ')+fmtIso(dayKey(Number(u.ex))):'No subscription yet'); if(!(Number(u.ex)>Date.now())) vt.style.cssText='color:var(--warn);font-weight:600'; el.append(vt); }
-    if(ro){} else if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await putDoc('cr/users/'+id,pt)) toast(u.n+' approved'); },'primary')); }
+    if(ro){} else if(!ok){ ac.append(btn('Approve',async function(){ var pt={st:'ok'}; if(subsOn()&&!(Number(u.ex)>Date.now())) pt.ex=Date.now()+(Number(settings.trial)||0)*DAY; if(await aprPut(id,pt)) toast(u.n+' approved'); },'primary')); }
     else{ if(subsOn()) ac.append(btn('Add '+subDays()+' Days',async function(){ if(await extendUser(id,subDays())) toast(u.n+' has '+subDays()+' more days'); },'')); ac.append(btn(u.rl==='su'?'Make User':'Make SuperUser',async function(){ if(await putDoc('cr/users/'+id,{rl:u.rl==='su'?null:'su'})) toast(u.rl==='su'?u.n+' is now a user':u.n+' is now a SuperUser'); },'primary')); ac.append(btn('Stop Access',async function(){ if(await putDoc('cr/users/'+id,{st:'pending'})) toast(u.n+' can no longer see contacts'); })); }
     var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'usd'+id,'Delete',async function(){
       var ok2=true; for(var gi=0;gi<grList().length;gi++){ var g=grList()[gi]; if((g[1].to||[]).indexOf(id)>=0) ok2=ok2&&await grPut(g[0],{to:g[1].to.filter(function(x){ return x!==id; })}); }
@@ -2166,6 +2174,7 @@ function startData(){
   if(accountOwner){ try{ watchPrefix('cr/policy/',function(list){ policyLog=listToMap(list,'cr/policy/'); sig=''; render(); }); }catch(e){} } else { try{ var pr=db.doc('cr/policy/'+uid); pr.get().then(function(s){ if(!s.exists&&policyOk()) policyRecord(); }).catch(function(){}); }catch(e){} }
   watchCats();
   try{ db.doc('cr/pdfs').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); pdfLib=(d&&d.l)||{}; sig=''; render(); },function(){}); }catch(e){}
+  if(accountOwner){ try{ watchPrefix('cr/aplog/',function(list){ aplog=listToMap(list,'cr/aplog/'); sig=''; render(); }); }catch(e){} }
   if(accountOwner) watchPrefix('cr/pay/',function(list){ claims=listToMap(list,'cr/pay/'); alertCheck(); render(); });
   logSub();
 }
