@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 12:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 18 Nov 2026, 12:20 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1297,10 +1297,11 @@ function alertCard(body){
   body.append(c);
 }
 /* ---------- category tables and flyers (owner) ---------- */
-var cats={c:{},o:{},u:0,amb:null}, catShow={c:false,o:false}, catBusy=false;
+var cats={c:{},o:{},u:0,amb:null,ambs:{}}, catShow={c:false,o:false}, catBusy=false;
 function catRows(k){ var m=cats[k]||{}; return Object.keys(m).filter(function(i){ return m[i]; }).sort(function(a,b){ return (m[a].at||0)-(m[b].at||0); }).map(function(i){ return [i,m[i]]; }); }
-function catAmb(){ var a=cats.amb||{}; return {n:cleanName(a.n)||'Venkatesh Kulkarni',p:String(a.p||'').trim()||'93434 00203'}; }
-function catBanner(doc){ var a=catAmb(); doc.gap(10); doc.banner([['For More Details Contact Launch Ambassador',15],[a.n+' - Ph. No. '+a.p,20]]); }
+function ambRows(){ var o=[]; Object.keys(cats.ambs||{}).forEach(function(id){ var e=cats.ambs[id]; if(e&&e.n) o.push({id:id,n:cleanName(e.n),p:String(e.p||'').trim(),at:e.at||0,src:'ambs'}); }); o.sort(function(a,b){ return a.at-b.at; });
+  if(o.length) return o; var a=cats.amb; if(a&&a.n) return [{id:'legacy',n:cleanName(a.n),p:String(a.p||'').trim(),src:'amb'}]; return [{id:'def',n:'Venkatesh Kulkarni',p:'93434 00203',src:'def'}]; }
+function catBanner(doc){ var rs=ambRows(), sz=rs.length>3?15:(rs.length>1?17:20), ln=[['For More Details Contact Launch Ambassador'+(rs.length>1?'s':''),15]]; rs.forEach(function(r){ ln.push([r.n+' - Ph. No. '+r.p,sz]); }); doc.gap(10); doc.banner(ln); }
 function catFlyer(k){
   var rows=catRows(k), closed=k==='c', doc=new PDF.Doc(), g='0 0.4 0.15', up=Number(cats.u)||0;
   if(!up){ rows.forEach(function(it){ if((it[1].at||0)>up) up=it[1].at; }); } if(!up) up=Date.now();
@@ -1334,9 +1335,16 @@ async function catSave(k){
   catBusy=false;
 }
 function ambCard(body){
-  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; var a=catAmb();
-  var ni=mkIn('text','Name',a.n), pi=mkIn('text','Phone number',a.p); ni.maxLength=60; pi.maxLength=20;
-  c.append(mk('b',null,'Launch Ambassador On The Category Flyers'),mk('p','pmeta','This name and number appear at the bottom of the Closed Categories and Open Categories flyers. Create the flyers again after changing them.'),fld('Name',ni),fld('Phone Number',pi),btn('Save Ambassador',async function(){ var n=cleanName(ni.value), ph=pi.value.trim(); if(!n||!ph){ toast('Enter the name and the phone number'); return; } if(await putDoc('cr/cats',{amb:{n:n,p:ph}},{c:{},o:{},u:0})) toast('Ambassador saved'); },'primary'));
+  var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px'; var rs=ambRows();
+  c.append(mk('b',null,'Launch Ambassadors On The Category Flyers'),mk('p','pmeta','These names and numbers appear at the bottom of the Closed Categories and Open Categories flyers. Create the flyers again after changing them.'));
+  rs.forEach(function(r,i){ var row=mk('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px'; tint(row,i); var t=mk('div'); t.style.cssText='min-width:0;overflow-wrap:anywhere'; t.append(mk('b',null,r.n),mk('div','pmeta','Ph. No. '+r.p)); row.append(t);
+    if(r.src!=='def'||rs.length===1){ var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'amb'+r.id,'Delete',async function(){ var pt={}; if(r.src==='ambs'){ pt.ambs={}; pt.ambs[r.id]=null; } else pt.amb=null; if(r.src!=='def'&&await putDoc('cr/cats',pt,{c:{},o:{},u:0})) toast('Removed'); else if(r.src==='def') toast('This is the standard name. Add another name first.',4000); }); }); row.append(dl); }
+    c.append(row); });
+  var ni=mkIn('text','Name'), pi=mkIn('text','Phone number'); ni.maxLength=60; pi.maxLength=20;
+  c.append(fld('Name',ni),fld('Phone Number',pi),btn('Add Ambassador',async function(){ var n=cleanName(ni.value), ph=pi.value.trim(); if(!n||!ph){ toast('Enter the name and the phone number'); return; }
+    var pt={ambs:{}}, t0=Date.now(); rs.filter(function(r){ return r.src!=='ambs'; }).forEach(function(r,i){ pt.ambs['m'+t0.toString(36)+i]={n:r.n,p:r.p,at:t0-10+i}; }); if(rs[0].src==='amb') pt.amb=null;
+    pt.ambs['a'+(t0+1).toString(36)+Math.random().toString(36).slice(2,4)]={n:n,p:ph,at:t0+1};
+    if(await putDoc('cr/cats',pt,{c:{},o:{},u:0})){ ni.value=''; pi.value=''; toast('Ambassador added'); } },'primary'));
   body.append(c);
 }
 function catCard(body){
@@ -2093,7 +2101,7 @@ document.addEventListener('click',function(e){
   document.addEventListener('focusout',function(){ setTimeout(fit,200); });
 })();
 /* ---------- start ---------- */
-function watchCats(){ if(watchCats.done||!(accountOwner||(me&&me.ac&&me.ac.cats===true))) return; watchCats.done=true; try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0,amb:(d&&d.amb)||null}; sig=''; render(); },function(){}); }catch(e){} }
+function watchCats(){ if(watchCats.done||!(accountOwner||(me&&me.ac&&me.ac.cats===true))) return; watchCats.done=true; try{ db.doc('cr/cats').onSnapshot(function(sn){ var d=sn.exists&&sn.data(); cats={c:(d&&d.c)||{},o:(d&&d.o)||{},u:(d&&d.u)||0,amb:(d&&d.amb)||null,ambs:(d&&d.ambs)||{}}; sig=''; render(); },function(){}); }catch(e){} }
 function watchUsers(){ if(watchUsers.done||!(accountOwner||isSuAcct()||acView())) return; watchUsers.done=true; watchPrefix('cr/users/',function(list){ users=listToMap(list,'cr/users/'); alertCheck(); render(); }); }
 function normName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function capName(){ return accountOwner?((viewAs&&users[viewAs]&&users[viewAs].n)||callerName()):callerName(); }
