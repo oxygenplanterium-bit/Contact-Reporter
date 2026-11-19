@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 9:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 9:50 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -656,15 +656,15 @@ function sentLogCard(body){
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  var th=mk('div'); th.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; th.append(mk('b',null,isOwner?'Add PDF Or JPG Files':'Uploaded Files'));
+  var th=mk('div'); th.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; var canAdd=acOk('pdf'); th.append(mk('b',null,canAdd?'Add PDF Or JPG Files':'Uploaded Files'));
   var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=libShow; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show files list'); swl.style.cssText+=';margin:0;gap:8px;flex:0 0 auto'; swl.append(swi,document.createElement('i'));
   swi.addEventListener('change',function(){ try{ swi.blur(); document.activeElement.blur(); }catch(e){} libShow=swi.checked; try{ localStorage.setItem('crLibShow',libShow?'1':'0'); }catch(e){} sig=''; render(); });
   th.append(swl); c.append(th);
   if(!libShow){ body.append(c); return; }
-  if(!isOwner&&!pdfList().length) c.append(mk('p','pmeta','No files have been added yet.'));
+  if(!canAdd&&!pdfList().length) c.append(mk('p','pmeta','No files have been added yet.'));
   pdfList().forEach(function(it){ var id=it[0], d=it[1], r=mk('div','sline'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px';
     var nm=mk('span',null,d.t||'PDF'); nm.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere'; r.append(nm);
-    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); var shb=iconBtn('Share file',IC_SHARE,function(){ pdfShare(id); },'var(--ink)'); shb.style.width='40px'; shb.style.height='40px'; shb.style.border='1px solid var(--line)'; var gp=mk('div'); gp.style.cssText='display:flex;align-items:center;gap:8px;flex:none'; if(isOwner) gp.append(shb,dl); else gp.append(shb); r.append(gp); c.append(r); });
+    var dl=btn('Delete',function(){},'danger'); dl.addEventListener('click',function(){ arm(dl,'pdf'+id,'Delete',async function(){ try{ var f=await window.claude.use('files'); if(d.p) await f.remove(d.p); }catch(e){} var pt={l:{}}; pt.l[id]=null; if(await putDoc('cr/pdfs',pt,{l:{}})){ if(pdfSel===id){ pdfSel=''; try{ localStorage.removeItem('crPdfSel'); }catch(e){} } toast('File deleted'); } }); }); var shb=iconBtn('Share file',IC_SHARE,function(){ pdfShare(id); },'var(--ink)'); shb.style.width='40px'; shb.style.height='40px'; shb.style.border='1px solid var(--line)'; var gp=mk('div'); gp.style.cssText='display:flex;align-items:center;gap:8px;flex:none'; if(canAdd) gp.append(shb,dl); else gp.append(shb); r.append(gp); c.append(r); });
   var ti=document.createElement('input'); ti.type='text'; ti.placeholder='Name for this file'; ti.autocomplete='off'; ti.maxLength=60;
   var fi=document.createElement('input'); fi.type='file'; fi.accept='application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp';
   fi.style.display='none';
@@ -677,7 +677,7 @@ function pdfLibCard(body){
     catch(e){ toast('Could not upload. Run the new SQL in Supabase first.',4500); }
     up.disabled=false; up.textContent='Upload File'; },'primary');
   fi.addEventListener('change',function(){ if(fi.files&&fi.files[0]) up.click(); });
-  if(!isOwner){ body.append(c); return; }
+  if(!canAdd){ body.append(c); return; }
   c.append(ti,fi,up); body.append(c);
 }
 /* ---------- dialer ---------- */
@@ -1165,7 +1165,7 @@ function captainsCard(body){
 }
 function viewSet(body){ if(isOwner) viewSetOwner(body); else { if(acOk('apr')) alertCard(body); if(acOk('sum')) sumCard(body); if(acOk('dash')) dashCard(body); if(acOk('cats')) catCard(body); captainsCard(body); pdfLibCard(body); sentLogCard(body); } acctCard(body); }
 var IC_AC='<path d="M12 3l8 3v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>';
-var AC_LIST=[['apr','Approve New Users','Get the new sign-up alert on the home screen and approve or reject new users, the same as the owner'],['sum','Daily And Weekly Summary','The daily and weekly summary of calls for all users'],['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['grp','Group Call Logs Report','See all call logs by group, with the group filter, and download the group report'],['cts','All Contacts','See all contacts and groups, the same as the owner sees them (view only)'],['cadd','Add Contacts','Add new contacts. Also shows them all contacts'],['casg','Assign Contacts','Assign contacts to users. Also shows them all contacts'],['cimp','Import Contacts','Import contacts from the phone or a file. Also shows them all contacts'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
+var AC_LIST=[['apr','Approve New Users','Get the new sign-up alert on the home screen and approve or reject new users, the same as the owner'],['sum','Daily And Weekly Summary','The daily and weekly summary of calls for all users'],['dash','Captains Dashboard','The whole dashboard with all captains and charts'],['logs','All Call Logs','See every user and captain call log, including their own'],['cats','Edit Categories','Edit Open Categories and Closed Categories and make their flyers'],['grp','Group Call Logs Report','See all call logs by group, with the group filter, and download the group report'],['cts','All Contacts','See all contacts and groups, the same as the owner sees them (view only)'],['cadd','Add Contacts','Add new contacts. Also shows them all contacts'],['casg','Assign Contacts','Assign contacts to users. Also shows them all contacts'],['cimp','Import Contacts','Import contacts from the phone or a file. Also shows them all contacts'],['pdf','Add PDF Or JPG Files','Add and delete PDF or JPG files in the Files To Share list'],['rep','Download Full Report','Download the whole detailed report of all users and captains, including their own']];
 function acText(u){ var a=(u&&u.ac)||{}, n=AC_LIST.filter(function(x){ return a[x[0]]===true; }).map(function(x){ return x[1]; }); return n.length?'Access: '+n.join(', '):''; }
 function accessDlg(id){
   if(users[id]&&users[id].ac&&users[id].ac.ctm!==undefined) putDoc('cr/users/'+id,{ac:{ctm:null}});

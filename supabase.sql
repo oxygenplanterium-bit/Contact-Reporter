@@ -141,13 +141,13 @@ create policy docs_insert on public.docs for insert to authenticated with check 
   or (public.is_ok() and path = 'cr/online/' || auth.uid()::text)
   or path = 'cr/policy/' || auth.uid()::text
   or (public.is_ok() and path like 'cr/sent/%')
-  or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs'))
+  or ((public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('pdf') and path = 'cr/pdfs'))
   or (public.has_cm() and path like 'cr/g/%')
 );
 create policy docs_update on public.docs for update to authenticated
-  using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
-  with check (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
-create policy docs_delete on public.docs for delete to authenticated using (public.is_owner() or (public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_cm() and path like 'cr/g/%'));
+  using (public.is_owner() or ((public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('pdf') and path = 'cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or path = 'cr/pay/' || auth.uid()::text or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'))
+  with check (public.is_owner() or ((public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('pdf') and path = 'cr/pdfs')) or (public.has_cm() and path like 'cr/g/%') or (public.is_ok() and path like 'cr/log/%' and split_part(path, '/', 4) = auth.uid()::text) or (public.is_ok() and path = 'cr/online/' || auth.uid()::text) or (path = 'cr/pay/' || auth.uid()::text and data ->> 'st' = 'pending') or path = 'cr/policy/' || auth.uid()::text or (public.is_ok() and path like 'cr/sent/%'));
+create policy docs_delete on public.docs for delete to authenticated using (public.is_owner() or ((public.has_ac('cats') and path in ('cr/cats','cr/pdfs')) or (public.has_ac('pdf') and path = 'cr/pdfs')) or (public.has_cm() and path like 'cr/g/%'));
 
 -- Merge helper: nested objects merge, null removes a key
 create or replace function public.jsonb_deep_merge(a jsonb, b jsonb) returns jsonb
@@ -193,6 +193,6 @@ on conflict (id) do update set public = true, file_size_limit = 20971520, allowe
 drop policy if exists pdfs_owner_insert on storage.objects;
 drop policy if exists pdfs_owner_update on storage.objects;
 drop policy if exists pdfs_owner_delete on storage.objects;
-create policy pdfs_owner_insert on storage.objects for insert to authenticated with check (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));
-create policy pdfs_owner_update on storage.objects for update to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));
-create policy pdfs_owner_delete on storage.objects for delete to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats')));
+create policy pdfs_owner_insert on storage.objects for insert to authenticated with check (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats') or public.has_ac('pdf')));
+create policy pdfs_owner_update on storage.objects for update to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats') or public.has_ac('pdf')));
+create policy pdfs_owner_delete on storage.objects for delete to authenticated using (bucket_id = 'pdfs' and (public.is_owner() or public.has_ac('cats') or public.has_ac('pdf')));
