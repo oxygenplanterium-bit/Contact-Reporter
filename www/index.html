@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 2:10 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 9:30 AM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -597,7 +597,8 @@ async function pdfSend(d,phone){
   }
   try{ var dn=await window.claude.use('downloads'); if(phone&&dn.toWhatsApp){ var wr=await dn.toWhatsApp({filename:nm,data:buf.slice(0),phone:phone,mime:'application/pdf'}); if(wr&&wr.status==='saved') return true; if(wr&&wr.reason) toast('Could not open the chat directly ('+String(wr.reason).slice(0,60)+'). Using the share screen.',5000); } await dn.save({filename:nm,data:buf.slice(0)}); return true; }catch(e){ if(e&&e.code==='declined') return false; toast('Could not share the file'); return false; }
 }
-var pdfOpen=false, pdfShow=true; try{ pdfShow=localStorage.getItem('crPdfShow')!=='0'; }catch(e){}
+var pdfOpen=false, pdfShow=true, libShow=true; try{ libShow=localStorage.getItem('crLibShow')!=='0'; }catch(e){}
+var pdfOpen2=0; try{ pdfShow=localStorage.getItem('crPdfShow')!=='0'; }catch(e){}
 function pdfPicker(parent){
   var l=pdfList(); if(!l.length) return;
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:6px;padding:8px 10px;margin:6px 0 10px;background:#bfdcf7;border-color:#6fa8dc;color:#0b2540';
@@ -655,7 +656,11 @@ function sentLogCard(body){
 }
 function pdfLibCard(body){
   var c=mk('div','card'); c.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
-  c.append(mk('b',null,isOwner?'Add PDF Or JPG Files':'Uploaded Files'));
+  var th=mk('div'); th.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px'; th.append(mk('b',null,isOwner?'Add PDF Or JPG Files':'Uploaded Files'));
+  var swl=mk('label','sw'), swi=document.createElement('input'); swi.type='checkbox'; swi.checked=libShow; swi.setAttribute('role','switch'); swi.setAttribute('aria-label','Show files list'); swl.style.cssText+=';margin:0;gap:8px;flex:0 0 auto'; swl.append(swi,document.createElement('i'));
+  swi.addEventListener('change',function(){ try{ swi.blur(); document.activeElement.blur(); }catch(e){} libShow=swi.checked; try{ localStorage.setItem('crLibShow',libShow?'1':'0'); }catch(e){} sig=''; render(); });
+  th.append(swl); c.append(th);
+  if(!libShow){ body.append(c); return; }
   if(!isOwner&&!pdfList().length) c.append(mk('p','pmeta','No files have been added yet.'));
   pdfList().forEach(function(it){ var id=it[0], d=it[1], r=mk('div','sline'); r.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px';
     var nm=mk('span',null,d.t||'PDF'); nm.style.cssText='flex:1;min-width:0;overflow-wrap:anywhere'; r.append(nm);
@@ -1012,7 +1017,7 @@ function render(){
   modeSync(); 
   var ae=document.activeElement, body=$('#body');
   var bsa=$('#botSearch'); if(ae&&(body.contains(ae)||(bsa&&bsa.contains(ae)))&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  var s=JSON.stringify([pdfShow,sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,acNow(),mode,lgInc,viewAs,onlineIds,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded,cptShow]);
+  var s=JSON.stringify([libShow,pdfShow,sub,capSel,capUsers,actOpen,asgShown,actMode,homeQ,callQ,callG,callLs,callLg,isOwner,acNow(),mode,lgInc,viewAs,onlineIds,selMode,selUser,selUn,usShow,settings,settingsLoaded,claim,claims,me,groups,users,logRows,logKey,logPer,logTo,groupsLoaded,cptShow]);
   if(s===sig) return; sig=s;
   if(pgLast&&(pgLast.sub!==sub||pgLast.cap!==capSel)&&!pgBack){ var tp=pgStack[pgStack.length-1]; if(!tp||tp.sub!==pgLast.sub||tp.cap!==pgLast.cap) pgStack.push(pgLast); if(pgStack.length>30) pgStack.shift(); } pgLast={sub:sub,cap:capSel}; pgBack=false;
   var pend=isOwner?userList().filter(function(it){ return it[1].st!=='ok'; }).length:0;
