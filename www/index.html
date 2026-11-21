@@ -237,7 +237,7 @@ html,body{max-width:100%; overflow-x:hidden; overflow-x:clip}
   <div class="card" id="dateCard" hidden><label class="f"><span>Date of call</span><span id="dateWrap"><span id="dateShow"></span><input type="date" id="logDate" aria-label="Choose date"></span></label><button class="btn primary small" id="addLog" type="button">Add Log Entry</button></div>
   <div id="body" style="display:flex; flex-direction:column; gap:10px"></div>
   <div class="bot"></div>
-  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 19 Nov 2026, 3:00 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
+  <div id="acctHold" hidden><span class="pmeta" id="appVer">App version 21 Nov 2026, 12:10 PM</span><button class="btn small" id="refreshApp" type="button">Refresh App</button><button class="btn small" id="signOut" type="button">Sign Out</button></div>
 </div>
 <dialog id="dlgPick" class="pickdlg"><div class="dbody"><h2 id="pickHead">Choose</h2><input type="search" id="pickSearch" placeholder="Search" aria-label="Search" autocomplete="off" hidden><div id="pickList"></div><button type="button" class="btn" id="pickCancel">Cancel</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -2154,7 +2154,18 @@ document.addEventListener('click',function(e){
     document.body.style.paddingBottom=up?(kb+90)+'px':'';
   }
   vv.addEventListener('resize',fit); vv.addEventListener('scroll',fit);
-  document.addEventListener('focusin',function(e){ var t=e.target; if(!t||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return; setTimeout(function(){ fit(); try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(x){} },320); });
+    function ensureVis(t){
+    try{
+      var r=t.getBoundingClientRect(), top=8, bot=vv.offsetTop+vv.height-8;
+      var hb=document.getElementById('winBar'); if(hb&&!hb.hidden){ var hr=hb.getBoundingClientRect(); if(hr.bottom>0) top=Math.max(top,hr.bottom+8); }
+      var fz=window.__fzEl; if(fz&&fz.isConnected&&!fz.contains(t)){ var fr=fz.getBoundingClientRect(); if(fr.top<=30) top=Math.max(top,fr.bottom+8); }
+      if(t.closest&&t.closest('dialog')){ t.scrollIntoView({block:'nearest'}); return; }
+      if(r.top>=top&&r.bottom<=bot) return;
+      var dy=r.bottom>bot?(r.bottom-bot+12):(r.top-top-12);
+      window.scrollBy({top:dy,behavior:'smooth'});
+    }catch(x){}
+  }
+document.addEventListener('focusin',function(e){ var t=e.target; if(!t||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return; setTimeout(function(){ fit(); ensureVis(t); },320); });
   document.addEventListener('focusout',function(){ setTimeout(fit,200); });
 })();
 /* ---------- start ---------- */
